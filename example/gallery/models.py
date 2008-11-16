@@ -16,10 +16,19 @@ class Picture(models.Model):
 class Gallery(models.Model):
     name = models.CharField(max_length=100)
 
-    @denormalized(models.TextField,blank=True,depend=[Picture])
-    def users(sender,instance,**kwargs):
-        instance.gallery.users = ', '.join(str(p.owner) for p in instance.gallery.picture_set.all())
-        instance.gallery.save()
+    @denormalized(models.TextField,blank=True,depend=['self',Picture])
+    def users(sender,instance,created,**kwargs):
+        if sender is Picture:
+            if not created:
+                new = ', '.join(str(p.owner) for p in instance._old_instance.gallery.picture_set.all())
+                instance._old_instance.gallery.users = new
+                instance._old_instance.gallery.save()
+            new = ', '.join(str(p.owner) for p in instance.gallery.picture_set.all())
+            instance.gallery.users = new
+            instance.gallery.save()
+        if sender is Gallery:
+            instance.users = ', '.join(str(p.owner) for p in instance.picture_set.all())
+            instance.save()
 
     def __unicode__(self):
         return self.name
