@@ -12,18 +12,19 @@ class Denorm:
         self.depend = depend
         self.func = func
 
-        def saverelay(sender,*args,**kwargs):
+        def saverelay(sender,instance,*args,**kwargs):
             kwargs['deleted'] = False
             if sender in saverelay.denorm.depend:
-                func(sender,*args,**kwargs)
+                if not hasattr(instance,'_denorm_done'):
+                    instance._denorm_done = True
+                    func(sender,instance,*args,**kwargs)
         self.saverelay = saverelay
         self.saverelay.denorm = self
 
-        def deleterelay(*args,**kwargs):
+        def deleterelay(sender,*args,**kwargs):
             kwargs['deleted'] = True
             if sender in deleterelay.denorm.depend:
                 func(sender,*args,**kwargs)
-            func(*args,**kwargs)
         self.deleterelay = deleterelay
         self.deleterelay.denorm = self
 
