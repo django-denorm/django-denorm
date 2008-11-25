@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from denorm.helpers import find_fk
+from django.db.models.fields.related import add_lazy_relation
 
 class DenormDependency:
     def resolve(*args,**kwargs):
@@ -33,9 +34,15 @@ class OnRelated(DenormDependency):
 
     def setup(self,this_model, **kwargs):
         self.this_model = this_model
+        if isinstance(self.other_model,(str,unicode)):
+            add_lazy_relation(self.this_model, None, self.other_model, self.resolved_model)
+
         try:
             self.foreign_key = find_fk(this_model,self.other_model,self.foreign_key)
             self.type = 'forward'
         except ValueError:
             self.foreign_key = find_fk(self.other_model,this_model,self.foreign_key)
             self.type = 'backward'
+
+    def resolved_model(self, data, model, cls):
+        self.other_model = model

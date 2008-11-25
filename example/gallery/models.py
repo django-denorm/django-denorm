@@ -37,7 +37,7 @@ class Comment(models.Model):
     picture = models.ForeignKey(Picture)
     author = models.ForeignKey(User)
 
-    @denormalized(models.CharField,max_length=100,depend=[OnRelated(Picture),OnRelated(User)])
+    @denormalized(models.CharField,max_length=100,depend=[OnRelated('Picture'),OnRelated(User)])
     def title(self):
         return u'Comment on %s by %s' % (self.picture.name,self.author)
 
