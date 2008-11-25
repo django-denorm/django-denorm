@@ -23,3 +23,14 @@ class Gallery(models.Model):
 
     def __unicode__(self):
         return self.name
+
+class Comment(models.Model):
+    text = models.TextField()
+    picture = models.ForeignKey(Picture)
+
+    @denormalized(models.CharField,max_length=100,depend=ForwardForeignKey(Picture))
+    def picture_name(self):
+        return self.picture.name
+
+    def __unicode__(self):
+        return u'Comment on %s' % (self.picture_name)
