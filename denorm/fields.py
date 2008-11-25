@@ -6,7 +6,7 @@ def pre_handler(sender,instance,**kwargs):
         instance._old_instance = sender.objects.get(pk=instance.pk)
     except sender.DoesNotExist:
         instance._old_instance = None
-        
+
 class Denorm:
     def __init__(self,depend,func):
         self.depend = depend
@@ -41,7 +41,7 @@ def rebuildall():
     global alldenorms
     for denorm in alldenorms:
         denorm.rebuild()
-    
+
 from django.db import models
 def denormalized(DBField,*args,**kwargs):
     try:
