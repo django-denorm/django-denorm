@@ -58,4 +58,7 @@ u''
 >>> Gallery.objects.get(name='Gallery1').users
 u'somenewname'
 
+>>> Comment(text='sometext',picture=Picture.objects.get(name='Picture1'),author=user).save()
+>>> Comment.objects.get(text='sometext').title
+u'Comment on Picture1 by somenewname'
 """

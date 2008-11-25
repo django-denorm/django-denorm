@@ -5,7 +5,10 @@ alldenorms = []
 
 class Denorm:
     def __init__(self,depend,func):
-        self.depend = depend
+        if isinstance(depend,list):
+            self.depend = depend
+        else:
+            self.depend = [depend]
         self.func = func
 
         def pre_handler(sender,instance,**kwargs):
@@ -13,17 +16,17 @@ class Denorm:
                 old_instance = sender.objects.get(pk=instance.pk)
             except sender.DoesNotExist:
                 old_instance = None
+            pre_handler.denorm.qs = pre_handler.denorm.model.objects.none()
             if old_instance:
-                pre_handler.denorm.qs = pre_handler.denorm.depend.resolve(old_instance)
-            else:
-                pre_handler.denorm.qs = pre_handler.denorm.model.objects.none()
+                for dependency in pre_handler.denorm.depend:
+                    pre_handler.denorm.qs |= dependency.resolve(old_instance)
         self.pre_handler = pre_handler
         self.pre_handler.denorm = self
 
         def post_handler(sender,instance,*args,**kwargs):
-            self.qs |= post_handler.denorm.depend.resolve(instance)
-            self.qs = self.qs.distinct()
-            post_handler.denorm.update(self.qs)
+            for dependency in post_handler.denorm.depend:
+                self.qs |= dependency.resolve(instance)
+            post_handler.denorm.update(self.qs.distinct())
         self.post_handler = post_handler
         self.post_handler.denorm = self
 
@@ -33,7 +36,8 @@ class Denorm:
         self.self_save_handler.denorm = self
 
     def setup(self,**kwargs):
-        self.depend.setup(self.model)
+        for dependency in self.depend:
+            dependency.setup(self.model)
 
         models.signals.pre_save.connect(self.pre_handler)
         models.signals.post_save.connect(self.post_handler)
