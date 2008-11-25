@@ -60,12 +60,15 @@ def denormalized(DBField,*args,**kwargs):
     class DenormDBField(DBField):
         def contribute_to_class(self,cls,*args,**kwargs):
             global alldenorms
-            alldenorms[-1].model = cls
-            models.signals.class_prepared.connect(alldenorms[-1].setup,sender=cls)
+            self.denorm.model = cls
+            models.signals.class_prepared.connect(self.denorm.setup,sender=cls)
             DBField.contribute_to_class(self,cls,*args,**kwargs)
 
     def deco(func):
         global alldenorms
-        alldenorms += [Denorm(depend,func)]
-        return DenormDBField(*args,**kwargs)
+        denorm = Denorm(depend,func)
+        alldenorms += [denorm]
+        dbfield = DenormDBField(*args,**kwargs)
+        dbfield.denorm = denorm
+        return dbfield
     return deco
