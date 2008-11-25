@@ -1,46 +1,55 @@
 # -*- coding: utf-8 -*-
-alldenorms = []
 
-def pre_handler(sender,instance,**kwargs):
-    try:
-        instance._old_instance = sender.objects.get(pk=instance.pk)
-    except sender.DoesNotExist:
-        instance._old_instance = None
+alldenorms = []
 
 class Denorm:
     def __init__(self,depend,func):
         self.depend = depend
         self.func = func
 
-        def saverelay(sender,instance,*args,**kwargs):
-            kwargs['deleted'] = False
-            if sender in saverelay.denorm.depend:
-                if not hasattr(instance,'_denorm_done'):
-                    instance._denorm_done = True
-                    func(sender,instance,*args,**kwargs)
-        self.saverelay = saverelay
-        self.saverelay.denorm = self
+        def pre_handler(sender,instance,**kwargs):
+            try:
+                old_instance = sender.objects.get(pk=instance.pk)
+            except sender.DoesNotExist:
+                old_instance = None
+            if old_instance:
+                pre_handler.denorm.qs = pre_handler.denorm.depend.resolve(old_instance)
+            else:
+                pre_handler.denorm.qs = pre_handler.denorm.model.objects.none()
+        self.pre_handler = pre_handler
+        self.pre_handler.denorm = self
 
-        def deleterelay(sender,*args,**kwargs):
-            kwargs['deleted'] = True
-            if sender in deleterelay.denorm.depend:
-                func(sender,*args,**kwargs)
-        self.deleterelay = deleterelay
-        self.deleterelay.denorm = self
+        def post_handler(sender,instance,*args,**kwargs):
+            self.qs |= post_handler.denorm.depend.resolve(instance)
+            self.qs = self.qs.distinct()
+            post_handler.denorm.update(self.qs)
+        self.post_handler = post_handler
+        self.post_handler.denorm = self
 
-        models.signals.pre_save.connect(pre_handler)
-        models.signals.post_save.connect(self.saverelay)
-        models.signals.post_delete.connect(self.deleterelay)
+        def self_save_handler(sender,instance,**kwargs):
+            setattr(instance,self_save_handler.denorm.func.__name__,self_save_handler.denorm.func(instance))
+        self.self_save_handler = self_save_handler
+        self.self_save_handler.denorm = self
 
-    def rebuild(self):
-        for model in self.depend:
-            for object in model.objects.all():
-                self.saverelay(sender=model,instance=object,created=True)
+
+    def setup(self,cls):
+        self.model = cls
+        self.depend.setup(cls)
+
+        models.signals.pre_save.connect(self.pre_handler)
+        models.signals.post_save.connect(self.post_handler)
+        models.signals.post_delete.connect(self.post_handler)
+
+        models.signals.pre_save.connect(self.self_save_handler,sender=self.model)
+
+    def update(self,qs):
+        for instance in qs:
+            instance.save()
 
 def rebuildall():
     global alldenorms
     for denorm in alldenorms:
-        denorm.rebuild()
+        denorm.update(denorm.model.objects.all())
 
 from django.db import models
 def denormalized(DBField,*args,**kwargs):
@@ -48,14 +57,12 @@ def denormalized(DBField,*args,**kwargs):
         depend = kwargs['depend']
         del kwargs['depend']
     except:
-        depend = ['self']
+        depend = None
 
     class DenormDBField(DBField):
         def contribute_to_class(self,cls,*args,**kwargs):
             global alldenorms
-            if "self" in alldenorms[-1].depend:
-                alldenorms[-1].depend += [cls]
-                alldenorms[-1].depend.remove("self")
+            alldenorms[-1].setup(cls)
             DBField.contribute_to_class(self,cls,*args,**kwargs)
 
     def deco(func):
