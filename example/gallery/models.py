@@ -25,6 +25,10 @@ class Gallery(models.Model):
     def users(self):
         return ', '.join(p.owner_username for p in self.picture_set.all())
 
+    @denormalized(models.PositiveIntegerField,default=0,depend=BackwardForeignKey(Picture))
+    def picture_count(self):
+        return self.picture_set.count()
+
     def __unicode__(self):
         return self.name
 

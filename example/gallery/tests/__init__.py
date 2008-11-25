@@ -15,12 +15,20 @@
 u'user1'
 >>> Gallery.objects.get(name='Gallery2').users
 u''
+>>> Gallery.objects.get(name='Gallery1').picture_count
+1
+>>> Gallery.objects.get(name='Gallery2').picture_count
+0
 
 >>> Picture(name='Picture2',gallery=gallery2,owner=user2,image='uploads/picture2.jpg').save()
 >>> Gallery.objects.get(name='Gallery1').users
 u'user1'
 >>> Gallery.objects.get(name='Gallery2').users
 u'user2'
+>>> Gallery.objects.get(name='Gallery1').picture_count
+1
+>>> Gallery.objects.get(name='Gallery2').picture_count
+1
 
 >>> pic = Picture.objects.get(name='Picture2')
 >>> pic.gallery = gallery1
@@ -29,12 +37,20 @@ u'user2'
 u'user1, user2'
 >>> Gallery.objects.get(name='Gallery2').users
 u''
+>>> Gallery.objects.get(name='Gallery1').picture_count
+2
+>>> Gallery.objects.get(name='Gallery2').picture_count
+0
 
 >>> Picture.objects.get(name='Picture2').delete()
 >>> Gallery.objects.get(name='Gallery1').users
 u'user1'
 >>> Gallery.objects.get(name='Gallery2').users
 u''
+>>> Gallery.objects.get(name='Gallery1').picture_count
+1
+>>> Gallery.objects.get(name='Gallery2').picture_count
+0
 
 >>> user = User.objects.get(username='user1')
 >>> user.username = 'somenewname'
