@@ -10,6 +10,10 @@ class Picture(models.Model):
     image = models.ImageField(upload_to='photos')
     gallery = models.ForeignKey('Gallery')
 
+    @denormalized(models.CharField,max_length=100,depend=ForwardForeignKey(User))
+    def owner_username(self):
+        return self.owner.username
+
     def __unicode__(self):
         return self.name
 
@@ -19,7 +23,7 @@ class Gallery(models.Model):
 
     @denormalized(models.TextField,blank=True,depend=BackwardForeignKey(Picture))
     def users(self):
-        return ', '.join(str(p.owner) for p in self.picture_set.all())
+        return ', '.join(p.owner_username for p in self.picture_set.all())
 
     def __unicode__(self):
         return self.name
