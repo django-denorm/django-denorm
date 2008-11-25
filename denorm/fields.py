@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from django.db import models
 
 alldenorms = []
 
@@ -51,7 +52,6 @@ def rebuildall():
     for denorm in alldenorms:
         denorm.update(denorm.model.objects.all())
 
-from django.db import models
 def denormalized(DBField,*args,**kwargs):
     try:
         depend = kwargs['depend']
