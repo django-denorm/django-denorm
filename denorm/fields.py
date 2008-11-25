@@ -102,7 +102,7 @@ def denormalized(DBField,*args,**kwargs):
         depend = kwargs['depend']
         del kwargs['depend']
     except:
-        depend = None
+        depend = []
 
     class DenormDBField(DBField):
         def contribute_to_class(self,cls,*args,**kwargs):
