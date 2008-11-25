@@ -32,10 +32,8 @@ class Denorm:
         self.self_save_handler = self_save_handler
         self.self_save_handler.denorm = self
 
-
-    def setup(self,cls):
-        self.model = cls
-        self.depend.setup(cls)
+    def setup(self,**kwargs):
+        self.depend.setup(self.model)
 
         models.signals.pre_save.connect(self.pre_handler)
         models.signals.post_save.connect(self.post_handler)
@@ -62,7 +60,8 @@ def denormalized(DBField,*args,**kwargs):
     class DenormDBField(DBField):
         def contribute_to_class(self,cls,*args,**kwargs):
             global alldenorms
-            alldenorms[-1].setup(cls)
+            alldenorms[-1].model = cls
+            models.signals.class_prepared.connect(alldenorms[-1].setup,sender=cls)
             DBField.contribute_to_class(self,cls,*args,**kwargs)
 
     def deco(func):

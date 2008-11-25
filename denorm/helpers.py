@@ -8,7 +8,7 @@ def find_fk(from_model, to_model, foreign_key=None):
                 return foreign_key.attname
         else:
             fkeys = filter(lambda x: isinstance(x, models.ForeignKey)
-                                     and x.rel.to == to_model.__name__,
+                                     and x.rel.to == to_model,
                            from_model._meta.fields)
             if not fkeys:
                 raise ValueError("%s has no ForeignKeys to %s; cannot auto-resolve."
