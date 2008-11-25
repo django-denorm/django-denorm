@@ -2,8 +2,10 @@
 from denorm.helpers import find_fk
 
 class DenormDependency:
-    def resolve(instance):
+    def resolve(*args,**kwargs):
         return None
+    def setup(*args,**kwargs):
+        pass
 
 class ForwardForeignKey(DenormDependency):
     def __init__(self,model,foreign_key=None):
