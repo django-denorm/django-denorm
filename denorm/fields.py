@@ -17,6 +17,8 @@ class Denorm:
     """
 
     def __init__(self,func):
+        if not hasattr(func,'depend'):
+            func.depend = []
         self.func = func
 
     def pre_handler(self,sender,instance,**kwargs):
