@@ -18,7 +18,7 @@ class DenormDependency:
     def setup(*args,**kwargs):
         pass
 
-class OnRelated(DenormDependency):
+class DependOnRelated(DenormDependency):
     def __init__(self,model,foreign_key=None):
         self.other_model = model
         self.foreign_key = foreign_key
@@ -58,7 +58,7 @@ class OnRelated(DenormDependency):
         except ValueError:
             self.foreign_key = find_fk(self.other_model,self.this_model,self.foreign_key)
             self.type = 'backward'
-depend_on_related = make_depend_decorator(OnRelated)
+depend_on_related = make_depend_decorator(DependOnRelated)
 
 class DependOnQ(DenormDependency):
     def __init__(self,model,qgen):
