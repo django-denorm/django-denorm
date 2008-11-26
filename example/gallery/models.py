@@ -51,7 +51,7 @@ class Picture(models.Model):
     image = models.ImageField(upload_to='photos')
     gallery = models.ForeignKey('Gallery')
 
-    # This hase the same effect like a MirrorField
+    # This has the same effect like a MirrorField
     # the owners username just gets copied here.
     # depend_on_related detects forward ForeignKeys
     # as well.
