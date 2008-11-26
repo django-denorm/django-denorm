@@ -12,6 +12,7 @@ class OnRelated(DenormDependency):
     def __init__(self,model,foreign_key=None):
         self.other_model = model
         self.foreign_key = foreign_key
+        self.type = 'none'
 
     def resolve_backward(self,instance):
         if isinstance(instance,self.other_model):
@@ -36,13 +37,14 @@ class OnRelated(DenormDependency):
         self.this_model = this_model
         if isinstance(self.other_model,(str,unicode)):
             add_lazy_relation(self.this_model, None, self.other_model, self.resolved_model)
-
-        try:
-            self.foreign_key = find_fk(this_model,self.other_model,self.foreign_key)
-            self.type = 'forward'
-        except ValueError:
-            self.foreign_key = find_fk(self.other_model,this_model,self.foreign_key)
-            self.type = 'backward'
+        else:
+            self.resolved_model(None,self.other_model,None)
 
     def resolved_model(self, data, model, cls):
         self.other_model = model
+        try:
+            self.foreign_key = find_fk(self.this_model,self.other_model,self.foreign_key)
+            self.type = 'forward'
+        except ValueError:
+            self.foreign_key = find_fk(self.other_model,self.this_model,self.foreign_key)
+            self.type = 'backward'
