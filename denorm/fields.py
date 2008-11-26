@@ -90,7 +90,6 @@ def denormalized(DBField,*args,**kwargs):
 
     class DenormDBField(DBField):
         def contribute_to_class(self,cls,*args,**kwargs):
-            global alldenorms
             self.denorm.model = cls
             models.signals.class_prepared.connect(self.denorm.setup,sender=cls)
             DBField.contribute_to_class(self,cls,*args,**kwargs)
