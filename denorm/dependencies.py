@@ -58,5 +58,26 @@ class OnRelated(DenormDependency):
         except ValueError:
             self.foreign_key = find_fk(self.other_model,self.this_model,self.foreign_key)
             self.type = 'backward'
-
 depend_on_related = make_depend_decorator(OnRelated)
+
+class DependOnQ(DenormDependency):
+    def __init__(self,model,qgen):
+        self.other_model = model
+        self.qgen = qgen
+
+    def resolve(self, instance):
+        if isinstance(instance,self.other_model):
+            return self.this_model.objects.filter(self.qgen(instance))
+        else:
+            return self.this_model.objects.none()
+
+    def setup(self,this_model, **kwargs):
+        self.this_model = this_model
+        if isinstance(self.other_model,(str,unicode)):
+            add_lazy_relation(self.this_model, None, self.other_model, self.resolved_model)
+        else:
+            self.resolved_model(None,self.other_model,None)
+
+    def resolved_model(self, data, model, cls):
+        self.other_model = model
+depend_on_q = make_depend_decorator(DependOnQ)

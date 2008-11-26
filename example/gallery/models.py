@@ -1,7 +1,8 @@
 from django.db import models
+from django.db.models import Q
 from django.contrib.auth.models import User
 from denorm.fields import denormalized
-from denorm.dependencies import depend_on_related
+from denorm.dependencies import depend_on_related,depend_on_q
 
 
 class Gallery(models.Model):
@@ -12,10 +13,16 @@ class Gallery(models.Model):
     def users(self):
         return ', '.join(p.owner_username for p in self.picture_set.all())
 
-    @denormalized(models.PositiveIntegerField,default=0)
+    @denormalized(models.PositiveIntegerField)
     @depend_on_related('Picture')
     def picture_count(self):
         return self.picture_set.count()
+
+    @denormalized(models.PositiveIntegerField)
+    @depend_on_q('Comment',lambda i: Q(pk=i.picture.gallery.pk))
+    @depend_on_related('Picture')
+    def picture_comment_count(self):
+        return Comment.objects.filter(picture__gallery=self).count()
 
     def __unicode__(self):
         return self.name

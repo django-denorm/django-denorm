@@ -51,6 +51,10 @@ u''
 1
 >>> Gallery.objects.get(name='Gallery2').picture_count
 0
+>>> Gallery.objects.get(name='Gallery1').picture_comment_count
+0
+>>> Gallery.objects.get(name='Gallery2').picture_comment_count
+0
 
 >>> user = User.objects.get(username='user1')
 >>> user.username = 'somenewname'
@@ -63,6 +67,10 @@ u'somenewname'
 >>> Comment.objects.get(text='sometext').title
 u'Comment on Picture1 by somenewname'
 
+>>> Gallery.objects.get(name='Gallery1').picture_comment_count
+1
+>>> Gallery.objects.get(name='Gallery2').picture_comment_count
+0
 >>> user.username = 'user1again'
 >>> user.save()
 >>> pic.name = 'somenewname_for_picture1'
