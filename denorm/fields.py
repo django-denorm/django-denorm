@@ -26,44 +26,38 @@ class Denorm:
             self.depend = [depend]
         self.func = func
 
-        def pre_handler(sender,instance,**kwargs):
-            """
-            Gives the DenormDependency resolver a chance to
-            work before the instance is altered.
-            Without this, a changed backwards ForeignKey relation
-            for example, will result in an incorrect value in the
-            instance the ForeignKey was pointing to before the save.
-            """
-            try:
-                old_instance = sender.objects.get(pk=instance.pk)
-            except sender.DoesNotExist:
-                old_instance = None
-            pre_handler.denorm.qs = pre_handler.denorm.model.objects.none()
-            if old_instance:
-                for dependency in pre_handler.denorm.depend:
-                    pre_handler.denorm.qs |= dependency.resolve(old_instance)
-        self.pre_handler = pre_handler
-        self.pre_handler.denorm = self
+    def pre_handler(self,sender,instance,**kwargs):
+        """
+        Gives the DenormDependency resolver a chance to
+        work before the instance is altered.
+        Without this, a changed backwards ForeignKey relation
+        for example, will result in an incorrect value in the
+        instance the ForeignKey was pointing to before the save.
+        """
+        try:
+            old_instance = sender.objects.get(pk=instance.pk)
+        except sender.DoesNotExist:
+            old_instance = None
+        self.qs = self.model.objects.none()
+        if old_instance:
+            for dependency in self.depend:
+                self.qs |= dependency.resolve(old_instance)
 
-        def post_handler(sender,instance,*args,**kwargs):
-            """
-            Does the same as pre_handler, but gives the resolver opportunity
-            to examine the new version of 'instance'.
-            """
-            for dependency in post_handler.denorm.depend:
-                self.qs |= dependency.resolve(instance)
-            post_handler.denorm.update(self.qs.distinct())
-        self.post_handler = post_handler
-        self.post_handler.denorm = self
+    def post_handler(self,sender,instance,*args,**kwargs):
+        """
+        Does the same as pre_handler, but gives the resolver opportunity
+        to examine the new version of 'instance'.
+        """
+        for dependency in self.depend:
+            self.qs |= dependency.resolve(instance)
+        self.update(self.qs.distinct())
 
-        def self_save_handler(sender,instance,**kwargs):
-            """
-            Updated the value of the denormalized field
-            in 'instance' before it gets saved.
-            """
-            setattr(instance,self_save_handler.denorm.func.__name__,self_save_handler.denorm.func(instance))
-        self.self_save_handler = self_save_handler
-        self.self_save_handler.denorm = self
+    def self_save_handler(self,sender,instance,**kwargs):
+        """
+        Updated the value of the denormalized field
+        in 'instance' before it gets saved.
+        """
+        setattr(instance,self.func.__name__,self.func(instance))
 
     def setup(self,**kwargs):
         """
