@@ -2,6 +2,16 @@
 from denorm.helpers import find_fk
 from django.db.models.fields.related import add_lazy_relation
 
+def make_depend_decorator(Resolver):
+    def decorator(*args,**kwargs):
+        def deco(func):
+            if not hasattr(func,'depend'):
+                func.depend = []
+            func.depend += [Resolver(*args,**kwargs)]
+            return func
+        return deco
+    return decorator
+
 class DenormDependency:
     def resolve(*args,**kwargs):
         return None
@@ -48,3 +58,5 @@ class OnRelated(DenormDependency):
         except ValueError:
             self.foreign_key = find_fk(self.other_model,self.this_model,self.foreign_key)
             self.type = 'backward'
+
+depend_on_related = make_depend_decorator(OnRelated)

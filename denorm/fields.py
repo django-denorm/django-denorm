@@ -16,14 +16,7 @@ class Denorm:
     and combining the results with logical OR.
     """
 
-    def __init__(self,depend,func):
-        """
-        Makes sure self.depend is always a list.
-        """
-        if isinstance(depend,list):
-            self.depend = depend
-        else:
-            self.depend = [depend]
+    def __init__(self,func):
         self.func = func
 
     def pre_handler(self,sender,instance,**kwargs):
@@ -40,7 +33,7 @@ class Denorm:
             old_instance = None
         self.qs = self.model.objects.none()
         if old_instance:
-            for dependency in self.depend:
+            for dependency in self.func.depend:
                 self.qs |= dependency.resolve(old_instance)
 
     def post_handler(self,sender,instance,*args,**kwargs):
@@ -48,7 +41,7 @@ class Denorm:
         Does the same as pre_handler, but gives the resolver opportunity
         to examine the new version of 'instance'.
         """
-        for dependency in self.depend:
+        for dependency in self.func.depend:
             self.qs |= dependency.resolve(instance)
         self.update(self.qs.distinct())
 
@@ -64,7 +57,7 @@ class Denorm:
         Calls setup() on all DenormDependency resolvers
         and connects all needed signals.
         """
-        for dependency in self.depend:
+        for dependency in self.func.depend:
             dependency.setup(self.model)
 
         models.signals.pre_save.connect(self.pre_handler)
@@ -92,11 +85,6 @@ def rebuildall():
         denorm.update(denorm.model.objects.all())
 
 def denormalized(DBField,*args,**kwargs):
-    try:
-        depend = kwargs['depend']
-        del kwargs['depend']
-    except:
-        depend = []
 
     class DenormDBField(DBField):
         def contribute_to_class(self,cls,*args,**kwargs):
@@ -107,7 +95,7 @@ def denormalized(DBField,*args,**kwargs):
 
     def deco(func):
         global alldenorms
-        denorm = Denorm(depend,func)
+        denorm = Denorm(func)
         alldenorms += [denorm]
         dbfield = DenormDBField(*args,**kwargs)
         dbfield.denorm = denorm

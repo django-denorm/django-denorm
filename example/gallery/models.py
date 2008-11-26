@@ -1,17 +1,19 @@
 from django.db import models
 from django.contrib.auth.models import User
 from denorm.fields import denormalized
-from denorm.dependencies import OnRelated
+from denorm.dependencies import depend_on_related
 
 
 class Gallery(models.Model):
     name = models.CharField(max_length=100)
 
-    @denormalized(models.TextField,blank=True,depend=OnRelated('Picture'))
+    @denormalized(models.TextField,blank=True)
+    @depend_on_related('Picture')
     def users(self):
         return ', '.join(p.owner_username for p in self.picture_set.all())
 
-    @denormalized(models.PositiveIntegerField,default=0,depend=OnRelated('Picture'))
+    @denormalized(models.PositiveIntegerField,default=0)
+    @depend_on_related('Picture')
     def picture_count(self):
         return self.picture_set.count()
 
@@ -24,7 +26,8 @@ class Picture(models.Model):
     image = models.ImageField(upload_to='photos')
     gallery = models.ForeignKey('Gallery')
 
-    @denormalized(models.CharField,max_length=100,depend=OnRelated(User))
+    @denormalized(models.CharField,max_length=100)
+    @depend_on_related(User)
     def owner_username(self):
         return self.owner.username
 
@@ -36,7 +39,9 @@ class Comment(models.Model):
     picture = models.ForeignKey(Picture)
     author = models.ForeignKey(User)
 
-    @denormalized(models.CharField,max_length=100,depend=[OnRelated(Picture),OnRelated(User)])
+    @denormalized(models.CharField,max_length=100)
+    @depend_on_related(Picture)
+    @depend_on_related(User)
     def title(self):
         return u'Comment on %s by %s' % (self.picture.name,self.author)
 
