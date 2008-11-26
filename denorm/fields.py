@@ -45,7 +45,7 @@ class Denorm:
         """
         for dependency in self.func.depend:
             self.qs |= dependency.resolve(instance)
-        self.update(self.qs.distinct())
+        self.update(self.qs)
 
     def self_save_handler(self,sender,instance,**kwargs):
         """
@@ -74,7 +74,7 @@ class Denorm:
         As the update itself is triggered by the pre_save signal, we just
         need to save() all instances.
         """
-        for instance in qs:
+        for instance in qs.distinct():
             instance.save()
 
 def rebuildall():
