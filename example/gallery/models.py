@@ -29,12 +29,12 @@ class Gallery(models.Model):
     # When a 'Comment' changes the provided function (lambda i:...)
     # gets called with the instance being changed as argument.
     # This function must return a Q object that will be used in a
-    # filter() to determine witch Galleries need updating.
+    # filter() to determine which galleries need updating.
     # the filter looks like:
     # Gallery.objects.filter(func(instance))
-    # where 'func' is the lambda function and instance the changeing
+    # where 'func' is the lambda function and instance the changing
     # instance.
-    # Additionaly a Galleries comment count needs to be updated when
+    # Additionaly a Gallery's comment count needs to be updated when
     # pictures get moved or deleted, so it depends on related pictures too.
     @denormalized(models.PositiveIntegerField)
     @depend_on_q('Comment',lambda i: Q(pk=i.picture.gallery.pk))
@@ -52,7 +52,7 @@ class Picture(models.Model):
     gallery = models.ForeignKey('Gallery')
 
     # This has the same effect like a MirrorField
-    # the owners username just gets copied here.
+    # the owner's username just gets copied here.
     # depend_on_related detects forward ForeignKeys
     # as well.
     @denormalized(models.CharField,max_length=100)
