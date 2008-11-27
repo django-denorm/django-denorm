@@ -52,12 +52,16 @@ class DependOnRelated(DenormDependency):
 
     def resolved_model(self, data, model, cls):
         self.other_model = model
-        try:
-            self.foreign_key = find_fk(self.this_model,self.other_model,self.foreign_key)
+        self.foreign_key = find_fk(self.this_model,self.other_model,self.foreign_key)
+        if self.foreign_key:
             self.type = 'forward'
-        except ValueError:
-            self.foreign_key = find_fk(self.other_model,self.this_model,self.foreign_key)
+            return
+        self.foreign_key = find_fk(self.other_model,self.this_model,self.foreign_key)
+        if self.foreign_key:
             self.type = 'backward'
+            return
+        raise ValueError("%s has no ForeignKeys to %s (or reverse); cannot auto-resolve."
+                         % (self.this_model, self.other_model))
 depend_on_related = make_depend_decorator(DependOnRelated)
 
 class DependOnQ(DenormDependency):
