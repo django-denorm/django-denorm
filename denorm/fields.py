@@ -84,6 +84,7 @@ class Denorm:
             instance.save()
             del instance._denorm_skip
 
+
 def rebuildall():
     """
     Updates all models containing denormalized fields.
@@ -96,10 +97,29 @@ def rebuildall():
 def denormalized(DBField,*args,**kwargs):
 
     class DenormDBField(DBField):
+        
+        """
+        Special subclass of the given DBField type, with a few extra additions.
+        """
+        
         def contribute_to_class(self,cls,*args,**kwargs):
             self.denorm.model = cls
+            self.field_args = (args, kwargs)
             models.signals.class_prepared.connect(self.denorm.setup,sender=cls)
             DBField.contribute_to_class(self,cls,*args,**kwargs)
+    
+        def south_field_definition(self):
+            """
+            Because this field will be defined as a decorator, give
+            South hints on how to recreate it for database use.
+            """
+            if DBField.__module__.startswith("django.db.models.fields"):
+                arglist = [repr(x) for x in args]
+                kwlist = ["%s=%r" % (x, y) for x, y in kwargs.items()]
+                return "%s(%s)" % (
+                    DBField.__name__,
+                    ", ".join(arglist + kwlist)
+                )
 
     def deco(func):
         global alldenorms
