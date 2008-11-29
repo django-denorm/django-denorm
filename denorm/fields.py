@@ -43,6 +43,10 @@ class Denorm:
         Does the same as pre_handler, but gives the resolver opportunity
         to examine the new version of 'instance'.
         """
+        # If this is a save from an outer denorm, skip it
+        if hasattr(instance, "_denorm_skip"):
+            return
+        # Use every dependency.
         for dependency in self.func.depend:
             self.qs |= dependency.resolve(instance)
         self.update(self.qs)
@@ -75,7 +79,10 @@ class Denorm:
         need to save() all instances.
         """
         for instance in qs.distinct():
+            # Save, but set an attribute to avoid triggering the handler again
+            instance._denorm_skip = True
             instance.save()
+            del instance._denorm_skip
 
 def rebuildall():
     """
