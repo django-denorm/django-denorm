@@ -93,3 +93,21 @@ class TestDenormalisation(unittest.TestCase):
         # Doesn't work yet - no support for null FKs
         #p4 = Post.objects.create(forum=None)
         #self.assertEqual(p4.forum_title, None)
+
+    def test_dependeny_chains(self):
+        # create a forum, a member and a post
+        f1 = Forum.objects.create(title="forumone")
+        m1 = Member.objects.create(name="memberone")
+        p1 = Post.objects.create(forum=f1,author=m1)
+
+        # check the forums author list contains the member
+        self.assertEqual(Forum.objects.get(id=f1.id).authors, "memberone")
+
+        # change the members name
+        m1.name = "membertwo"
+        m1.save()
+
+        # check again
+        self.assertEqual(Forum.objects.get(id=f1.id).authors, "membertwo")
+
+

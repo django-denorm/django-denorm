@@ -20,6 +20,7 @@ class Denorm:
         if not hasattr(func,'depend'):
             func.depend = []
         self.func = func
+        self.updating = set()
 
     def pre_handler(self,sender,instance,**kwargs):
         """
@@ -43,9 +44,6 @@ class Denorm:
         Does the same as pre_handler, but gives the resolver opportunity
         to examine the new version of 'instance'.
         """
-        # If this is a save from an outer denorm, skip it
-        if hasattr(instance, "_denorm_skip"):
-            return
         # Use every dependency.
         for dependency in self.func.depend:
             self.qs |= dependency.resolve(instance)
@@ -79,10 +77,13 @@ class Denorm:
         need to save() all instances.
         """
         for instance in qs.distinct():
-            # Save, but set an attribute to avoid triggering the handler again
-            instance._denorm_skip = True
-            instance.save()
-            del instance._denorm_skip
+            if not instance.pk in self.updating:
+                # we need to keep track of the instances this denorm updates
+                # to ensure we update them only once. This protects us from endless
+                # updates that could otherwise occur with cyclic dependencies.
+                self.updating.add(instance.pk)
+                instance.save()
+                self.updating.remove(instance.pk)
 
 
 def rebuildall():

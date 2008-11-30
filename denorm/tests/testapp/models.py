@@ -13,10 +13,16 @@ class Forum(models.Model):
     def post_count(self):
         return self.post_set.count()
 
+    @denormalized(models.CharField,max_length=255)
+    @depend_on_related('Post')
+    def authors(self):
+        return ', '.join((m.author_name for m in self.post_set.all()))
+    
 
 class Post(models.Model):
     
     forum = models.ForeignKey(Forum, blank=True, null=True)
+    author = models.ForeignKey('Member', blank=True, null=True)
     
     # Brings down the forum title
     @denormalized(models.CharField, max_length=255)
@@ -25,7 +31,20 @@ class Post(models.Model):
         return self.forum.title
 
 
+    @denormalized(models.CharField, max_length=255)
+    @depend_on_related('Member')
+    def author_name(self):
+        if self.author:
+            return self.author.name
+        else: 
+            return ''
+
+
 class Attachment(models.Model):
     
     post = models.ForeignKey(Post)
 
+
+class Member(models.Model):
+
+    name = models.CharField(max_length=255)
