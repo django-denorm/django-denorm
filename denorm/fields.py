@@ -44,6 +44,9 @@ class Denorm:
         Does the same as pre_handler, but gives the resolver opportunity
         to examine the new version of 'instance'.
         """
+        # If we've gone straight to a delete, there'll be no self.qs
+        if not hasattr(self, "qs"):
+            self.qs = self.model.objects.none()
         # Use every dependency.
         for dependency in self.func.depend:
             self.qs |= dependency.resolve(instance)
