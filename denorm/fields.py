@@ -50,7 +50,11 @@ class Denorm:
         # Use every dependency.
         for dependency in self.func.depend:
             self.qs |= dependency.resolve(instance)
+        # Update all affected instances
         self.update(self.qs)
+        # when we are done we don't need the qs anymore
+        if not self.updating:
+            del self.qs
 
     def self_save_handler(self,sender,instance,**kwargs):
         """
