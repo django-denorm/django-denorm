@@ -94,7 +94,7 @@ class TestDenormalisation(unittest.TestCase):
         #p4 = Post.objects.create(forum=None)
         #self.assertEqual(p4.forum_title, None)
 
-    def test_dependeny_chains(self):
+    def test_dependency_chains(self):
         # create a forum, a member and a post
         f1 = Forum.objects.create(title="forumone")
         m1 = Member.objects.create(name="memberone")
