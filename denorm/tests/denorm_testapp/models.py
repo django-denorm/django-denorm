@@ -8,10 +8,7 @@ class Forum(models.Model):
     title = models.CharField(max_length=255)
     
     # Simple count() aggregate
-    @denormalized(models.IntegerField)
-    @depend_on_related('Post')
-    def post_count(self):
-        return self.post_set.count()
+    post_count = CountField('Post','post_set')
 
     @denormalized(models.CharField,max_length=255)
     @depend_on_related('Post')
