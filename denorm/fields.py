@@ -61,7 +61,7 @@ class Denorm:
         Updated the value of the denormalized field
         in 'instance' before it gets saved.
         """
-        setattr(instance,self.func.__name__,self.func(instance))
+        setattr(instance,self.fieldname,self.func(instance))
 
     def setup(self,**kwargs):
         """
@@ -110,11 +110,12 @@ def denormalized(DBField,*args,**kwargs):
         Special subclass of the given DBField type, with a few extra additions.
         """
         
-        def contribute_to_class(self,cls,*args,**kwargs):
+        def contribute_to_class(self,cls,name,*args,**kwargs):
             self.denorm.model = cls
+            self.denorm.fieldname = name
             self.field_args = (args, kwargs)
             models.signals.class_prepared.connect(self.denorm.setup,sender=cls)
-            DBField.contribute_to_class(self,cls,*args,**kwargs)
+            DBField.contribute_to_class(self,cls,name,*args,**kwargs)
     
         def south_field_definition(self):
             """
