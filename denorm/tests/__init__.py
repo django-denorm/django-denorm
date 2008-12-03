@@ -5,13 +5,13 @@ import os
 
 from django.core import management
 
-# Add the tests directory so the testapp is on sys.path
+# Add the tests directory so the denorm_testapp is on sys.path
 test_root = os.path.dirname(__file__)
 sys.path.append(test_root)
 
-# Import testapp's models
-import testapp.models
-from testapp.models import *
+# Import denorm_testapp's models
+import denorm_testapp.models
+from denorm_testapp.models import *
 
 
 class TestDenormalisation(unittest.TestCase):
@@ -24,13 +24,13 @@ class TestDenormalisation(unittest.TestCase):
         """Swaps out various Django calls for fake ones for our own nefarious purposes."""
         
         def new_get_apps():
-            return [testapp.models]
+            return [denorm_testapp.models]
         
         from django.db import models
         from django.conf import settings
         models.get_apps_old, models.get_apps = models.get_apps, new_get_apps
         settings.INSTALLED_APPS, settings.OLD_INSTALLED_APPS = (
-            ["testapp"],
+            ["denorm_testapp"],
             settings.INSTALLED_APPS,
         )
         self.redo_app_cache()
