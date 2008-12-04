@@ -22,7 +22,7 @@ class DependOnRelated(DenormDependency):
     def __init__(self,model,foreign_key=None):
         self.other_model = model
         self.foreign_key = foreign_key
-        self.type = 'none'
+        self.type = None
 
     def resolve_backward(self,instance):
         if isinstance(instance,self.other_model):
@@ -38,6 +38,8 @@ class DependOnRelated(DenormDependency):
             return self.this_model.objects.none()
 
     def resolve(self,instance):
+        if not self.type:
+            raise Exception("The model '%s' does not exist"%(self.other_model)) 
         if self.type == 'forward':
             return self.resolve_forward(instance)
         elif self.type == 'backward':
