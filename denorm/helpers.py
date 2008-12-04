@@ -6,8 +6,7 @@ def find_fk(from_model, to_model, foreign_key=None):
             foreign_key = foreign_key.attname
         fkeys = filter(lambda x: isinstance(x, models.ForeignKey)
                                  and x.rel.to == to_model
-                                 and (x.attname == foreign_key
-                                   or x.attname == foreign_key+'_id'),
+                                 and x.attname in [foreign_key,foreign_key+'_id'],
                        from_model._meta.fields)
     else:
         fkeys = filter(lambda x: isinstance(x, models.ForeignKey)

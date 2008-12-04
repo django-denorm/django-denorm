@@ -52,9 +52,10 @@ class DependOnRelated(DenormDependency):
 
     def resolved_model(self, data, model, cls):
         self.other_model = model
-        self.foreign_key = find_fk(self.this_model,self.other_model,self.foreign_key)
-        if self.foreign_key:
+        foreign_key = find_fk(self.this_model,self.other_model,self.foreign_key)
+        if foreign_key:
             self.type = 'forward'
+            self.foreign_key = foreign_key
             return
         self.foreign_key = find_fk(self.other_model,self.this_model,self.foreign_key)
         if self.foreign_key:
