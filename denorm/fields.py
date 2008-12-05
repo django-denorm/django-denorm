@@ -58,7 +58,7 @@ class Denorm:
 
     def self_save_handler(self,sender,instance,**kwargs):
         """
-        Updated the value of the denormalized field
+        Updates the value of the denormalized field
         in 'instance' before it gets saved.
         """
         setattr(instance,self.fieldname,self.func(instance))
