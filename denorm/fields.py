@@ -30,14 +30,13 @@ class Denorm:
         for example, will result in an incorrect value in the
         instance the ForeignKey was pointing to before the save.
         """
+        self.qs = self.model.objects.none()
         try:
             old_instance = sender.objects.get(pk=instance.pk)
-        except sender.DoesNotExist:
-            old_instance = None
-        self.qs = self.model.objects.none()
-        if old_instance:
             for dependency in self.func.depend:
                 self.qs |= dependency.resolve(old_instance)
+        except sender.DoesNotExist:
+            old_instance = None
 
     def post_handler(self,sender,instance,*args,**kwargs):
         """
