@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from denorm.helpers import find_fk
-from django.db.models.fields.related import add_lazy_relation
+from django.db.models.fields import related
 
 def make_depend_decorator(Resolver):
     def decorator(*args,**kwargs):
@@ -47,8 +47,11 @@ class DependOnRelated(DenormDependency):
 
     def setup(self,this_model, **kwargs):
         self.this_model = this_model
+        # FIXME: this should not be necessary
+        if self.other_model == related.RECURSIVE_RELATIONSHIP_CONSTANT:
+            self.other_model = self.this_model
         if isinstance(self.other_model,(str,unicode)):
-            add_lazy_relation(self.this_model, None, self.other_model, self.resolved_model)
+            related.add_lazy_relation(self.this_model, None, self.other_model, self.resolved_model)
         else:
             self.resolved_model(None,self.other_model,None)
 
@@ -80,8 +83,11 @@ class DependOnQ(DenormDependency):
 
     def setup(self,this_model, **kwargs):
         self.this_model = this_model
+        # FIXME: this should not be necessary
+        if self.other_model == related.RECURSIVE_RELATIONSHIP_CONSTANT:
+            self.other_model = self.this_model
         if isinstance(self.other_model,(str,unicode)):
-            add_lazy_relation(self.this_model, None, self.other_model, self.resolved_model)
+            related.add_lazy_relation(self.this_model, None, self.other_model, self.resolved_model)
         else:
             self.resolved_model(None,self.other_model,None)
 

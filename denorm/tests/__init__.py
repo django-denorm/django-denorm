@@ -110,4 +110,23 @@ class TestDenormalisation(unittest.TestCase):
         # check again
         self.assertEqual(Forum.objects.get(id=f1.id).authors, "membertwo")
 
+    def test_trees(self):
+        f1 = Forum.objects.create(title="forumone")
+        f2 = Forum.objects.create(title="forumtwo",parent_forum=f1)
+        f3 = Forum.objects.create(title="forumthree",parent_forum=f2)
+
+        self.assertEqual(f1.path,'/forumone/')
+        self.assertEqual(f2.path,'/forumone/forumtwo/')
+        self.assertEqual(f3.path,'/forumone/forumtwo/forumthree/')
+
+        f1.title = 'someothertitle'
+        f1.save()
+
+        f1 = Forum.objects.get(id=f1.id)
+        f2 = Forum.objects.get(id=f2.id)
+        f3 = Forum.objects.get(id=f3.id)
+
+        self.assertEqual(f1.path,'/someothertitle/')
+        self.assertEqual(f2.path,'/someothertitle/forumtwo/')
+        self.assertEqual(f3.path,'/someothertitle/forumtwo/forumthree/')
 

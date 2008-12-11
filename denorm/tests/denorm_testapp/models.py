@@ -14,6 +14,18 @@ class Forum(models.Model):
     @depend_on_related('Post')
     def authors(self):
         return ', '.join((m.author_name for m in self.post_set.all()))
+
+    # lets say this forums supports subforums, sub-subforums and so forth
+    # so we can test depend_on_related('self') (for tree structures).
+    parent_forum = models.ForeignKey('self',blank=True,null=True)
+
+    @denormalized(models.CharField,max_length=255)
+    @depend_on_related('self')
+    def path(self):
+        if self.parent_forum:
+            return self.parent_forum.path+self.title+'/'
+        else:
+            return '/'+self.title+'/'
     
 
 class Post(models.Model):
