@@ -26,10 +26,10 @@ class DependOnRelated(DenormDependency):
 
     def resolve_backward(self,instance):
         if isinstance(instance,self.other_model):
-            id = getattr(instance,self.foreign_key).id
-            return self.this_model.objects.filter(id__exact=id)
-        else:
-            return self.this_model.objects.none()
+            ref = getattr(instance,self.foreign_key)
+            if ref:
+                return self.this_model.objects.filter(id__exact=ref.id)
+        return self.this_model.objects.none()
 
     def resolve_forward(self,instance):
         if isinstance(instance,self.other_model):

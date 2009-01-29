@@ -130,3 +130,9 @@ class TestDenormalisation(unittest.TestCase):
         self.assertEqual(f2.path,'/someothertitle/forumtwo/')
         self.assertEqual(f3.path,'/someothertitle/forumtwo/forumthree/')
 
+    def test_reverse_fk_null(self):
+        f1 = Forum.objects.create(title="forumone")
+        m1 = Member.objects.create(name="memberone")
+        p1 = Post.objects.create(forum=f1,author=m1)
+        a1 = Attachment.objects.create()
+

@@ -32,7 +32,9 @@ class Post(models.Model):
     
     forum = models.ForeignKey(Forum, blank=True, null=True)
     author = models.ForeignKey('Member', blank=True, null=True)
-    
+
+    attachment_count = CountField('Attachment','attachment_set')
+
     # Brings down the forum title
     @denormalized(models.CharField, max_length=255)
     @depend_on_related(Forum)
@@ -49,9 +51,10 @@ class Post(models.Model):
             return ''
 
 
+
 class Attachment(models.Model):
     
-    post = models.ForeignKey(Post)
+    post = models.ForeignKey(Post,blank=True,null=True)
 
 
 class Member(models.Model):
