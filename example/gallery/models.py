@@ -36,11 +36,11 @@ class Gallery(models.Model):
     # instance.
     # Additionaly a Gallery's comment count needs to be updated when
     # pictures get moved or deleted, so it depends on related pictures too.
-    @denormalized(models.PositiveIntegerField)
-    @depend_on_q('Comment',lambda i: Q(pk=i.picture.gallery.pk))
-    @depend_on_related('Picture')
-    def picture_comment_count(self):
-        return Comment.objects.filter(picture__gallery=self).count()
+    #@denormalized(models.PositiveIntegerField)
+    #@depend_on_q('Comment',lambda i: Q(pk=i.picture.gallery.pk))
+    #@depend_on_related('Picture')
+    #def picture_comment_count(self):
+    #    return Comment.objects.filter(picture__gallery=self).count()
 
     def __unicode__(self):
         return self.name

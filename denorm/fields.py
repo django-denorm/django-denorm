@@ -31,24 +31,22 @@ class Denorm:
         instance the ForeignKey was pointing to before the save.
         """
         self.qs = self.model.objects.none()
-        try:
-            old_instance = sender.objects.get(pk=instance.pk)
-            for dependency in self.func.depend:
-                self.qs |= dependency.resolve(old_instance)
-        except sender.DoesNotExist:
-            old_instance = None
+        changed_objs = sender.objects.filter(pk=instance.pk)
+        for dependency in self.func.depend:
+            self.qs |= dependency.resolve(changed_objs)
 
     def post_handler(self,sender,instance,*args,**kwargs):
         """
         Does the same as pre_handler, but gives the resolver opportunity
         to examine the new version of 'instance'.
         """
+        changed_objs = sender.objects.filter(pk=instance.pk)
         # If we've gone straight to a delete, there'll be no self.qs
         if not hasattr(self, "qs"):
             self.qs = self.model.objects.none()
         # Use every dependency.
         for dependency in self.func.depend:
-            self.qs |= dependency.resolve(instance)
+            self.qs |= dependency.resolve(changed_objs)
         # Update all affected instances
         self.update(self.qs)
         # when we are done we don't need the qs anymore
@@ -60,7 +58,10 @@ class Denorm:
         Updates the value of the denormalized field
         in 'instance' before it gets saved.
         """
-        setattr(instance,self.fieldname,self.func(instance))
+        try:
+            setattr(instance,self.fieldname,self.func(instance))
+        except:
+            setattr(instance,self.fieldname,None)
 
     def setup(self,**kwargs):
         """
@@ -72,6 +73,7 @@ class Denorm:
 
         models.signals.pre_save.connect(self.pre_handler)
         models.signals.post_save.connect(self.post_handler)
+        models.signals.pre_delete.connect(self.pre_handler)
         models.signals.post_delete.connect(self.post_handler)
 
         models.signals.pre_save.connect(self.self_save_handler,sender=self.model)

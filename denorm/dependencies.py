@@ -24,26 +24,26 @@ class DependOnRelated(DenormDependency):
         self.foreign_key = foreign_key
         self.type = None
 
-    def resolve_backward(self,instance):
-        if isinstance(instance,self.other_model):
-            ref = getattr(instance,self.foreign_key)
-            if ref:
-                return self.this_model.objects.filter(id__exact=ref.id)
-        return self.this_model.objects.none()
-
-    def resolve_forward(self,instance):
-        if isinstance(instance,self.other_model):
-            return self.this_model.objects.filter(**{self.foreign_key:instance.id})
+    def resolve_backward(self,changed_objs):
+        if changed_objs.model is self.other_model:
+            pks = list(changed_objs.values_list(self.foreign_key,flat=True))
+            return self.this_model.objects.filter(pk__in=pks)
         else:
             return self.this_model.objects.none()
 
-    def resolve(self,instance):
+    def resolve_forward(self,changed_objs):
+        if changed_objs.model is self.other_model:
+            return self.this_model.objects.filter(**{self.foreign_key+"__in":changed_objs})
+        else:
+            return self.this_model.objects.none()
+
+    def resolve(self,changed_objs):
         if not self.type:
             raise Exception("The model '%s' does not exist"%(self.other_model)) 
         if self.type == 'forward':
-            return self.resolve_forward(instance)
+            return self.resolve_forward(changed_objs)
         elif self.type == 'backward':
-            return self.resolve_backward(instance)
+            return self.resolve_backward(changed_objs)
 
     def setup(self,this_model, **kwargs):
         self.this_model = this_model
@@ -75,9 +75,9 @@ class DependOnQ(DenormDependency):
         self.other_model = model
         self.qgen = qgen
 
-    def resolve(self, instance):
-        if isinstance(instance,self.other_model):
-            return self.this_model.objects.filter(self.qgen(instance))
+    def resolve(self, changed_objs):
+        if changed_objs.model is self.other_model:
+            return self.this_model.objects.filter(self.qgen(changed_objs))
         else:
             return self.this_model.objects.none()
 
