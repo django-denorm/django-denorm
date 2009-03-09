@@ -68,10 +68,8 @@ class Denorm:
         Updates the value of the denormalized field
         in 'instance' before it gets saved.
         """
-        try:
+        if instance.pk not in self.updating:
             setattr(instance,self.fieldname,self.func(instance))
-        except:
-            setattr(instance,self.fieldname,None)
 
     def setup(self,**kwargs):
         """
@@ -94,17 +92,20 @@ class Denorm:
     def update(self,qs):
         """
         Updates the denormalizations in all instances in the queryset 'qs'.
-        As the update itself is triggered by the pre_save signal, we just
-        need to save() all instances.
         """
         for instance in qs.distinct():
             if not instance.pk in self.updating:
                 # we need to keep track of the instances this denorm updates
                 # to ensure we update them only once. This protects us from endless
                 # updates that could otherwise occur with cyclic dependencies.
-                self.updating.add(instance.pk)
-                instance.save()
-                self.updating.remove(instance.pk)
+                # additionally we only write new values to the DB if they actually
+                # changed
+                new_value = self.func(instance)
+                if not getattr(instance,self.fieldname) == new_value:
+                    setattr(instance,self.fieldname,new_value)
+                    self.updating.add(instance.pk)
+                    instance.save()
+                    self.updating.remove(instance.pk)
 
 
 def rebuildall():
