@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from django.db import models
+from denorm import monkeypatches
 
 # remember all denormalizations.
 # this is used to rebuild all denormalized values in the whole DB
@@ -8,12 +9,12 @@ alldenorms = []
 class Denorm:
     """
     Handles the denormalization of one field.
-    Everytime some model instance is saved a queryset is build, that will contain
+    Everytime some model instances are updated a queryset is build, that will contain
     all instances of the model containing the field that may need to get
     updated.
-    This is done by passing the instance beeing saved into the resolve()
-    method of all DenormDependency subclass instances in 'depend',
-    and combining the results with logical OR.
+    This is done by passing a QuerySet containing all instances beeing
+    updated into the resolve() method of all DenormDependency
+    subclass instances in 'depend', and combining the results with logical OR.
     """
 
     def __init__(self,func):
@@ -23,24 +24,30 @@ class Denorm:
         self.updating = set()
 
     def pre_handler(self,sender,instance,**kwargs):
+        changed_objs = sender.objects.filter(pk=instance.pk)
+        self.pre_update_handler(sender,changed_objs,**kwargs)
+
+    def pre_update_handler(self,sender,changed_objs,**kwargs):
         """
         Gives the DenormDependency resolver a chance to
-        work before the instance is altered.
+        work before anything is altered.
         Without this, a changed backwards ForeignKey relation
         for example, will result in an incorrect value in the
         instance the ForeignKey was pointing to before the save.
         """
         self.qs = self.model.objects.none()
-        changed_objs = sender.objects.filter(pk=instance.pk)
         for dependency in self.func.depend:
             self.qs |= dependency.resolve(changed_objs)
 
     def post_handler(self,sender,instance,*args,**kwargs):
+        changed_objs = sender.objects.filter(pk=instance.pk)
+        self.post_update_handler(sender,changed_objs,*args,**kwargs)
+
+    def post_update_handler(self,sender,changed_objs,*args,**kwargs):
         """
         Does the same as pre_handler, but gives the resolver opportunity
-        to examine the new version of 'instance'.
+        to examine the state after the update.
         """
-        changed_objs = sender.objects.filter(pk=instance.pk)
         # If we've gone straight to a delete, there'll be no self.qs
         if not hasattr(self, "qs"):
             self.qs = self.model.objects.none()
@@ -52,6 +59,9 @@ class Denorm:
         # when we are done we don't need the qs anymore
         if not self.updating:
             del self.qs
+
+    def self_update_handler(self,sender,changed_objs,*args,**kwargs):
+        self.update(changed_objs)
 
     def self_save_handler(self,sender,instance,**kwargs):
         """
@@ -75,8 +85,11 @@ class Denorm:
         models.signals.post_save.connect(self.post_handler)
         models.signals.pre_delete.connect(self.pre_handler)
         models.signals.post_delete.connect(self.post_handler)
+        monkeypatches.pre_update.connect(self.pre_update_handler)
+        monkeypatches.post_update.connect(self.post_update_handler)
 
         models.signals.pre_save.connect(self.self_save_handler,sender=self.model)
+        monkeypatches.post_update.connect(self.self_update_handler,sender=self.model)
 
     def update(self,qs):
         """

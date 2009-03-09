@@ -136,3 +136,27 @@ class TestDenormalisation(unittest.TestCase):
         p1 = Post.objects.create(forum=f1,author=m1)
         a1 = Attachment.objects.create()
 
+
+    def test_bulk_update(self):
+        """
+        Test the DependsOnRelated stuff.
+        """
+        f1 = Forum.objects.create(title="forumone")
+        f2 = Forum.objects.create(title="forumtwo")
+        p1 = Post.objects.create(forum=f1)
+        p2 = Post.objects.create(forum=f2)
+
+        self.assertEqual(Post.objects.get(id=p1.id).forum_title, "forumone")
+        self.assertEqual(Post.objects.get(id=p2.id).forum_title, "forumtwo")
+        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 1)
+        self.assertEqual(Forum.objects.get(id=f2.id).post_count, 1)
+
+        Post.objects.update(forum=f1)
+        self.assertEqual(Post.objects.get(id=p1.id).forum_title, "forumone")
+        self.assertEqual(Post.objects.get(id=p2.id).forum_title, "forumone")
+        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 2)
+        self.assertEqual(Forum.objects.get(id=f2.id).post_count, 0)
+
+        Forum.objects.update(title="oneforall")
+        self.assertEqual(Post.objects.get(id=p1.id).forum_title, "oneforall")
+        self.assertEqual(Post.objects.get(id=p2.id).forum_title, "oneforall")
