@@ -8,7 +8,8 @@ origupdate = QuerySet.update
 
 def newupdate(self,**kwargs):
     pre_update.send(sender=self.model,changed_objs=self)
-    origupdate(self,**kwargs)
+    res = origupdate(self,**kwargs)
     post_update.send(sender=self.model,changed_objs=self)
+    return res
 
 QuerySet.update = newupdate
