@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from denorm.helpers import find_fk
 from django.db.models.fields import related
+from denorm.models import DirtyInstance
+from django.contrib.contenttypes.models import ContentType
 
 def make_depend_decorator(Resolver):
     def decorator(*args,**kwargs):
@@ -24,29 +26,85 @@ class DependOnRelated(DenormDependency):
         self.foreign_key = foreign_key
         self.type = None
 
-    def resolve_backward(self,changed_objs):
-        if changed_objs.model is self.other_model:
-            pks = list(changed_objs.values_list(self.foreign_key,flat=True))
-            return self.this_model.objects.filter(pk__in=pks)
-        else:
-            return self.this_model.objects.none()
 
-    def resolve_forward(self,changed_objs):
-        if changed_objs.model is self.other_model:
-            return self.this_model.objects.filter(**{self.foreign_key+"__in":changed_objs})
-        else:
-            return self.this_model.objects.none()
+    def make_trigger(self,created_models,**kwargs):
+        try:
+            from django.db import connection
+            cursor = connection.cursor()
 
-    def resolve(self,changed_objs):
-        if not self.type:
-            raise Exception("The model '%s' does not exist"%(self.other_model)) 
-        if self.type == 'forward':
-            return self.resolve_forward(changed_objs)
-        elif self.type == 'backward':
-            return self.resolve_backward(changed_objs)
+            other_table = self.other_model._meta.db_table
+            this_table = self.this_model._meta.db_table
+            content_type = ContentType.objects.get_for_model(self.this_model).id
+            dirty_table = DirtyInstance._meta.db_table
+            triggername = "_".join(("trigger",other_table,))
+            foreign_key = self.foreign_key
+        except:
+            pass
+
+        try:
+            cursor.execute("""DROP TRIGGER update_%s;""" % triggername)
+        except:
+            pass
+        try:
+            cursor.execute("""DROP TRIGGER insert_%s;""" % triggername)
+        except:
+            pass
+
+        if self.type == "forward":
+            sql = ["""
+                CREATE TRIGGER update_%(triggername)s AFTER UPDATE ON %(other_table)s
+                FOR EACH ROW BEGIN
+                    INSERT INTO %(dirty_table)s (content_type_id, object_id, old_object_id)
+                        (SELECT DISTINCT %(content_type)s,id,id FROM %(this_table)s
+                            WHERE %(foreign_key)s_id = NEW.id);
+                    INSERT INTO %(dirty_table)s (content_type_id, object_id, old_object_id)
+                        (SELECT DISTINCT %(content_type)s,id,id FROM %(this_table)s
+                            WHERE %(foreign_key)s_id = NEW.id);
+                END
+            """ % locals(),
+            """
+                CREATE TRIGGER insert_%(triggername)s AFTER INSERT ON %(other_table)s
+                FOR EACH ROW
+                    INSERT INTO %(dirty_table)s (content_type_id, object_id, old_object_id)
+                        (SELECT DISTINCT %(content_type)s,id,id FROM %(this_table)s
+                            WHERE %(foreign_key)s_id = NEW.id);
+            """ % locals(),]
+
+        try:
+            if self.type == "backward":
+                sql = ["""
+                    CREATE TRIGGER update_%(triggername)s AFTER UPDATE ON %(other_table)s
+                    FOR EACH ROW
+                        INSERT INTO %(dirty_table)s (content_type_id, object_id, old_object_id)
+                            VALUES (
+                                %(content_type)s,
+                                NEW.%(foreign_key)s_id,
+                                OLD.%(foreign_key)s_id
+                            );
+                    CREATE TRIGGER insert_%(triggername)s AFTER INSERT ON %(other_table)s
+                    FOR EACH ROW
+                        INSERT INTO %(dirty_table)s (content_type_id, object_id, old_object_id)
+                            VALUES (
+                                %(content_type)s,
+                                NEW.%(foreign_key)s_id,
+                                NEW.%(foreign_key)s_id
+                            );
+                """ % locals(),]
+        except:
+            pass
+
+        try:
+            print "#####",other_table,this_table,self.type
+            print "#####",triggername
+            for q in sql:
+                print q
+                cursor.execute(q)
+        except Exception, e:
+            print Exception, e
 
     def setup(self,this_model, **kwargs):
         self.this_model = this_model
+
         # FIXME: this should not be necessary
         if self.other_model == related.RECURSIVE_RELATIONSHIP_CONSTANT:
             self.other_model = self.this_model
@@ -70,27 +128,3 @@ class DependOnRelated(DenormDependency):
                          % (self.this_model, self.other_model))
 depend_on_related = make_depend_decorator(DependOnRelated)
 
-class DependOnQ(DenormDependency):
-    def __init__(self,model,qgen):
-        self.other_model = model
-        self.qgen = qgen
-
-    def resolve(self, changed_objs):
-        if changed_objs.model is self.other_model:
-            return self.this_model.objects.filter(self.qgen(changed_objs))
-        else:
-            return self.this_model.objects.none()
-
-    def setup(self,this_model, **kwargs):
-        self.this_model = this_model
-        # FIXME: this should not be necessary
-        if self.other_model == related.RECURSIVE_RELATIONSHIP_CONSTANT:
-            self.other_model = self.this_model
-        if isinstance(self.other_model,(str,unicode)):
-            related.add_lazy_relation(self.this_model, None, self.other_model, self.resolved_model)
-        else:
-            self.resolved_model(None,self.other_model,None)
-
-    def resolved_model(self, data, model, cls):
-        self.other_model = model
-depend_on_q = make_depend_decorator(DependOnQ)

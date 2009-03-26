@@ -78,6 +78,7 @@ class TestDenormalisation(unittest.TestCase):
         # Update the forum title
         f1.title = "forumtwo"
         f1.save()
+        denorm.flush()
         # Has the post's title changed?
         self.assertEqual(Post.objects.get(id=p1.id).forum_title, "forumtwo")
         # Add and remove some posts
@@ -106,6 +107,7 @@ class TestDenormalisation(unittest.TestCase):
         # change the members name
         m1.name = "membertwo"
         m1.save()
+        denorm.flush()
 
         # check again
         self.assertEqual(Forum.objects.get(id=f1.id).authors, "membertwo")
@@ -121,6 +123,7 @@ class TestDenormalisation(unittest.TestCase):
 
         f1.title = 'someothertitle'
         f1.save()
+        denorm.flush()
 
         f1 = Forum.objects.get(id=f1.id)
         f2 = Forum.objects.get(id=f2.id)
@@ -152,11 +155,13 @@ class TestDenormalisation(unittest.TestCase):
         self.assertEqual(Forum.objects.get(id=f2.id).post_count, 1)
 
         Post.objects.update(forum=f1)
+        denorm.flush()
         self.assertEqual(Post.objects.get(id=p1.id).forum_title, "forumone")
         self.assertEqual(Post.objects.get(id=p2.id).forum_title, "forumone")
         self.assertEqual(Forum.objects.get(id=f1.id).post_count, 2)
         self.assertEqual(Forum.objects.get(id=f2.id).post_count, 0)
 
         Forum.objects.update(title="oneforall")
+        denorm.flush()
         self.assertEqual(Post.objects.get(id=p1.id).forum_title, "oneforall")
         self.assertEqual(Post.objects.get(id=p2.id).forum_title, "oneforall")
