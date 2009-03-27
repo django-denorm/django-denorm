@@ -34,62 +34,48 @@ class DependOnRelated(DenormDependency):
         content_type = str(ContentType.objects.get_for_model(self.this_model).id)
 
         if self.type == "forward":
-            action = TriggerActionInsert(
+            action_new = TriggerActionInsert(
                 model = DirtyInstance,
-                columns = ("content_type_id","object_id","old_object_id"),
+                columns = ("content_type_id","object_id"),
                 values = TriggerNestedSelect(
                     self.this_model,
-                    (content_type,"id","id"),
+                    (content_type,"id"),
                     **{self.foreign_key+"_id":"NEW.id"}
                 )
             )
-            update_trigger.append(action)
-            insert_trigger.append(action)
-
-            action = TriggerActionInsert(
+            action_old = TriggerActionInsert(
                 model = DirtyInstance,
-                columns = ("content_type_id","object_id","old_object_id"),
+                columns = ("content_type_id","object_id"),
                 values = TriggerNestedSelect(
                     self.this_model,
-                    (content_type,"id","id"),
+                    (content_type,"id"),
                     **{self.foreign_key+"_id":"OLD.id"}
                 )
             )
-            delete_trigger.append(action)
+            update_trigger.append(action_new)
+            insert_trigger.append(action_new)
+            delete_trigger.append(action_old)
 
         elif self.type == "backward":
-            action = TriggerActionInsert(
+            action_new = TriggerActionInsert(
                 model = DirtyInstance,
-                columns = ("content_type_id","object_id","old_object_id"),
+                columns = ("content_type_id","object_id"),
                 values = (
                     content_type,
                     "NEW.%s_id" % self.foreign_key,
-                    "OLD.%s_id" % self.foreign_key,
                 )
             )
-            update_trigger.append(action)
-
-            action = TriggerActionInsert(
+            action_old = TriggerActionInsert(
                 model = DirtyInstance,
-                columns = ("content_type_id","object_id","old_object_id"),
-                values = (
-                    content_type,
-                    "NEW.%s_id" % self.foreign_key,
-                    "NEW.%s_id" % self.foreign_key,
-                )
-            )
-            insert_trigger.append(action)
-
-            action = TriggerActionInsert(
-                model = DirtyInstance,
-                columns = ("content_type_id","object_id","old_object_id"),
+                columns = ("content_type_id","object_id"),
                 values = (
                     content_type,
                     "OLD.%s_id" % self.foreign_key,
-                    "OLD.%s_id" % self.foreign_key,
                 )
             )
-            delete_trigger.append(action)
+            update_trigger.append([action_new,action_old])
+            insert_trigger.append(action_new)
+            delete_trigger.append(action_old)
 
         else:
             raise

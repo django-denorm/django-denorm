@@ -82,22 +82,17 @@ def install_triggers():
 def flush():
     from denorm.models import DirtyInstance
     while True:
-        qs = DirtyInstance.objects.all()
-        if qs.count():
-            dirty_instance = qs[0]
-        else:
+        try:
+            dirty_instance = DirtyInstance.objects.all()[0]
+        except:
             return
+
         if dirty_instance.content_object:
             dirty_instance.content_object.save()
-        if dirty_instance.old_object_id != dirty_instance.object_id:
-            if dirty_instance.old_content_object:
-                dirty_instance.old_content_object.save()
 
-        DirtyInstance.objects.filter(old_object_id__isnull=True,object_id__isnull=True).delete()
+        DirtyInstance.objects.filter(object_id__isnull=True).delete()
         DirtyInstance.objects.filter(content_type=dirty_instance.content_type,
-            object_id__in=(dirty_instance.object_id,dirty_instance.old_object_id)).delete()
-        DirtyInstance.objects.filter(content_type=dirty_instance.content_type,
-            old_object_id__in=(dirty_instance.object_id,dirty_instance.old_object_id)).delete()
+            object_id=dirty_instance.object_id).delete()
 
 
 def denormalized(DBField,*args,**kwargs):
