@@ -1,2 +1,20 @@
+This is the "trigger" branch of django-denorm, which uses
+triggers instead of signals to track updates of your models.
+The model API is identical to the signal based implementation,
+but there are a few important differences in usage:
+
+- it's NOT database independent and currently only tested with MySQL
+- you need to initialize it before you can use it: using syncdb, and after every change to
+  denormalized fields and their dependencies ./manage.py denormalize init
+- updates are lazy: denormalized fields won't get updated until you call
+  denorm.fields.flush()
+
+the flush() call can be made in 3 different ways:
+1) directly, after you manipulated some data
+2) by running ./manage.py denormalize flush (by hand, or as cronjob)
+3) by running ./manage.py denormalize daemon <interval>
+
+option #3 will call flush() every <interval> seconds.
+
 Documentation and issue tracker:
 http://django-denorm.aeracode.org/
