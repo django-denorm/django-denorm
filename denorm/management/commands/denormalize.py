@@ -13,9 +13,16 @@ class Command(BaseCommand):
             if args[0] == "flush":
                 fields.flush()
                 return
+            if args[0] == "daemon":
+                from time import sleep
+                interval = int(args[1])
+                while True:
+                    fields.flush()
+                    sleep(interval)
 
         print "unknown subcommand"
         print "subcommands are:"
         print "    rebuild"
         print "    init"
         print "    flush"
+        print "    daemon"
