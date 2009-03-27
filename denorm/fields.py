@@ -36,9 +36,10 @@ class Denorm:
         Calls setup() on all DenormDependency resolvers
         and connects all needed signals.
         """
+        global alldenorms
+        alldenorms += [self]
         for dependency in self.func.depend:
             dependency.setup(self.model)
-            models.signals.post_syncdb.connect(dependency.make_trigger)
 
         models.signals.pre_save.connect(self.self_save_handler,sender=self.model)
 
@@ -69,15 +70,34 @@ def rebuildall():
     for denorm in alldenorms:
         denorm.update(denorm.model.objects.all())
 
-def flush():
-    dirty_instance = DirtyInstance.objects.all()[0]
-    print dirty_instance
-    dirty_instance.content_object.save()
-    if dirty_instance.old_object_id != dirty_instance.object_id:
-        real_instance = dirty_instance.old_content_object.save()
+def install_triggers():
+    from denorm.triggers import TriggerSet
+    triggerset = TriggerSet()
+    global alldenorms
+    for denorm in alldenorms:
+        for dependency in denorm.func.depend:
+            triggerset.append(dependency.get_triggers())
+    triggerset.install()
 
-    DirtyInstance.objects.filter(object_id__in=(dirty_instance.object_id,dirty_instance.old_object_id)).delete()
-    DirtyInstance.objects.filter(old_object_id__in=(dirty_instance.object_id,dirty_instance.old_object_id)).delete()
+def flush():
+    from denorm.models import DirtyInstance
+    while True:
+        qs = DirtyInstance.objects.all()
+        if qs.count():
+            dirty_instance = qs[0]
+        else:
+            return
+        if dirty_instance.content_object:
+            dirty_instance.content_object.save()
+        if dirty_instance.old_object_id != dirty_instance.object_id:
+            if dirty_instance.old_content_object:
+                dirty_instance.old_content_object.save()
+
+        DirtyInstance.objects.filter(old_object_id__isnull=True,object_id__isnull=True).delete()
+        DirtyInstance.objects.filter(content_type=dirty_instance.content_type,
+            object_id__in=(dirty_instance.object_id,dirty_instance.old_object_id)).delete()
+        DirtyInstance.objects.filter(content_type=dirty_instance.content_type,
+            old_object_id__in=(dirty_instance.object_id,dirty_instance.old_object_id)).delete()
 
 
 def denormalized(DBField,*args,**kwargs):
@@ -109,9 +129,7 @@ def denormalized(DBField,*args,**kwargs):
                 )
 
     def deco(func):
-        global alldenorms
         denorm = Denorm(func)
-        alldenorms += [denorm]
         dbfield = DenormDBField(*args,**kwargs)
         dbfield.denorm = denorm
         return dbfield

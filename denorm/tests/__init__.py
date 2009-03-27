@@ -12,6 +12,8 @@ sys.path.append(test_root)
 # Import denorm_testapp's models
 import denorm_testapp.models
 from denorm_testapp.models import *
+from denorm.fields import install_triggers,alldenorms
+import denorm
 
 
 class TestDenormalisation(unittest.TestCase):
@@ -35,6 +37,7 @@ class TestDenormalisation(unittest.TestCase):
         )
         self.redo_app_cache()
         management.call_command('syncdb')
+        install_triggers()
     
     
     def tearDown(self):
@@ -65,11 +68,13 @@ class TestDenormalisation(unittest.TestCase):
         """
         # Make a forum, check it's got no posts
         f1 = Forum.objects.create(title="forumone")
+        denorm.flush()
         self.assertEqual(f1.post_count, 0)
         # Check its database copy too
         self.assertEqual(Forum.objects.get(id=f1.id).post_count, 0)
         # Add a post
         p1 = Post.objects.create(forum=f1)
+        denorm.flush()
         # Check its title, in p1 and the DB
         self.assertEqual(p1.forum_title, "forumone")
         self.assertEqual(Post.objects.get(id=p1.id).forum_title, "forumone")
@@ -85,10 +90,12 @@ class TestDenormalisation(unittest.TestCase):
         p2 = Post.objects.create(forum=f1)
         p3 = Post.objects.create(forum=f1)
         p1.delete()
+        denorm.flush()
         # Check the post count
         self.assertEqual(Forum.objects.get(id=f1.id).post_count, 2)
         # Delete everything, check once more.
         Post.objects.all().delete()
+        denorm.flush()
         self.assertEqual(Forum.objects.get(id=f1.id).post_count, 0)
         # Make an orphaned post, see what its title is.
         # Doesn't work yet - no support for null FKs
@@ -100,6 +107,7 @@ class TestDenormalisation(unittest.TestCase):
         f1 = Forum.objects.create(title="forumone")
         m1 = Member.objects.create(name="memberone")
         p1 = Post.objects.create(forum=f1,author=m1)
+        denorm.flush()
 
         # check the forums author list contains the member
         self.assertEqual(Forum.objects.get(id=f1.id).authors, "memberone")
@@ -116,6 +124,7 @@ class TestDenormalisation(unittest.TestCase):
         f1 = Forum.objects.create(title="forumone")
         f2 = Forum.objects.create(title="forumtwo",parent_forum=f1)
         f3 = Forum.objects.create(title="forumthree",parent_forum=f2)
+        denorm.flush()
 
         self.assertEqual(f1.path,'/forumone/')
         self.assertEqual(f2.path,'/forumone/forumtwo/')
@@ -138,6 +147,7 @@ class TestDenormalisation(unittest.TestCase):
         m1 = Member.objects.create(name="memberone")
         p1 = Post.objects.create(forum=f1,author=m1)
         a1 = Attachment.objects.create()
+        denorm.flush()
 
 
     def test_bulk_update(self):
@@ -148,6 +158,7 @@ class TestDenormalisation(unittest.TestCase):
         f2 = Forum.objects.create(title="forumtwo")
         p1 = Post.objects.create(forum=f1)
         p2 = Post.objects.create(forum=f2)
+        denorm.flush()
 
         self.assertEqual(Post.objects.get(id=p1.id).forum_title, "forumone")
         self.assertEqual(Post.objects.get(id=p2.id).forum_title, "forumtwo")

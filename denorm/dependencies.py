@@ -3,6 +3,7 @@ from denorm.helpers import find_fk
 from django.db.models.fields import related
 from denorm.models import DirtyInstance
 from django.contrib.contenttypes.models import ContentType
+from denorm.triggers import *
 
 def make_depend_decorator(Resolver):
     def decorator(*args,**kwargs):
@@ -26,81 +27,75 @@ class DependOnRelated(DenormDependency):
         self.foreign_key = foreign_key
         self.type = None
 
-
-    def make_trigger(self,created_models,**kwargs):
-        try:
-            from django.db import connection
-            cursor = connection.cursor()
-
-            other_table = self.other_model._meta.db_table
-            this_table = self.this_model._meta.db_table
-            content_type = ContentType.objects.get_for_model(self.this_model).id
-            dirty_table = DirtyInstance._meta.db_table
-            triggername = "_".join(("trigger",other_table,))
-            foreign_key = self.foreign_key
-        except:
-            pass
-
-        try:
-            cursor.execute("""DROP TRIGGER update_%s;""" % triggername)
-        except:
-            pass
-        try:
-            cursor.execute("""DROP TRIGGER insert_%s;""" % triggername)
-        except:
-            pass
+    def get_triggers(self):
+        update_trigger = Trigger(self.other_model,"after","update")
+        insert_trigger = Trigger(self.other_model,"after","insert")
+        delete_trigger = Trigger(self.other_model,"after","delete")
+        content_type = str(ContentType.objects.get_for_model(self.this_model).id)
 
         if self.type == "forward":
-            sql = ["""
-                CREATE TRIGGER update_%(triggername)s AFTER UPDATE ON %(other_table)s
-                FOR EACH ROW BEGIN
-                    INSERT INTO %(dirty_table)s (content_type_id, object_id, old_object_id)
-                        (SELECT DISTINCT %(content_type)s,id,id FROM %(this_table)s
-                            WHERE %(foreign_key)s_id = NEW.id);
-                    INSERT INTO %(dirty_table)s (content_type_id, object_id, old_object_id)
-                        (SELECT DISTINCT %(content_type)s,id,id FROM %(this_table)s
-                            WHERE %(foreign_key)s_id = NEW.id);
-                END
-            """ % locals(),
-            """
-                CREATE TRIGGER insert_%(triggername)s AFTER INSERT ON %(other_table)s
-                FOR EACH ROW
-                    INSERT INTO %(dirty_table)s (content_type_id, object_id, old_object_id)
-                        (SELECT DISTINCT %(content_type)s,id,id FROM %(this_table)s
-                            WHERE %(foreign_key)s_id = NEW.id);
-            """ % locals(),]
+            action = TriggerActionInsert(
+                model = DirtyInstance,
+                columns = ("content_type_id","object_id","old_object_id"),
+                values = TriggerNestedSelect(
+                    self.this_model,
+                    (content_type,"id","id"),
+                    **{self.foreign_key+"_id":"NEW.id"}
+                )
+            )
+            update_trigger.append(action)
+            insert_trigger.append(action)
 
-        try:
-            if self.type == "backward":
-                sql = ["""
-                    CREATE TRIGGER update_%(triggername)s AFTER UPDATE ON %(other_table)s
-                    FOR EACH ROW
-                        INSERT INTO %(dirty_table)s (content_type_id, object_id, old_object_id)
-                            VALUES (
-                                %(content_type)s,
-                                NEW.%(foreign_key)s_id,
-                                OLD.%(foreign_key)s_id
-                            );
-                    CREATE TRIGGER insert_%(triggername)s AFTER INSERT ON %(other_table)s
-                    FOR EACH ROW
-                        INSERT INTO %(dirty_table)s (content_type_id, object_id, old_object_id)
-                            VALUES (
-                                %(content_type)s,
-                                NEW.%(foreign_key)s_id,
-                                NEW.%(foreign_key)s_id
-                            );
-                """ % locals(),]
-        except:
-            pass
+            action = TriggerActionInsert(
+                model = DirtyInstance,
+                columns = ("content_type_id","object_id","old_object_id"),
+                values = TriggerNestedSelect(
+                    self.this_model,
+                    (content_type,"id","id"),
+                    **{self.foreign_key+"_id":"OLD.id"}
+                )
+            )
+            delete_trigger.append(action)
 
-        try:
-            print "#####",other_table,this_table,self.type
-            print "#####",triggername
-            for q in sql:
-                print q
-                cursor.execute(q)
-        except Exception, e:
-            print Exception, e
+        elif self.type == "backward":
+            action = TriggerActionInsert(
+                model = DirtyInstance,
+                columns = ("content_type_id","object_id","old_object_id"),
+                values = (
+                    content_type,
+                    "NEW.%s_id" % self.foreign_key,
+                    "OLD.%s_id" % self.foreign_key,
+                )
+            )
+            update_trigger.append(action)
+
+            action = TriggerActionInsert(
+                model = DirtyInstance,
+                columns = ("content_type_id","object_id","old_object_id"),
+                values = (
+                    content_type,
+                    "NEW.%s_id" % self.foreign_key,
+                    "NEW.%s_id" % self.foreign_key,
+                )
+            )
+            insert_trigger.append(action)
+
+            action = TriggerActionInsert(
+                model = DirtyInstance,
+                columns = ("content_type_id","object_id","old_object_id"),
+                values = (
+                    content_type,
+                    "OLD.%s_id" % self.foreign_key,
+                    "OLD.%s_id" % self.foreign_key,
+                )
+            )
+            delete_trigger.append(action)
+
+        else:
+            raise
+
+        return [update_trigger,insert_trigger,delete_trigger]
+
 
     def setup(self,this_model, **kwargs):
         self.this_model = this_model
