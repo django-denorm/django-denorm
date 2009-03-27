@@ -71,10 +71,26 @@ def rebuildall():
         denorm.update(denorm.model.objects.all())
 
 def install_triggers():
-    from denorm.triggers import TriggerSet
-    triggerset = TriggerSet()
+    from denorm import triggers
+    from django.contrib.contenttypes.models import ContentType
+    from denorm.models import DirtyInstance
     global alldenorms
+
+    triggerset = triggers.TriggerSet()
     for denorm in alldenorms:
+        content_type = str(ContentType.objects.get_for_model(denorm.model).id)
+        action = triggers.TriggerActionInsert(
+            model = DirtyInstance,
+            columns = ("content_type_id","object_id"),
+            values = (content_type,"NEW.id")
+        )
+        trigger = triggers.Trigger(denorm.model,"after","update")
+        trigger.append(action)
+        triggerset.append(trigger)
+        trigger = triggers.Trigger(denorm.model,"after","insert")
+        trigger.append(action)
+        triggerset.append(trigger)
+
         for dependency in denorm.func.depend:
             triggerset.append(dependency.get_triggers())
     triggerset.install()

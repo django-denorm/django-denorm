@@ -59,4 +59,9 @@ class Attachment(models.Model):
 
 class Member(models.Model):
 
+    first_name = models.CharField(max_length=255)
     name = models.CharField(max_length=255)
+
+    @denormalized(models.CharField,max_length=255)
+    def full_name(self):
+        return u"%s %s"% (self.first_name, self.name)

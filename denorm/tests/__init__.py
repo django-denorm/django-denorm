@@ -176,3 +176,13 @@ class TestDenormalisation(unittest.TestCase):
         denorm.flush()
         self.assertEqual(Post.objects.get(id=p1.id).forum_title, "oneforall")
         self.assertEqual(Post.objects.get(id=p2.id).forum_title, "oneforall")
+
+    def test_no_dependency(self):
+        m1 = Member.objects.create(first_name="first",name="last")
+        denorm.flush()
+
+        self.assertEqual(Member.objects.get(id=m1.id).full_name,"first last")
+
+        Member.objects.filter(id=m1.id).update(first_name="second")
+        denorm.flush()
+        self.assertEqual(Member.objects.get(id=m1.id).full_name,"second last")
