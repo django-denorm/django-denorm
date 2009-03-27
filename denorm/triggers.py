@@ -56,6 +56,7 @@ class Trigger:
 
     def name(self):
         return "_".join([
+            "denorm",
             self.time,
             "row",
             self.event,
