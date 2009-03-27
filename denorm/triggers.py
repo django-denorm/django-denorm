@@ -10,10 +10,7 @@ class TriggerNestedSelect:
         columns = self.columns
         table = self.model._meta.db_table
         where = ",".join(["%s = %s"%(k,v) for k,v in self.kwargs.iteritems()])
-        return """
-            SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s
-        """ % locals()
-
+        return """ SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s """ % locals() 
 class TriggerAction:
     def __init__(self):
         pass
@@ -35,9 +32,7 @@ class TriggerActionInsert(TriggerAction):
         else:
             values = "VALUES("+",".join(self.values)+")"
 
-        return """
-            INSERT INTO %(table)s %(columns)s %(values)s
-        """ % locals()
+        return """ INSERT INTO %(table)s %(columns)s %(values)s """ % locals()
 
 class Trigger:
 
@@ -66,17 +61,17 @@ class Trigger:
 
     def sql(self):
         name = self.name()
-        actions = ";\n".join(set([a.sql() for a in self.actions if a.sql()])) + ";\n"
+        actions = (";\n   ").join(set([a.sql() for a in self.actions if a.sql()])) + ";"
         table = self.model._meta.db_table
         time = self.time.upper()
         event = self.event.upper()
 
-        return """
-            CREATE TRIGGER %(name)s
-            %(time)s %(event)s ON %(table)s
-            FOR EACH ROW BEGIN %(actions)s END
-        """ % locals()
-
+        return (
+             """ CREATE TRIGGER %(name)s\n"""
+            +"""  %(time)s %(event)s ON %(table)s\n"""
+            +"""  FOR EACH ROW BEGIN\n"""
+            +"""   %(actions)s\n  END \n"""
+            ) % locals()
 class TriggerSet:
     def __init__(self):
         self.triggers = {}
