@@ -117,6 +117,9 @@ def rebuildall():
     for denorm in alldenorms:
         denorm.update(denorm.model.objects.all())
 
+def flush():
+    pass
+
 def denormalized(DBField,*args,**kwargs):
 
     class DenormDBField(DBField):
