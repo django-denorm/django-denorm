@@ -19,7 +19,7 @@ class Forum(models.Model):
     # so we can test depend_on_related('self') (for tree structures).
     parent_forum = models.ForeignKey('self',blank=True,null=True)
 
-    @denormalized(models.CharField,max_length=255)
+    @denormalized(models.TextField)
     @depend_on_related('self')
     def path(self):
         if self.parent_forum:
