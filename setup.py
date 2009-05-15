@@ -30,7 +30,7 @@ for dirpath, dirnames, filenames in os.walk(package_dir):
 setup(name='django-denorm',
     version='0.01',
     description='Denormalization magic for Django',
-    author='Andrew Godwin',
-    #author_email='',
+    author='Christian Schilling',
+    author_email='christian@initcrash.net',
     url='http://django-denorm.aeracode.org/',
     packages=packages)
