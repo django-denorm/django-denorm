@@ -32,7 +32,7 @@ class TriggerActionInsert(TriggerAction):
         else:
             values = "VALUES("+",".join(self.values)+")"
 
-        return """ INSERT INTO %(table)s %(columns)s %(values)s """ % locals()
+        return """ INSERT IGNORE INTO %(table)s %(columns)s %(values)s """ % locals()
 
 class Trigger:
 
