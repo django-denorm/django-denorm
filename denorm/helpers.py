@@ -5,12 +5,12 @@ def find_fk(from_model, to_model, foreign_key=None):
         if not isinstance(foreign_key, (str, unicode)):
             foreign_key = foreign_key.attname
         fkeys = filter(lambda x: isinstance(x, models.ForeignKey)
-                                 and unicode(x.rel.to).lower() == unicode(to_model).lower()
+                                 and repr(x.rel.to).lower() == repr(to_model).lower()
                                  and x.attname in [foreign_key,foreign_key+'_id'],
                        from_model._meta.fields)
     else:
         fkeys = filter(lambda x: isinstance(x, models.ForeignKey)
-                                 and unicode(x.rel.to).lower() == unicode(to_model).lower(),
+                                 and repr(x.rel.to).lower() == repr(to_model).lower(),
                        from_model._meta.fields)
 
     if not fkeys:
