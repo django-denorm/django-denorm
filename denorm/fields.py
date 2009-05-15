@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from django.db import models
-from denorm import monkeypatches
 
 # remember all denormalizations.
 # this is used to rebuild all denormalized values in the whole DB
