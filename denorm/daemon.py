@@ -103,7 +103,7 @@ class DaemonError(Exception):
 # Public functions
 # ---------------------------------------------------------------------------
 
-def daemonize(noClose=False):
+def daemonize(noClose=False,pidfile=None):
     """
     Convert the calling process into a daemon.
 
@@ -146,8 +146,10 @@ def daemonize(noClose=False):
         log.debug('Forking second child.')
         pid = _fork()
         if pid != 0:
-            print pid
             # Original child. Exit.
+            if pidfile:
+                print pid
+                file(pidfile,"w").write(str(pid))
             os._exit(0)
             
         # This is the second child. Set the umask.
@@ -171,6 +173,7 @@ def daemonize(noClose=False):
     except OSError, e:
         raise DaemonException('Error during daemonizing: %s [%d]' %\
               (e.strerror, e.errno))
+
             
 
 # ---------------------------------------------------------------------------
