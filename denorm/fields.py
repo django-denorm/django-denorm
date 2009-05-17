@@ -123,8 +123,8 @@ def denormalized(DBField,*args,**kwargs):
     
         def south_field_definition(self):
             """
-            Because this field will be defined as a decorator, give
-            South hints on how to recreate it for database use.
+            the old way of telling south how this field should be
+            inserted into migrations, this will be removed soon
             """
             if DBField.__module__.startswith("django.db.models.fields"):
                 arglist = [repr(x) for x in args]
@@ -133,6 +133,20 @@ def denormalized(DBField,*args,**kwargs):
                     DBField.__name__,
                     ", ".join(arglist + kwlist)
                 )
+
+        def south_field_triple(self):
+            """
+            Because this field will be defined as a decorator, give
+            South hints on how to recreate it for database use.
+            """
+            if DBField.__module__.startswith("django.db.models.fields"):
+                return (
+                    DBField.__name__,
+                    [repr(x) for x in args],
+                    kwargs,
+                )
+
+
 
     def deco(func):
         denorm = Denorm(func)
