@@ -2,7 +2,7 @@
 class TriggerNestedSelect:
     def __init__(self,model,columns,**kwargs):
         self.model = model
-        self.columns = ",".join(columns)
+        self.columns = ", ".join(columns)
         self.kwargs = kwargs
 
     def sql(self):
