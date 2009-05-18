@@ -4,9 +4,9 @@ from denorm import *
 
 
 class Forum(models.Model):
-    
+
     title = models.CharField(max_length=255)
-    
+
     # Simple count() aggregate
     post_count = CountField('Post','post_set')
 
@@ -26,12 +26,13 @@ class Forum(models.Model):
             return self.parent_forum.path+self.title+'/'
         else:
             return '/'+self.title+'/'
-    
+
 
 class Post(models.Model):
-    
+
     forum = models.ForeignKey(Forum, blank=True, null=True)
     author = models.ForeignKey('Member', blank=True, null=True)
+    response_to = models.ForeignKey('self',blank=True,null=True,related_name='responses')
 
     attachment_count = CountField('Attachment','attachment_set')
 
@@ -47,15 +48,20 @@ class Post(models.Model):
     def author_name(self):
         if self.author:
             return self.author.name
-        else: 
+        else:
             return ''
 
+    @denormalized(models.PositiveIntegerField)
+    @depend_on_related('self',type='backward')
+    def response_count(self):
+        rcount = self.responses.count()
+        rcount += sum((x.response_count for x in self.responses.all()))
+        return rcount
 
 
 class Attachment(models.Model):
-    
-    post = models.ForeignKey(Post,blank=True,null=True)
 
+    post = models.ForeignKey(Post,blank=True,null=True)
 
 class Member(models.Model):
 

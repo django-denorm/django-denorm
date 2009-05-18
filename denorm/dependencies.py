@@ -22,10 +22,10 @@ class DenormDependency:
         pass
 
 class DependOnRelated(DenormDependency):
-    def __init__(self,model,foreign_key=None):
+    def __init__(self,model,foreign_key=None,type=None):
         self.other_model = model
         self.foreign_key = foreign_key
-        self.type = None
+        self.type = type
 
     def get_triggers(self):
         update_trigger = Trigger(self.other_model,"after","update")
@@ -89,6 +89,7 @@ class DependOnRelated(DenormDependency):
         # FIXME: this should not be necessary
         if self.other_model == related.RECURSIVE_RELATIONSHIP_CONSTANT:
             self.other_model = self.this_model
+
         if isinstance(self.other_model,(str,unicode)):
             related.add_lazy_relation(self.this_model, None, self.other_model, self.resolved_model)
         else:
@@ -96,15 +97,20 @@ class DependOnRelated(DenormDependency):
 
     def resolved_model(self, data, model, cls):
         self.other_model = model
-        foreign_key = find_fk(self.this_model,self.other_model,self.foreign_key)
-        if foreign_key:
-            self.type = 'forward'
-            self.foreign_key = foreign_key
-            return
-        self.foreign_key = find_fk(self.other_model,self.this_model,self.foreign_key)
-        if self.foreign_key:
-            self.type = 'backward'
-            return
+
+        if self.type == 'forward' or not self.type:
+            foreign_key = find_fk(self.this_model,self.other_model,self.foreign_key)
+            if foreign_key:
+                self.type = 'forward'
+                self.foreign_key = foreign_key
+                return
+
+        if self.type == 'backward' or not self.type:
+            self.foreign_key = find_fk(self.other_model,self.this_model,self.foreign_key)
+            if self.foreign_key:
+                self.type = 'backward'
+                return
+
         raise ValueError("%s has no ForeignKeys to %s (or reverse); cannot auto-resolve."
                          % (self.this_model, self.other_model))
 depend_on_related = make_depend_decorator(DependOnRelated)

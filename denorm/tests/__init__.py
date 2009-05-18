@@ -21,13 +21,13 @@ class TestDenormalisation(unittest.TestCase):
     """
     Tests for the denormalisation fields.
     """
-    
+
     def setUp(self):
         """Swaps out various Django calls for fake ones for our own nefarious purposes."""
-        
+
         def new_get_apps():
             return [denorm_testapp.models]
-        
+
         from django.db import models
         from django.conf import settings
         models.get_apps_old, models.get_apps = models.get_apps, new_get_apps
@@ -38,30 +38,30 @@ class TestDenormalisation(unittest.TestCase):
         self.redo_app_cache()
         management.call_command('syncdb')
         install_triggers()
-    
-    
+
+
     def tearDown(self):
         """Undoes what monkeypatch did."""
-        
+
         from django.db import models
         from django.conf import settings
         models.get_apps = models.get_apps_old
         settings.INSTALLED_APPS = settings.OLD_INSTALLED_APPS
         self.redo_app_cache()
-        
+
         # Also delete all model instances
         Attachment.objects.all().delete()
         Post.objects.all().delete()
         Forum.objects.all().delete()
-    
-    
+
+
     def redo_app_cache(self):
         from django.db.models.loading import AppCache
         a = AppCache()
         a.loaded = False
         a._populate()
-    
-    
+
+
     def test_depends_related(self):
         """
         Test the DependsOnRelated stuff.
@@ -186,3 +186,17 @@ class TestDenormalisation(unittest.TestCase):
         Member.objects.filter(id=m1.id).update(first_name="second")
         denorm.flush()
         self.assertEqual(Member.objects.get(id=m1.id).full_name,"second last")
+
+    def test_self_backward_relation(self):
+
+        f1 = Forum.objects.create(title="forumone")
+        p1 = Post.objects.create(forum=f1,)
+        p2 = Post.objects.create(forum=f1,response_to=p1)
+        p3 = Post.objects.create(forum=f1,response_to=p1)
+        p4 = Post.objects.create(forum=f1,response_to=p2)
+        denorm.flush()
+
+        self.assertEqual(Post.objects.get(id=p1.id).response_count, 3)
+        self.assertEqual(Post.objects.get(id=p2.id).response_count, 1)
+        self.assertEqual(Post.objects.get(id=p3.id).response_count, 0)
+        self.assertEqual(Post.objects.get(id=p4.id).response_count, 0)
