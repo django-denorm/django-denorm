@@ -70,7 +70,7 @@ def rebuildall():
         denorm.update(denorm.model.objects.all())
 
 def install_triggers():
-    from denorm import triggers
+    from denorm.db import triggers
     from django.contrib.contenttypes.models import ContentType
     from denorm.models import DirtyInstance
     global alldenorms

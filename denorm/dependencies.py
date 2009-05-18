@@ -3,7 +3,7 @@ from denorm.helpers import find_fk
 from django.db.models.fields import related
 from denorm.models import DirtyInstance
 from django.contrib.contenttypes.models import ContentType
-from denorm.triggers import *
+from denorm.db import triggers
 
 def make_depend_decorator(Resolver):
     def decorator(*args,**kwargs):
@@ -28,25 +28,25 @@ class DependOnRelated(DenormDependency):
         self.type = type
 
     def get_triggers(self):
-        update_trigger = Trigger(self.other_model,"after","update")
-        insert_trigger = Trigger(self.other_model,"after","insert")
-        delete_trigger = Trigger(self.other_model,"after","delete")
+        update_trigger = triggers.Trigger(self.other_model,"after","update")
+        insert_trigger = triggers.Trigger(self.other_model,"after","insert")
+        delete_trigger = triggers.Trigger(self.other_model,"after","delete")
         content_type = str(ContentType.objects.get_for_model(self.this_model).id)
 
         if self.type == "forward":
-            action_new = TriggerActionInsert(
+            action_new = triggers.TriggerActionInsert(
                 model = DirtyInstance,
                 columns = ("content_type_id","object_id"),
-                values = TriggerNestedSelect(
+                values = triggers.TriggerNestedSelect(
                     self.this_model,
                     (content_type,"id"),
                     **{self.foreign_key+"_id":"NEW.id"}
                 )
             )
-            action_old = TriggerActionInsert(
+            action_old = triggers.TriggerActionInsert(
                 model = DirtyInstance,
                 columns = ("content_type_id","object_id"),
-                values = TriggerNestedSelect(
+                values = triggers.TriggerNestedSelect(
                     self.this_model,
                     (content_type,"id"),
                     **{self.foreign_key+"_id":"OLD.id"}
@@ -57,7 +57,7 @@ class DependOnRelated(DenormDependency):
             delete_trigger.append(action_old)
 
         elif self.type == "backward":
-            action_new = TriggerActionInsert(
+            action_new = triggers.TriggerActionInsert(
                 model = DirtyInstance,
                 columns = ("content_type_id","object_id"),
                 values = (
@@ -65,7 +65,7 @@ class DependOnRelated(DenormDependency):
                     "NEW.%s_id" % self.foreign_key,
                 )
             )
-            action_old = TriggerActionInsert(
+            action_old = triggers.TriggerActionInsert(
                 model = DirtyInstance,
                 columns = ("content_type_id","object_id"),
                 values = (
