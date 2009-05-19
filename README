@@ -3,7 +3,7 @@ triggers instead of signals to track updates of your models.
 The model API is identical to the signal based implementation,
 but there are a few important differences in usage:
 
-- it's NOT database independent and currently only tested with MySQL and sqlite
+- it's NOT database independent but MySQL, PostgreSQL and sqlite are supported
 - you need to initialize it before you can use it: using syncdb, and after every change to
   denormalized fields and their dependencies ./manage.py denormalize init
 - updates are lazy: denormalized fields won't get updated until you call
