@@ -59,6 +59,7 @@ class Denorm:
                     self.updating.add(instance.pk)
                     instance.save()
                     self.updating.remove(instance.pk)
+        flush()
 
 def rebuildall():
     """
