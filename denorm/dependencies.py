@@ -40,7 +40,7 @@ class DependOnRelated(DenormDependency):
                 values = triggers.TriggerNestedSelect(
                     self.this_model._meta.db_table,
                     (content_type,"id"),
-                    **{self.foreign_key+"_id":"NEW.id"}
+                    **{self.foreign_key:"NEW.id"}
                 )
             )
             action_old = triggers.TriggerActionInsert(
@@ -49,7 +49,7 @@ class DependOnRelated(DenormDependency):
                 values = triggers.TriggerNestedSelect(
                     self.this_model._meta.db_table,
                     (content_type,"id"),
-                    **{self.foreign_key+"_id":"OLD.id"}
+                    **{self.foreign_key:"OLD.id"}
                 )
             )
             update_trigger.append(action_new)
@@ -66,7 +66,7 @@ class DependOnRelated(DenormDependency):
                 columns = ("content_type_id","object_id"),
                 values = (
                     content_type,
-                    "NEW.%s_id" % self.foreign_key,
+                    "NEW.%s" % self.foreign_key,
                 )
             )
             action_old = triggers.TriggerActionInsert(
@@ -74,7 +74,7 @@ class DependOnRelated(DenormDependency):
                 columns = ("content_type_id","object_id"),
                 values = (
                     content_type,
-                    "OLD.%s_id" % self.foreign_key,
+                    "OLD.%s" % self.foreign_key,
                 )
             )
             update_trigger.append([action_new,action_old])
@@ -164,9 +164,6 @@ class DependOnRelated(DenormDependency):
         self.type = winner[0]
         self.foreign_key = winner[1].attname
         self.field = winner[1]
-
-        if self.type in ('forward','backward') and self.foreign_key.endswith("_id"):
-            self.foreign_key = self.foreign_key[:-3]
 
 
 depend_on_related = make_depend_decorator(DependOnRelated)
