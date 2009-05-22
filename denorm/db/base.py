@@ -1,13 +1,13 @@
 from django.db import models
 
 class TriggerNestedSelect:
-    def __init__(self,model,columns,**kwargs):
-        self.model = model
+    def __init__(self,table,columns,**kwargs):
+        self.table = table
         self.columns = ", ".join(columns)
         self.kwargs = kwargs
 
     def sql(self):
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class TriggerAction:

@@ -38,7 +38,7 @@ class DependOnRelated(DenormDependency):
                 model = DirtyInstance,
                 columns = ("content_type_id","object_id"),
                 values = triggers.TriggerNestedSelect(
-                    self.this_model,
+                    self.this_model._meta.db_table,
                     (content_type,"id"),
                     **{self.foreign_key+"_id":"NEW.id"}
                 )
@@ -47,7 +47,7 @@ class DependOnRelated(DenormDependency):
                 model = DirtyInstance,
                 columns = ("content_type_id","object_id"),
                 values = triggers.TriggerNestedSelect(
-                    self.this_model,
+                    self.this_model._meta.db_table,
                     (content_type,"id"),
                     **{self.foreign_key+"_id":"OLD.id"}
                 )
@@ -85,12 +85,14 @@ class DependOnRelated(DenormDependency):
         if "m2m" in self.type:
             if "forward" in self.type:
                 column_name = self.field.m2m_column_name()
+                reverse_column_name = self.field.m2m_reverse_name()
             if "backward" in self.type:
                 column_name = self.field.m2m_reverse_name()
+                reverse_column_name = self.field.m2m_column_name()
 
-            update_trigger = triggers.Trigger(self.field,"after","update")
-            insert_trigger = triggers.Trigger(self.field,"after","insert")
-            delete_trigger = triggers.Trigger(self.field,"after","delete")
+            m2m_update_trigger = triggers.Trigger(self.field,"after","update")
+            m2m_insert_trigger = triggers.Trigger(self.field,"after","insert")
+            m2m_delete_trigger = triggers.Trigger(self.field,"after","delete")
             action_new = triggers.TriggerActionInsert(
                 model = DirtyInstance,
                 columns = ("content_type_id","object_id"),
@@ -107,11 +109,23 @@ class DependOnRelated(DenormDependency):
                     "OLD.%s" % column_name,
                 )
             )
+            m2m_update_trigger.append([action_new,action_old])
+            m2m_insert_trigger.append(action_new)
+            m2m_delete_trigger.append(action_old)
 
-            update_trigger.append([action_new,action_old])
-            insert_trigger.append(action_new)
-            delete_trigger.append(action_old)
-            return [update_trigger,insert_trigger,delete_trigger]
+            update_trigger = triggers.Trigger(self.other_model,"after","update")
+            action_new = triggers.TriggerActionInsert(
+                model = DirtyInstance,
+                columns = ("content_type_id","object_id"),
+                values = triggers.TriggerNestedSelect(
+                    self.field.m2m_db_table(),
+                    (content_type,column_name),
+                    **{reverse_column_name:"NEW.id"}
+                )
+            )
+            update_trigger.append(action_new)
+
+            return [update_trigger,m2m_update_trigger,m2m_insert_trigger,m2m_delete_trigger]
 
         return []
 

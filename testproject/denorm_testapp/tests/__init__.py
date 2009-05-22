@@ -181,3 +181,20 @@ class TestDenormalisation(unittest.TestCase):
         denorm.flush()
 
         self.assertTrue('post1' in Member.objects.get(id=m1.id).bookmark_titles)
+        p1.title = "othertitle"
+        p1.save()
+        denorm.flush()
+        self.assertTrue('post1' not in Member.objects.get(id=m1.id).bookmark_titles)
+        self.assertTrue('othertitle' in Member.objects.get(id=m1.id).bookmark_titles)
+
+        p2 = Post.objects.create(forum=f1,title="thirdtitle")
+        m1.bookmarks.add(p2)
+        denorm.flush()
+        self.assertTrue('post1' not in Member.objects.get(id=m1.id).bookmark_titles)
+        self.assertTrue('othertitle' in Member.objects.get(id=m1.id).bookmark_titles)
+        self.assertTrue('thirdtitle' in Member.objects.get(id=m1.id).bookmark_titles)
+
+        m1.bookmarks.remove(p1)
+        denorm.flush()
+        self.assertTrue('othertitle' not in Member.objects.get(id=m1.id).bookmark_titles)
+        self.assertTrue('thirdtitle' in Member.objects.get(id=m1.id).bookmark_titles)
