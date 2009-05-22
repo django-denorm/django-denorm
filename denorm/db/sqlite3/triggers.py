@@ -6,7 +6,7 @@ class TriggerNestedSelect(base.TriggerNestedSelect):
         columns = self.columns
         table = self.model._meta.db_table
         where = ",".join(["%s=%s"%(k,v) for k,v in self.kwargs.iteritems()])
-        return """ SELECT %(columns)s FROM %(table)s WHERE %(where)s """ % locals()
+        return """ SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s """ % locals()
 
 class TriggerActionInsert(base.TriggerActionInsert):
 
