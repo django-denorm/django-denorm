@@ -1,2 +1,9 @@
+This is the "signals" branch of django-denorm, it tracks updates to models
+by hooking into Django's save/delete signals.
+As it proved to be very difficult (or impossible) to implement all needed features
+(dependencies on ManyToManyFields, handle bulk updates,...) this branch will not be
+developed any further.
+The "trigger" branch is now the new "master" branch.
+
 Documentation and issue tracker:
 http://django-denorm.aeracode.org/
