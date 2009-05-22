@@ -30,13 +30,12 @@ class Trigger(base.Trigger):
     def sql(self):
         name = self.name()
         actions = (";\n   ").join(set([a.sql() for a in self.actions if a.sql()])) + ";"
-        table = self.model._meta.db_table
+        table = self.db_table
         time = self.time.upper()
         event = self.event.upper()
 
         if event == "UPDATE":
-            fieldnames = [x.attname for x in self.model._meta.fields]
-            cond = "(%s)"%"OR".join(["(OLD.%s!=NEW.%s)"%(f,f) for f in fieldnames])
+            cond = "(%s)"%"OR".join(["(OLD.%s!=NEW.%s)"%(f,f) for f in self.fieldnames])
         else:
             cond = 'TRUE'
 

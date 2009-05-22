@@ -25,7 +25,7 @@ class Trigger(base.Trigger):
     def sql(self):
         name = self.name()
         actions = (";\n   ").join(set([a.sql() for a in self.actions if a.sql()])) + ";"
-        table = self.model._meta.db_table
+        table = self.db_table
         time = self.time.upper()
         event = self.event.upper()
 

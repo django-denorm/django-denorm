@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from denorm.helpers import find_fk
+from denorm.helpers import find_fks,find_m2ms
 from django.db.models.fields import related
 from denorm.models import DirtyInstance
 from django.contrib.contenttypes.models import ContentType
@@ -28,12 +28,12 @@ class DependOnRelated(DenormDependency):
         self.type = type
 
     def get_triggers(self):
-        update_trigger = triggers.Trigger(self.other_model,"after","update")
-        insert_trigger = triggers.Trigger(self.other_model,"after","insert")
-        delete_trigger = triggers.Trigger(self.other_model,"after","delete")
         content_type = str(ContentType.objects.get_for_model(self.this_model).id)
 
         if self.type == "forward":
+            update_trigger = triggers.Trigger(self.other_model,"after","update")
+            insert_trigger = triggers.Trigger(self.other_model,"after","insert")
+            delete_trigger = triggers.Trigger(self.other_model,"after","delete")
             action_new = triggers.TriggerActionInsert(
                 model = DirtyInstance,
                 columns = ("content_type_id","object_id"),
@@ -55,8 +55,12 @@ class DependOnRelated(DenormDependency):
             update_trigger.append(action_new)
             insert_trigger.append(action_new)
             delete_trigger.append(action_old)
+            return [update_trigger,insert_trigger,delete_trigger]
 
-        elif self.type == "backward":
+        if self.type == "backward":
+            update_trigger = triggers.Trigger(self.other_model,"after","update")
+            insert_trigger = triggers.Trigger(self.other_model,"after","insert")
+            delete_trigger = triggers.Trigger(self.other_model,"after","delete")
             action_new = triggers.TriggerActionInsert(
                 model = DirtyInstance,
                 columns = ("content_type_id","object_id"),
@@ -76,11 +80,40 @@ class DependOnRelated(DenormDependency):
             update_trigger.append([action_new,action_old])
             insert_trigger.append(action_new)
             delete_trigger.append(action_old)
+            return [update_trigger,insert_trigger,delete_trigger]
 
-        else:
-            raise
+        if "m2m" in self.type:
+            if "forward" in self.type:
+                column_name = self.field.m2m_column_name()
+            if "backward" in self.type:
+                column_name = self.field.m2m_reverse_name()
 
-        return [update_trigger,insert_trigger,delete_trigger]
+            update_trigger = triggers.Trigger(self.field,"after","update")
+            insert_trigger = triggers.Trigger(self.field,"after","insert")
+            delete_trigger = triggers.Trigger(self.field,"after","delete")
+            action_new = triggers.TriggerActionInsert(
+                model = DirtyInstance,
+                columns = ("content_type_id","object_id"),
+                values = (
+                    content_type,
+                    "NEW.%s" % column_name,
+                )
+            )
+            action_old = triggers.TriggerActionInsert(
+                model = DirtyInstance,
+                columns = ("content_type_id","object_id"),
+                values = (
+                    content_type,
+                    "OLD.%s" % column_name,
+                )
+            )
+
+            update_trigger.append([action_new,action_old])
+            insert_trigger.append(action_new)
+            delete_trigger.append(action_old)
+            return [update_trigger,insert_trigger,delete_trigger]
+
+        return []
 
 
     def setup(self,this_model, **kwargs):
@@ -98,20 +131,29 @@ class DependOnRelated(DenormDependency):
     def resolved_model(self, data, model, cls):
         self.other_model = model
 
-        if self.type == 'forward' or not self.type:
-            foreign_key = find_fk(self.this_model,self.other_model,self.foreign_key)
-            if foreign_key:
-                self.type = 'forward'
-                self.foreign_key = foreign_key
-                return
+        candidates =  [('forward',fk) for fk in find_fks(self.this_model,self.other_model,self.foreign_key)]
+        candidates += [('backward',fk) for fk in find_fks(self.other_model,self.this_model,self.foreign_key)]
+        candidates += [('forward_m2m',fk) for fk in find_m2ms(self.this_model,self.other_model,self.foreign_key)]
+        candidates += [('backward_m2m',fk) for fk in find_m2ms(self.other_model,self.this_model,self.foreign_key)]
 
-        if self.type == 'backward' or not self.type:
-            self.foreign_key = find_fk(self.other_model,self.this_model,self.foreign_key)
-            if self.foreign_key:
-                self.type = 'backward'
-                return
+        if self.type:
+            candidates = [x for x in candidates if self.type == x[0]]
 
-        raise ValueError("%s has no ForeignKeys to %s (or reverse); cannot auto-resolve."
-                         % (self.this_model, self.other_model))
+        if len(candidates) > 1:
+            raise ValueError("%s has more than one ForeignKey or ManyToManyField to %s (or reverse); cannot auto-resolve."
+                             % (self.this_model, self.other_model))
+        if not candidates:
+            raise ValueError("%s has no ForeignKeys or ManyToManyFields to %s (or reverse); cannot auto-resolve."
+                             % (self.this_model, self.other_model))
+
+        winner = candidates[0]
+        self.type = winner[0]
+        self.foreign_key = winner[1].attname
+        self.field = winner[1]
+
+        if self.type in ('forward','backward') and self.foreign_key.endswith("_id"):
+            self.foreign_key = self.foreign_key[:-3]
+
+
 depend_on_related = make_depend_decorator(DependOnRelated)
 

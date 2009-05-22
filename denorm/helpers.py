@@ -1,6 +1,6 @@
 from django.db import models
 
-def find_fk(from_model, to_model, foreign_key=None):
+def find_fks(from_model, to_model, foreign_key=None):
     if foreign_key:
         if not isinstance(foreign_key, (str, unicode)):
             foreign_key = foreign_key.attname
@@ -13,13 +13,16 @@ def find_fk(from_model, to_model, foreign_key=None):
                                  and repr(x.rel.to).lower() == repr(to_model).lower(),
                        from_model._meta.fields)
 
-    if not fkeys:
-        return None
-    if len(fkeys) > 1:
-        raise ValueError("%s has more than one ForeignKey to %s;"
-                         " please specify which one to use."
-                         % (from_model, to_model))
-    if fkeys[0].attname.endswith("_id"):
-        return fkeys[0].attname[:-3]
+    return fkeys
+
+def find_m2ms(from_model, to_model, m2m_name=None):
+    if m2m_name:
+        if not isinstance(m2m_name, (str, unicode)):
+            m2m_name = m2m_name.attname
+        m2ms = filter(lambda x: repr(x.rel.to).lower() == repr(to_model).lower() and x.attname == m2m_name,
+                       from_model._meta.many_to_many)
     else:
-        return fkeys[0].attname
+        m2ms = filter(lambda x: repr(x.rel.to).lower() == repr(to_model).lower(),
+                       from_model._meta.many_to_many)
+
+    return m2ms

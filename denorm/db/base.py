@@ -1,3 +1,4 @@
+from django.db import models
 
 class TriggerNestedSelect:
     def __init__(self,model,columns,**kwargs):
@@ -27,11 +28,22 @@ class TriggerActionInsert(TriggerAction):
 
 class Trigger:
 
-    def __init__(self,model, time, event):
-        self.model = model
+    def __init__(self,subject, time, event):
+        self.subject = subject
         self.time = time
         self.event = event
         self.actions = []
+
+        if isinstance(subject,models.ManyToManyField):
+            self.model = None
+            self.db_table = subject.m2m_db_table()
+            self.fieldnames = [subject.m2m_column_name(),subject.m2m_reverse_name()]
+        elif hasattr(subject,"_meta"):
+            self.model = subject
+            self.db_table = self.model._meta.db_table
+            self.fieldnames = [x.attname for x in self.model._meta.fields]
+        else:
+            raise NotImplementedError
 
     def append(self,actions):
         if not isinstance(actions,list):
@@ -47,7 +59,7 @@ class Trigger:
             "row",
             self.event,
             "on",
-            self.model._meta.db_table,
+            self.db_table
         ])
 
     def sql(self):

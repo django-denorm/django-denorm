@@ -170,3 +170,14 @@ class TestDenormalisation(unittest.TestCase):
         self.assertEqual(Post.objects.get(id=p2.id).response_count, 1)
         self.assertEqual(Post.objects.get(id=p3.id).response_count, 0)
         self.assertEqual(Post.objects.get(id=p4.id).response_count, 0)
+
+    def test_m2m_relation(self):
+        f1 = Forum.objects.create(title="forumone")
+        p1 = Post.objects.create(forum=f1,title="post1")
+        m1 = Member.objects.create(first_name="first1",name="last1")
+
+        denorm.flush()
+        m1.bookmarks.add(p1)
+        denorm.flush()
+
+        self.assertTrue('post1' in Member.objects.get(id=m1.id).bookmark_titles)
