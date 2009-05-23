@@ -6,17 +6,13 @@ from django.db import models
 alldenorms = []
 
 class Denorm:
+
     """
     Handles the denormalization of one field.
-    Everytime some model instances are updated a queryset is build, that will contain
-    all instances of the model containing the field that may need to get
-    updated.
-    This is done by passing a QuerySet containing all instances beeing
-    updated into the resolve() method of all DenormDependency
-    subclass instances in 'depend', and combining the results with logical OR.
     """
 
     def __init__(self,func):
+        # ensure self.func is always a list
         if not hasattr(func,'depend'):
             func.depend = []
         self.func = func
@@ -30,11 +26,13 @@ class Denorm:
 
     def setup(self,**kwargs):
         """
-        Calls setup() on all DenormDependency resolvers
+        Adds 'self' to the global denorm list,
+        calls setup() on all DenormDependency resolvers
         and connects all needed signals.
         """
         global alldenorms
         alldenorms += [self]
+
         for dependency in self.func.depend:
             dependency.setup(self.model)
 
@@ -53,12 +51,23 @@ class Denorm:
         flush()
 
     def get_triggers(self):
+        """
+        Creates a list of all triggers needed to keep track of changes
+        to fields this denorm depends on.
+        """
         from denorm.db import triggers
         from django.contrib.contenttypes.models import ContentType
         from denorm.models import DirtyInstance
 
         content_type = str(ContentType.objects.get_for_model(self.model).id)
 
+        # Create a trigger that marks any updated or newly created
+        # instance of the model containing the denormalized field
+        # as dirty.
+        # This is only really needed if the instance was changed without
+        # using the ORM or if it was part of a bulk update.
+        # In those cases the self_save_handler won't get called by the
+        # pre_save signal, so we need to ensure flush() does this later.
         action = triggers.TriggerActionInsert(
             model = DirtyInstance,
             columns = ("content_type_id","object_id"),
@@ -69,6 +78,8 @@ class Denorm:
             triggers.Trigger(self.model,"after","insert",[action]),
         ]
 
+        # Get the triggers of all DenormDependency instances attached
+        # to our callback.
         for dependency in self.func.depend:
             trigger_list += dependency.get_triggers()
 
@@ -84,24 +95,43 @@ def rebuildall():
         denorm.update(denorm.model.objects.all())
 
 def install_triggers():
+    """
+    Installs all required triggers in the database
+    """
     from denorm.db import triggers
     global alldenorms
 
+    # Use a TriggerSet to ensure each event gets just one trigger
     triggerset = triggers.TriggerSet()
     for denorm in alldenorms:
         triggerset.append(denorm.get_triggers())
     triggerset.install()
 
 def flush():
+    """
+    Updates all model instances marked as dirty by the DirtyInstance
+    model.
+    After this method finishes the DirtyInstance table is empty and
+    all denormalized fields have consistent data.
+    """
     from denorm.models import DirtyInstance
 
-    qs = DirtyInstance.objects.all()
-    while qs:
+    # Loop until break.
+    # We may need multiple passes, because an update on one instance
+    # may cause an other instance to be marked dirty (dependency chains)
+    while True:
+        # Get all dirty markers
+        qs = DirtyInstance.objects.all()
+
+        # DirtyInstance table is empty -> all data is consistent -> we're done
+        if not qs: break
+
+        # Call save() on all dirty instances, causing the self_save_handler()
+        # getting called by the pre_save signal.
         for dirty_instance in qs:
             if dirty_instance.content_object:
                 dirty_instance.content_object.save()
             dirty_instance.delete()
-        qs = DirtyInstance.objects.all()
 
 def denormalized(DBField,*args,**kwargs):
 
@@ -142,8 +172,6 @@ def denormalized(DBField,*args,**kwargs):
                     [repr(x) for x in args],
                     kwargs,
                 )
-
-
 
     def deco(func):
         denorm = Denorm(func)
