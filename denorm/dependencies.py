@@ -31,9 +31,6 @@ class DependOnRelated(DenormDependency):
         content_type = str(ContentType.objects.get_for_model(self.this_model).id)
 
         if self.type == "forward":
-            update_trigger = triggers.Trigger(self.other_model,"after","update")
-            insert_trigger = triggers.Trigger(self.other_model,"after","insert")
-            delete_trigger = triggers.Trigger(self.other_model,"after","delete")
             action_new = triggers.TriggerActionInsert(
                 model = DirtyInstance,
                 columns = ("content_type_id","object_id"),
@@ -52,15 +49,13 @@ class DependOnRelated(DenormDependency):
                     **{self.foreign_key:"OLD.id"}
                 )
             )
-            update_trigger.append(action_new)
-            insert_trigger.append(action_new)
-            delete_trigger.append(action_old)
-            return [update_trigger,insert_trigger,delete_trigger]
+            return [
+                triggers.Trigger(self.other_model,"after","update",[action_new]),
+                triggers.Trigger(self.other_model,"after","insert",[action_new]),
+                triggers.Trigger(self.other_model,"after","delete",[action_old]),
+            ]
 
         if self.type == "backward":
-            update_trigger = triggers.Trigger(self.other_model,"after","update")
-            insert_trigger = triggers.Trigger(self.other_model,"after","insert")
-            delete_trigger = triggers.Trigger(self.other_model,"after","delete")
             action_new = triggers.TriggerActionInsert(
                 model = DirtyInstance,
                 columns = ("content_type_id","object_id"),
@@ -77,10 +72,11 @@ class DependOnRelated(DenormDependency):
                     "OLD.%s" % self.foreign_key,
                 )
             )
-            update_trigger.append([action_new,action_old])
-            insert_trigger.append(action_new)
-            delete_trigger.append(action_old)
-            return [update_trigger,insert_trigger,delete_trigger]
+            return [
+                triggers.Trigger(self.other_model,"after","update",[action_new,action_old]),
+                triggers.Trigger(self.other_model,"after","insert",[action_new]),
+                triggers.Trigger(self.other_model,"after","delete",[action_old]),
+            ]
 
         if "m2m" in self.type:
             if "forward" in self.type:
@@ -90,10 +86,7 @@ class DependOnRelated(DenormDependency):
                 column_name = self.field.m2m_reverse_name()
                 reverse_column_name = self.field.m2m_column_name()
 
-            m2m_update_trigger = triggers.Trigger(self.field,"after","update")
-            m2m_insert_trigger = triggers.Trigger(self.field,"after","insert")
-            m2m_delete_trigger = triggers.Trigger(self.field,"after","delete")
-            action_new = triggers.TriggerActionInsert(
+            action_m2m_new = triggers.TriggerActionInsert(
                 model = DirtyInstance,
                 columns = ("content_type_id","object_id"),
                 values = (
@@ -101,7 +94,7 @@ class DependOnRelated(DenormDependency):
                     "NEW.%s" % column_name,
                 )
             )
-            action_old = triggers.TriggerActionInsert(
+            action_m2m_old = triggers.TriggerActionInsert(
                 model = DirtyInstance,
                 columns = ("content_type_id","object_id"),
                 values = (
@@ -109,11 +102,6 @@ class DependOnRelated(DenormDependency):
                     "OLD.%s" % column_name,
                 )
             )
-            m2m_update_trigger.append([action_new,action_old])
-            m2m_insert_trigger.append(action_new)
-            m2m_delete_trigger.append(action_old)
-
-            update_trigger = triggers.Trigger(self.other_model,"after","update")
             action_new = triggers.TriggerActionInsert(
                 model = DirtyInstance,
                 columns = ("content_type_id","object_id"),
@@ -123,9 +111,13 @@ class DependOnRelated(DenormDependency):
                     **{reverse_column_name:"NEW.id"}
                 )
             )
-            update_trigger.append(action_new)
 
-            return [update_trigger,m2m_update_trigger,m2m_insert_trigger,m2m_delete_trigger]
+            return [
+                triggers.Trigger(self.field,"after","update",[action_m2m_new,action_m2m_old]),
+                triggers.Trigger(self.field,"after","insert",[action_m2m_new]),
+                triggers.Trigger(self.field,"after","delete",[action_m2m_old]),
+                triggers.Trigger(self.other_model,"after","update",[action_new]),
+            ]
 
         return []
 

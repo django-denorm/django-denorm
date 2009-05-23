@@ -59,18 +59,15 @@ class Denorm:
 
         content_type = str(ContentType.objects.get_for_model(self.model).id)
 
-        trigger_list = []
         action = triggers.TriggerActionInsert(
             model = DirtyInstance,
             columns = ("content_type_id","object_id"),
             values = (content_type,"NEW.id")
         )
-        trigger = triggers.Trigger(self.model,"after","update")
-        trigger.append(action)
-        trigger_list += [trigger]
-        trigger = triggers.Trigger(self.model,"after","insert")
-        trigger.append(action)
-        trigger_list += [trigger]
+        trigger_list = [
+            triggers.Trigger(self.model,"after","update",[action]),
+            triggers.Trigger(self.model,"after","insert",[action]),
+        ]
 
         for dependency in self.func.depend:
             trigger_list += dependency.get_triggers()

@@ -28,11 +28,12 @@ class TriggerActionInsert(TriggerAction):
 
 class Trigger:
 
-    def __init__(self,subject, time, event):
+    def __init__(self,subject, time, event,actions=[]):
         self.subject = subject
         self.time = time
         self.event = event
         self.actions = []
+        self.append(actions)
 
         if isinstance(subject,models.ManyToManyField):
             self.model = None
