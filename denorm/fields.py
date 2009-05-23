@@ -52,6 +52,31 @@ class Denorm:
                 instance.save()
         flush()
 
+    def get_triggers(self):
+        from denorm.db import triggers
+        from django.contrib.contenttypes.models import ContentType
+        from denorm.models import DirtyInstance
+
+        content_type = str(ContentType.objects.get_for_model(self.model).id)
+
+        trigger_list = []
+        action = triggers.TriggerActionInsert(
+            model = DirtyInstance,
+            columns = ("content_type_id","object_id"),
+            values = (content_type,"NEW.id")
+        )
+        trigger = triggers.Trigger(self.model,"after","update")
+        trigger.append(action)
+        trigger_list += [trigger]
+        trigger = triggers.Trigger(self.model,"after","insert")
+        trigger.append(action)
+        trigger_list += [trigger]
+
+        for dependency in self.func.depend:
+            trigger_list += dependency.get_triggers()
+
+        return trigger_list
+
 def rebuildall():
     """
     Updates all models containing denormalized fields.
@@ -63,27 +88,11 @@ def rebuildall():
 
 def install_triggers():
     from denorm.db import triggers
-    from django.contrib.contenttypes.models import ContentType
-    from denorm.models import DirtyInstance
     global alldenorms
 
     triggerset = triggers.TriggerSet()
     for denorm in alldenorms:
-        content_type = str(ContentType.objects.get_for_model(denorm.model).id)
-        action = triggers.TriggerActionInsert(
-            model = DirtyInstance,
-            columns = ("content_type_id","object_id"),
-            values = (content_type,"NEW.id")
-        )
-        trigger = triggers.Trigger(denorm.model,"after","update")
-        trigger.append(action)
-        triggerset.append(trigger)
-        trigger = triggers.Trigger(denorm.model,"after","insert")
-        trigger.append(action)
-        triggerset.append(trigger)
-
-        for dependency in denorm.func.depend:
-            triggerset.append(dependency.get_triggers())
+        triggerset.append(denorm.get_triggers())
     triggerset.install()
 
 def flush():
