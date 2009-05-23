@@ -20,15 +20,13 @@ class Denorm:
         if not hasattr(func,'depend'):
             func.depend = []
         self.func = func
-        self.updating = set()
 
     def self_save_handler(self,sender,instance,**kwargs):
         """
         Updates the value of the denormalized field
         in 'instance' before it gets saved.
         """
-        if instance.pk not in self.updating:
-            setattr(instance,self.fieldname,self.func(instance))
+        setattr(instance,self.fieldname,self.func(instance))
 
     def setup(self,**kwargs):
         """
@@ -47,18 +45,11 @@ class Denorm:
         Updates the denormalizations in all instances in the queryset 'qs'.
         """
         for instance in qs.distinct():
-            if not instance.pk in self.updating:
-                # we need to keep track of the instances this denorm updates
-                # to ensure we update them only once. This protects us from endless
-                # updates that could otherwise occur with cyclic dependencies.
-                # additionally we only write new values to the DB if they actually
-                # changed
-                new_value = self.func(instance)
-                if not getattr(instance,self.fieldname) == new_value:
-                    setattr(instance,self.fieldname,new_value)
-                    self.updating.add(instance.pk)
-                    instance.save()
-                    self.updating.remove(instance.pk)
+            # only write new values to the DB if they actually changed
+            new_value = self.func(instance)
+            if not getattr(instance,self.fieldname) == new_value:
+                setattr(instance,self.fieldname,new_value)
+                instance.save()
         flush()
 
 def rebuildall():
