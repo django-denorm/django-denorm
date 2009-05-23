@@ -100,18 +100,18 @@ def flush():
 def denormalized(DBField,*args,**kwargs):
 
     class DenormDBField(DBField):
-        
+
         """
         Special subclass of the given DBField type, with a few extra additions.
         """
-        
+
         def contribute_to_class(self,cls,name,*args,**kwargs):
             self.denorm.model = cls
             self.denorm.fieldname = name
             self.field_args = (args, kwargs)
             models.signals.class_prepared.connect(self.denorm.setup,sender=cls)
             DBField.contribute_to_class(self,cls,name,*args,**kwargs)
-    
+
         def south_field_definition(self):
             """
             the old way of telling south how this field should be
