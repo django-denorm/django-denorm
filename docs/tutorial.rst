@@ -1,10 +1,11 @@
+========
 Tutorial
 ========
 
 Creating denormalized fields
-----------------------------
+============================
 
-A denormalized field can be created from a python function by using the ``denormalized`` decorator.
+A denormalized field can be created from a python function by using the ``@denormalized`` decorator.
 The decorator takes at least one argument: the database field type you want to use to store the computed
 value. Any additional arguments will be passed into the constructor of the specified field when it is actually
 created.
@@ -29,7 +30,7 @@ in this example ``SomeModel`` will get a ``CharField`` named ``some_computation`
 
 
 Adding dependency information
------------------------------
+=============================
 
 The above example will only work correctly if the return value of the
 decorated function only depends on attributes of the same instance of the same
@@ -44,8 +45,7 @@ additional decorators to attach this dependency information to the function
 before it gets turned into a field.
 
 Simple dependencies
-'''''''''''''''''''
-
+-------------------
 
 In most cases your model probably contains a ForeignKey to some other model
 (forward foreign key relationship) or an other model has a ForeignKey to the
@@ -65,17 +65,17 @@ This kind of dependency can be expressed like this::
            # your code
            return some_value
 
-The ``depend_on_related`` decorator takes the related model as an argument in
+The ``@depend_on_related`` decorator takes the related model as an argument in
 the same was ``ForeignKey`` does, so you can use the same conventions here.
-``depend_on_related`` will then detect what kind (forward/backward) of relationship the two
+``@depend_on_related`` will then detect what kind (forward/backward) of relationship the two
 models have and update the value whenever the related instance of the other
 model changes.
 
 In case of an ambiguous relationship (maybe there are multiple foreign keys
 to the related model) an error will be raised, and you'll need to specify the
-name of the ForeignKey to use as a second argument like this::
+name of the ForeignKey to use like this::
 
     ...
-        @depend_on_related('SomeOtherModel','other')
+        @depend_on_related('SomeOtherModel',foreign_key='other')
     ...
 
