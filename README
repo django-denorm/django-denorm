@@ -11,8 +11,8 @@ but there are a few important differences in usage:
 
 the flush() call can be made in 3 different ways:
 1) directly, after you manipulated some data
-2) by running ./manage.py denormalize flush (by hand, or as cronjob)
-3) by running ./manage.py denormalize daemon <interval>
+2) by running ./manage.py denorm_flush (by hand, or as cronjob)
+3) by running ./manage.py denorm_daemon <interval>
 
 option #3 will call flush() every <interval> seconds.
 
