@@ -16,5 +16,8 @@ the flush() call can be made in 3 different ways:
 
 option #3 will call flush() every <interval> seconds.
 
-Documentation and issue tracker:
-http://django-denorm.aeracode.org/
+Documentation:
+http://django-denorm.initcrash.net/
+
+and issue tracker:
+http://github.com/initcrash/django-denorm/issues
