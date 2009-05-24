@@ -168,7 +168,7 @@ def denormalized(DBField,*args,**kwargs):
             """
             if DBField.__module__.startswith("django.db.models.fields"):
                 return (
-                    DBField.__name__,
+                    '.'.join(('models',DBField.__name__)),
                     [repr(x) for x in args],
                     kwargs,
                 )
