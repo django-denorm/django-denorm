@@ -6,12 +6,47 @@ Reference
 Decorators
 ==========
 
-``@denormalized(FieldClass, *args, **kwargs)``
-----------------------------------------------
+``@denormalized (FieldClass, *args, **kwargs)``
+-----------------------------------------------
+
+Turns a callable into model field, analogous to python's ``@property`` decorator.
+The callable will be used to compute the value of the field every time the model
+gets saved.
+If the callable has dependency information attached to it the fields value will
+also be recomputed if the dependencies require it.
+
+**Arguments:**
+
+FieldClass (required)
+    The type of field you want to use to save the data.
+    Note that you have to use the field class and not an instance
+    of it.
+
+\*args, \*\*kwargs:
+    Those will be passed unaltered into the constructor of ``FieldClass``
+    once it gets actually created.
 
 
-``@depend_on_related(model, foreign_key=None, type=None)``
-----------------------------------------------------------
+``@depend_on_related (othermodel, foreign_key=None, type=None)``
+----------------------------------------------------------------
+
+Attaches a dependency to a callable, indicating the return value depends on
+fields in an other model that is related to the model the callable belongs to
+either through a ForeignKey in either direction or a ManyToManyField.
+
+**Arguments:**
+
+othermodel (required)
+    Either a model class or a string naming a model class.
+
+foreign_key
+    The name of the ForeignKey or ManyToManyField that creates the relation
+    between the two models.
+    This is needed to specify witch one to use in case there are more than one.
+
+type
+    One of 'forward', 'backward', 'forward_m2m' or 'backward_m2m'.
+    If there are relations in both directions specify witch one to use.
 
 
 Management commands

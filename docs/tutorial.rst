@@ -44,12 +44,13 @@ tell it what other model instances will effect the computed value. It provides
 additional decorators to attach this dependency information to the function
 before it gets turned into a field.
 
-Simple dependencies
--------------------
+Depending on related models
+---------------------------
 
 In most cases your model probably contains a ForeignKey to some other model
-(forward foreign key relationship) or an other model has a ForeignKey to the
-model containing the denormalized field (backward foreign key relationship),
+(forward foreign key relationship), an other model has a ForeignKey to the
+model containing the denormalized field (backward foreign key relationship)
+or the two models are connected through a ManyToManyField,
 and your function will somehow use the information in the related instance to
 compute its return value.
 
@@ -67,7 +68,8 @@ This kind of dependency can be expressed like this::
 
 The ``@depend_on_related`` decorator takes the related model as an argument in
 the same was ``ForeignKey`` does, so you can use the same conventions here.
-``@depend_on_related`` will then detect what kind (forward/backward) of relationship the two
+``@depend_on_related`` will then detect what kind (forward/backward/m2m)
+of relationship the two
 models have and update the value whenever the related instance of the other
 model changes.
 
