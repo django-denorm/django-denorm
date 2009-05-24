@@ -34,8 +34,8 @@ class DependOnRelated(DenormDependency):
     on either of them pointing to the other one.
     """
 
-    def __init__(self,model,foreign_key=None,type=None):
-        self.other_model = model
+    def __init__(self,othermodel,foreign_key=None,type=None):
+        self.other_model = othermodel
         self.fk_name = foreign_key
         self.type = type
 
