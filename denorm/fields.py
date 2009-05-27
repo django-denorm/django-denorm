@@ -134,6 +134,24 @@ def flush():
             dirty_instance.delete()
 
 def denormalized(DBField,*args,**kwargs):
+    """
+    Turns a callable into model field, analogous to python's ``@property`` decorator.
+    The callable will be used to compute the value of the field every time the model
+    gets saved.
+    If the callable has dependency information attached to it the fields value will
+    also be recomputed if the dependencies require it.
+
+    **Arguments:**
+
+    DBField (required)
+        The type of field you want to use to save the data.
+        Note that you have to use the field class and not an instance
+        of it.
+
+    \*args, \*\*kwargs:
+        Those will be passed unaltered into the constructor of ``DBField``
+        once it gets actually created.
+    """
 
     class DenormDBField(DBField):
 

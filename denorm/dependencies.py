@@ -35,6 +35,25 @@ class DependOnRelated(DenormDependency):
     """
 
     def __init__(self,othermodel,foreign_key=None,type=None):
+        """
+        Attaches a dependency to a callable, indicating the return value depends on
+        fields in an other model that is related to the model the callable belongs to
+        either through a ForeignKey in either direction or a ManyToManyField.
+
+        **Arguments:**
+
+        othermodel (required)
+            Either a model class or a string naming a model class.
+
+        foreign_key
+            The name of the ForeignKey or ManyToManyField that creates the relation
+            between the two models.
+            This is needed to specify witch one to use in case there are more than one.
+
+        type
+            One of 'forward', 'backward', 'forward_m2m' or 'backward_m2m'.
+            If there are relations in both directions specify witch one to use.
+        """
         self.other_model = othermodel
         self.fk_name = foreign_key
         self.type = type
@@ -202,6 +221,8 @@ def make_depend_decorator(Class):
     to the decorated function, passing all remaining arguments to the classes
     __init__.
     """
+    import functools
+
     def decorator(*args,**kwargs):
         def deco(func):
             if not hasattr(func,'depend'):
@@ -209,7 +230,7 @@ def make_depend_decorator(Class):
             func.depend += [Class(*args,**kwargs)]
             return func
         return deco
+    functools.update_wrapper(decorator,Class.__init__)
     return decorator
 
 depend_on_related = make_depend_decorator(DependOnRelated)
-
