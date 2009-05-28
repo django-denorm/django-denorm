@@ -81,3 +81,49 @@ name of the ForeignKey to use like this::
         @depend_on_related('SomeOtherModel',foreign_key='other')
     ...
 
+If this still is not enough information for django-denorm to pick the right
+relation, there is probably a recursive dependency (on ``self``).
+In that you also need to specify the direction of the relation::
+
+    ...
+        @depend_on_related('self',type='forward')
+    ...
+
+
+Keeping data up to date
+=======================
+
+Now that the models contain all information needed for the denormalization to work,
+we need to do some final steps do make the database use it. As django-denorm uses triggers,
+those have to be created in the database with::
+
+    ./manage.py denorm_init
+
+This has to be redone after every time you make changes to denormalized fields.
+
+Callbacks are lazy
+------------------
+
+Your fields won't get updated immediately after making changes to some data.
+Instead potentially affected rows are marked as dirty in a special table and the
+update will be done by the ``denorm.flush`` method.
+
+Post-request flushing
+---------------------
+
+The easiest way to call ``denorm.flush`` is to simply do it after every completed request.
+This can be accomplished by updating your ``settings.py``::
+
+    DENORM_FLUSH_AFTER_REQUEST = True
+
+Using the daemon
+----------------
+
+If the above solution causes problem like slowing the webserver down because
+``denorm.flush`` takes to much time to complete, you can use a daemon to update the data.
+The daemon will check for dirty rows in regular intervals and update them as necessary.
+To run the daemon with an interval of 10 seconds run::
+
+    ./manage.py denorm_daemon 10
+
+The command will print the daemons pid and then detach itself from the terminal.
