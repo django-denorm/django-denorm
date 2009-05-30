@@ -59,6 +59,11 @@ class DependOnRelated(DenormDependency):
         self.type = type
 
     def get_triggers(self):
+
+        if not self.type:
+            # 'resolved_model' model never got called...
+            raise ValueError("The model '%s' could not be resolved, it propably does not exist" % self.other_model)
+
         content_type = str(ContentType.objects.get_for_model(self.this_model).id)
 
         if self.type == "forward":
