@@ -98,6 +98,9 @@ def install_triggers():
     """
     Installs all required triggers in the database
     """
+    build_triggerset().install()
+
+def build_triggerset():
     from denorm.db import triggers
     global alldenorms
 
@@ -105,7 +108,7 @@ def install_triggers():
     triggerset = triggers.TriggerSet()
     for denorm in alldenorms:
         triggerset.append(denorm.get_triggers())
-    triggerset.install()
+    return triggerset
 
 def flush():
     """

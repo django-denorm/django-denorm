@@ -39,7 +39,7 @@ class Trigger(base.Trigger):
              """ CREATE TRIGGER %(name)s\n"""
             +"""  %(time)s %(event)s ON %(table)s\n"""
             +"""  FOR EACH ROW %(when)s BEGIN\n"""
-            +"""   %(actions)s\n  END \n"""
+            +"""   %(actions)s\n  END;\n"""
             ) % locals()
 
 class TriggerSet(base.TriggerSet):

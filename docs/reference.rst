@@ -35,3 +35,6 @@ Management commands
 
 **denorm_daemon**
     .. automodule:: denorm.management.commands.denorm_daemon
+
+**denorm_sql**
+    .. automodule:: denorm.management.commands.denorm_sql
