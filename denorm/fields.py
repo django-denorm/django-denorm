@@ -171,6 +171,8 @@ def denormalized(DBField,*args,**kwargs):
             the old way of telling south how this field should be
             inserted into migrations, this will be removed soon
             """
+            import warnings
+            warnings.warn("south_field_definition will be deprecated, you should really update your south version.",DeprecationWarning)
             if DBField.__module__.startswith("django.db.models.fields"):
                 arglist = [repr(x) for x in args]
                 kwlist = ["%s=%r" % (x, y) for x, y in kwargs.items()]
