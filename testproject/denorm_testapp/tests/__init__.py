@@ -4,6 +4,8 @@ import sys
 import os
 
 from django.core import management
+from django.test import TestCase
+from django.contrib.auth.models import User,Permission
 
 # Add the tests directory so the denorm_testapp is on sys.path
 test_root = os.path.dirname(__file__)
@@ -16,7 +18,7 @@ from denorm.fields import install_triggers,alldenorms
 import denorm
 
 
-class TestDenormalisation(unittest.TestCase):
+class TestDenormalisation(TestCase):
 
     """
     Tests for the denormalisation fields.
@@ -25,9 +27,14 @@ class TestDenormalisation(unittest.TestCase):
     def setUp(self):
         install_triggers()
 
+        self.testuser = User.objects.create_user("testuser","testuser","testuser")
+        self.testuser.is_staff = True
+        Permission.objects.get(name='Can change member').user_set.add(self.testuser)
+        self.testuser.save()
 
     def tearDown(self):
         # delete all model instances
+        self.testuser.delete()
         Attachment.objects.all().delete()
         Post.objects.all().delete()
         Forum.objects.all().delete()
@@ -198,3 +205,16 @@ class TestDenormalisation(unittest.TestCase):
         denorm.flush()
         self.assertTrue('othertitle' not in Member.objects.get(id=m1.id).bookmark_titles)
         self.assertTrue('thirdtitle' in Member.objects.get(id=m1.id).bookmark_titles)
+
+    def test_middleware(self):
+        f1 = Forum.objects.create(title="forumone")
+        m1 = Member.objects.create(first_name="first1",name="last1")
+        p1 = Post.objects.create(forum=f1,author=m1)
+
+        self.assertEqual(Post.objects.get(id=p1.id).author_name, "last1")
+
+        self.client.login(username="testuser",password="testuser")
+        response = self.client.post("/admin/denorm_testapp/member/%s/"%(m1.pk),
+                                {'name':'last2','first_name':'first2'})
+
+        self.assertEqual(Post.objects.get(id=p1.id).author_name, "last2")

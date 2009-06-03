@@ -112,9 +112,16 @@ Post-request flushing
 ---------------------
 
 The easiest way to call ``denorm.flush`` is to simply do it after every completed request.
-This can be accomplished by updating your ``settings.py``::
+This can be accomplished by adding ``DenormMiddleware`` to ``MIDDLEWARE_CLASSES`` in your ``settings.py``::
 
-    DENORM_FLUSH_AFTER_REQUEST = True
+    MIDDLEWARE_CLASSES = (
+    ...
+        'django.middleware.transaction.TransactionMiddleware',
+        'denorm.middleware.DenormMiddleware',
+    ...
+    )
+
+As shown in the example, I recommend to place ``DenormMiddleware`` right after ``TransactionMiddleware``.
 
 Using the daemon
 ----------------

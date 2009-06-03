@@ -70,11 +70,11 @@ class Member(models.Model):
     name = models.CharField(max_length=255)
     bookmarks = models.ManyToManyField('Post',blank=True)
 
-    @denormalized(models.CharField,max_length=255)
+    @denormalized(models.CharField,max_length=255,blank=True)
     def full_name(self):
         return u"%s %s"% (self.first_name, self.name)
 
-    @denormalized(models.TextField,null=True)
+    @denormalized(models.TextField,null=True,blank=True)
     @depend_on_related('Post',foreign_key="bookmarks")
     def bookmark_titles(self):
         if self.id:
