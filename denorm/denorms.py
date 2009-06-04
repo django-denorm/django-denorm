@@ -11,6 +11,9 @@ alldenorms = []
 
 class Denorm(object):
 
+    def __init__(self):
+        self.func = None
+
     def setup(self,**kwargs):
         """
         Adds 'self' to the global denorm list
@@ -52,16 +55,14 @@ class CallbackDenorm(Denorm):
     as a callback.
     """
 
-    def __init__(self,func):
-        # ensure self.depend is always a list
-        if not hasattr(func,'depend'):
-            func.depend = []
-        self.func = func
-
     def setup(self,**kwargs):
         """
         Calls setup() on all DenormDependency resolvers
         """
+        # ensure self.func.depend is always a list
+        if not hasattr(self.func,'depend'):
+            self.func.depend = []
+
         super(CallbackDenorm,self).setup(**kwargs)
 
         for dependency in self.func.depend:
