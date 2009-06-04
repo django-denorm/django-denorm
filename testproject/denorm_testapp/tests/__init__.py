@@ -14,7 +14,7 @@ sys.path.append(test_root)
 # Import denorm_testapp's models
 import denorm_testapp.models
 from denorm_testapp.models import *
-from denorm.fields import install_triggers,alldenorms
+from denorm.denorms import install_triggers
 import denorm
 
 
@@ -45,35 +45,42 @@ class TestDenormalisation(TestCase):
         """
         # Make a forum, check it's got no posts
         f1 = Forum.objects.create(title="forumone")
-        denorm.flush()
         self.assertEqual(f1.post_count, 0)
         # Check its database copy too
         self.assertEqual(Forum.objects.get(id=f1.id).post_count, 0)
+
         # Add a post
         p1 = Post.objects.create(forum=f1)
+        # Has the post count updated?
+        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 1)
+
         denorm.flush()
+
         # Check its title, in p1 and the DB
         self.assertEqual(p1.forum_title, "forumone")
         self.assertEqual(Post.objects.get(id=p1.id).forum_title, "forumone")
-        # Has the post count updated?
-        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 1)
+
         # Update the forum title
         f1.title = "forumtwo"
         f1.save()
+
         denorm.flush()
+
         # Has the post's title changed?
         self.assertEqual(Post.objects.get(id=p1.id).forum_title, "forumtwo")
-        # Add and remove some posts
+
+        # Add and remove some posts and check the post count
         p2 = Post.objects.create(forum=f1)
-        p3 = Post.objects.create(forum=f1)
-        p1.delete()
-        denorm.flush()
-        # Check the post count
         self.assertEqual(Forum.objects.get(id=f1.id).post_count, 2)
+        p3 = Post.objects.create(forum=f1)
+        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 3)
+        p1.delete()
+        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 2)
+
         # Delete everything, check once more.
         Post.objects.all().delete()
-        denorm.flush()
         self.assertEqual(Forum.objects.get(id=f1.id).post_count, 0)
+
         # Make an orphaned post, see what its title is.
         # Doesn't work yet - no support for null FKs
         #p4 = Post.objects.create(forum=None)
@@ -218,3 +225,27 @@ class TestDenormalisation(TestCase):
                                 {'name':'last2','first_name':'first2'})
 
         self.assertEqual(Post.objects.get(id=p1.id).author_name, "last2")
+
+    def test_countfield(self):
+        f1 = Forum.objects.create(title="forumone")
+        f2 = Forum.objects.create(title="forumone")
+        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 0)
+        self.assertEqual(Forum.objects.get(id=f2.id).post_count, 0)
+
+        p1 = Post.objects.create(forum=f1)
+        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 1)
+        self.assertEqual(Forum.objects.get(id=f2.id).post_count, 0)
+
+        p2 = Post.objects.create(forum=f2)
+        p3 = Post.objects.create(forum=f2)
+        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 1)
+        self.assertEqual(Forum.objects.get(id=f2.id).post_count, 2)
+
+        p2.forum = f1
+        p2.save()
+        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 2)
+        self.assertEqual(Forum.objects.get(id=f2.id).post_count, 1)
+
+        Post.objects.filter(pk=p3.pk).update(forum=f1)
+        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 3)
+        self.assertEqual(Forum.objects.get(id=f2.id).post_count, 0)

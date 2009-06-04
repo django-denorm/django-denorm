@@ -4,7 +4,7 @@ The default interval ist one second, this can be overridden by specifying the de
 interval as a numeric argument to the command.
 """
 from django.core.management.base import BaseCommand
-from denorm import fields
+from denorm import denorms
 
 from django.db import transaction
 
@@ -37,6 +37,6 @@ class Command(BaseCommand):
 
         interval = int(interval)
         while True:
-            fields.flush()
+            denorms.flush()
             sleep(interval)
             transaction.commit()

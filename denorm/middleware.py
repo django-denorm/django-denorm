@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from denorm.fields import flush
+from denorm import flush
 
 class DenormMiddleware(object):
     """

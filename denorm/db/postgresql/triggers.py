@@ -25,6 +25,15 @@ class TriggerActionInsert(base.TriggerActionInsert):
             +"""   END"""
             ) % locals()
 
+class TriggerActionUpdate(base.TriggerActionUpdate):
+
+    def sql(self):
+        table = self.model._meta.db_table
+        updates = ','.join(["%s=%s"%(k,v) for k,v in zip(self.columns,self.values)])
+        where = self.where
+
+        return """ UPDATE %(table)s SET %(updates)s WHERE %(where)s """ % locals()
+
 class Trigger(base.Trigger):
 
     def sql(self):

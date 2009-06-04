@@ -10,6 +10,11 @@ Decorators
 
 .. autofunction:: denorm.depend_on_related(othermodel,foreign_key=None,type=None)
 
+Fields
+======
+
+.. autoclass:: denorm.CountField
+
 Functions
 =========
 

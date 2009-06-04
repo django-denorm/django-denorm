@@ -26,6 +26,16 @@ class TriggerActionInsert(TriggerAction):
     def sql(self):
         raise NotImplementedError
 
+class TriggerActionUpdate(TriggerAction):
+    def __init__(self,model,columns,values,where):
+        self.model = model
+        self.columns = columns
+        self.values = values
+        self.where = where
+
+    def sql(self):
+        raise NotImplementedError
+
 class Trigger:
 
     def __init__(self,subject, time, event,actions=[]):

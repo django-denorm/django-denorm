@@ -2,8 +2,47 @@
 Tutorial
 ========
 
-Creating denormalized fields
-============================
+Counting related objects
+========================
+
+Maybe the most common use case for denormalization is to cache the number
+of objects associated with an object instance through a ForeignKey.
+
+So lets say we are building a gallery application with models like this::
+
+    class Gallery(models.Model):
+        name = models.TextField()
+
+    class Picture(models.Model):
+        image = models.ImageField(...)
+        gallery = models.ForeignKey(Gallery)
+
+Now if we want to know the number of pictures in a gallery, we usually do something like::
+
+    gallery = Gallery.objects.get(...)
+    number_of_pictures = gallery.picture_set.count()
+
+The problem here is of course that this will hit the database with a COUNT query every time.
+
+To speed this up we can cache the number of pictures inside the gallery::
+
+    from denorm import CountField
+
+    class Gallery(models.Model):
+        name = models.TextField()
+        picture_count = CountField('picture_set')
+
+    class Picture(models.Model):
+        image = models.ImageField(...)
+        gallery = models.ForeignKey(Gallery)
+
+This will incrementally update the number when we add and delete related objects.
+Note that ``CountField`` updates are not lazy (like the callbacks described below), their
+value always gets updated immediately.
+
+
+Creating denormalized fields using callback functions
+=====================================================
 
 A denormalized field can be created from a python function by using the ``@denormalized`` decorator.
 The decorator takes at least one argument: the database field type you want to use to store the computed
@@ -30,7 +69,7 @@ in this example ``SomeModel`` will get a ``CharField`` named ``some_computation`
 
 
 Adding dependency information
-=============================
+-----------------------------
 
 The above example will only work correctly if the return value of the
 decorated function only depends on attributes of the same instance of the same
@@ -45,7 +84,7 @@ additional decorators to attach this dependency information to the function
 before it gets turned into a field.
 
 Depending on related models
----------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In most cases your model probably contains a ForeignKey to some other model
 (forward foreign key relationship), an other model has a ForeignKey to the
@@ -89,18 +128,6 @@ In that you also need to specify the direction of the relation::
         @depend_on_related('self',type='forward')
     ...
 
-
-Keeping data up to date
-=======================
-
-Now that the models contain all information needed for the denormalization to work,
-we need to do some final steps do make the database use it. As django-denorm uses triggers,
-those have to be created in the database with::
-
-    ./manage.py denorm_init
-
-This has to be redone after every time you make changes to denormalized fields.
-
 Callbacks are lazy
 ------------------
 
@@ -109,7 +136,7 @@ Instead potentially affected rows are marked as dirty in a special table and the
 update will be done by the ``denorm.flush`` method.
 
 Post-request flushing
----------------------
+^^^^^^^^^^^^^^^^^^^^^
 
 The easiest way to call ``denorm.flush`` is to simply do it after every completed request.
 This can be accomplished by adding ``DenormMiddleware`` to ``MIDDLEWARE_CLASSES`` in your ``settings.py``::
@@ -124,7 +151,7 @@ This can be accomplished by adding ``DenormMiddleware`` to ``MIDDLEWARE_CLASSES`
 As shown in the example, I recommend to place ``DenormMiddleware`` right after ``TransactionMiddleware``.
 
 Using the daemon
-----------------
+^^^^^^^^^^^^^^^^
 
 If the above solution causes problem like slowing the webserver down because
 ``denorm.flush`` takes to much time to complete, you can use a daemon to update the data.
@@ -134,3 +161,15 @@ To run the daemon with an interval of 10 seconds run::
     ./manage.py denorm_daemon 10
 
 The command will print the daemons pid and then detach itself from the terminal.
+
+Final steps
+===========
+
+Now that the models contain all information needed for the denormalization to work,
+we need to do some final steps do make the database use it. As django-denorm uses triggers,
+those have to be created in the database with::
+
+    ./manage.py denorm_init
+
+This has to be redone after every time you make changes to denormalized fields.
+

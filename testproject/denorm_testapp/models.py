@@ -8,7 +8,7 @@ class Forum(models.Model):
     title = models.CharField(max_length=255)
 
     # Simple count() aggregate
-    post_count = CountField('Post','post_set')
+    post_count = CountField('post_set')
 
     @denormalized(models.CharField,max_length=255)
     @depend_on_related('Post')
@@ -35,7 +35,7 @@ class Post(models.Model):
     response_to = models.ForeignKey('self',blank=True,null=True,related_name='responses')
     title = models.CharField(max_length=255,blank=True)
 
-    attachment_count = CountField('Attachment','attachment_set')
+    attachment_count = CountField('attachment_set')
 
     # Brings down the forum title
     @denormalized(models.CharField, max_length=255)
