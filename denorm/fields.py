@@ -81,16 +81,11 @@ class CountField(models.PositiveIntegerField):
 
     manager_name:
         The name of the related manager to be counted.
-
-    \*args, \*\*kwargs:
-        Those will be passed into the constructor of ``PositiveIntegerField``.
-        kwargs['default'] will be set to 0.
     """
-    def __init__(self,manager_name,*args,**kwargs):
+    def __init__(self,manager_name):
         self.denorm = denorms.CountDenorm()
         self.denorm.manager_name = manager_name
-        kwargs["default"] = 0
-        super(CountField,self).__init__(*args,**kwargs)
+        super(CountField,self).__init__(default=0)
 
     def contribute_to_class(self,cls,name,*args,**kwargs):
         self.denorm.model = cls
