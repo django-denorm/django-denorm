@@ -24,7 +24,7 @@ class TriggerActionInsert(TriggerAction):
         self.values = values
 
     def sql(self):
-        raise NotImplemented
+        raise NotImplementedError
 
 class Trigger:
 
@@ -64,7 +64,7 @@ class Trigger:
         ])
 
     def sql(self):
-        raise NotImplemented
+        raise NotImplementedError
 
 class TriggerSet:
     def __init__(self):
@@ -82,4 +82,4 @@ class TriggerSet:
                 self.triggers[name] = trigger
 
     def install(self):
-        raise NotImplemented
+        raise NotImplementedError
