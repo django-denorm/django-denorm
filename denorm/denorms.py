@@ -22,8 +22,6 @@ class Denorm(object):
         global alldenorms
         alldenorms += [self]
 
-        models.signals.pre_save.connect(self.self_save_handler,sender=self.model)
-
     def update(self,qs):
         """
         Updates the denormalizations in all instances in the queryset 'qs'.
@@ -38,15 +36,6 @@ class Denorm(object):
 
     def get_triggers(self):
         return []
-
-    def self_save_handler(self,sender,instance,**kwargs):
-        """
-        Updates the value of the denormalized field
-        in 'instance' before it gets saved.
-        """
-        if self.func:
-            setattr(instance,self.fieldname,self.func(instance))
-
 
 class CallbackDenorm(Denorm):
 

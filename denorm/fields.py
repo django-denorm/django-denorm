@@ -35,6 +35,14 @@ def denormalized(DBField,*args,**kwargs):
             models.signals.class_prepared.connect(self.denorm.setup,sender=cls)
             DBField.contribute_to_class(self,cls,name,*args,**kwargs)
 
+        def pre_save(self,model_instance,add):
+            """
+            Updates the value of the denormalized field before it gets saved.
+            """
+            value = self.denorm.func(model_instance)
+            setattr(model_instance, self.attname, value)
+            return value
+
         def south_field_definition(self):
             """
             the old way of telling south how this field should be
@@ -92,3 +100,25 @@ class CountField(models.PositiveIntegerField):
         self.denorm.fieldname = name
         models.signals.class_prepared.connect(self.denorm.setup)
         super(CountField,self).contribute_to_class(cls,name,*args,**kwargs)
+
+    def pre_save(self,model_instance,add):
+        """
+        Makes sure we never overwrite the count with an
+        outdated value.
+        This is necessary because if the count was changed by
+        a trigger after this model instance was created the value
+        we would write has not been updated.
+        """
+        if add:
+            # if this is a new instance there can't be any related objects yet
+            value = 0
+        else:
+            # if we're updating, get the most recent value from the DB
+            value = self.denorm.model.objects.filter(
+                pk=model_instance.pk,
+            ).values_list(
+                self.attname,flat=True,
+            )[0]
+
+        setattr(model_instance, self.attname, value)
+        return value
