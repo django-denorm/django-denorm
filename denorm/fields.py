@@ -73,6 +73,8 @@ def denormalized(DBField,*args,**kwargs):
     def deco(func):
         denorm = denorms.CallbackDenorm()
         denorm.func = func
+        kwargs["blank"] = True
+        kwargs["null"] = True
         dbfield = DenormDBField(*args,**kwargs)
         dbfield.denorm = denorm
         return dbfield
