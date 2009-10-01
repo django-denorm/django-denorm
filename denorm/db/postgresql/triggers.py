@@ -65,7 +65,7 @@ class Trigger(base.Trigger):
 class TriggerSet(base.TriggerSet):
 
     def install(self):
-        from django.db import connection
+        from django.db import connection, transaction
         cursor = connection.cursor()
 
         cursor.execute("SELECT * FROM pg_trigger;")
@@ -73,6 +73,8 @@ class TriggerSet(base.TriggerSet):
             if result[1].startswith("denorm_"):
                 x,table = result[1].rsplit("_on_",)
                 cursor.execute("""DROP TRIGGER %s ON %s;""" % (result[1],table))
+                transaction.commit_unless_managed()
 
         for name,trigger in self.triggers.iteritems():
             cursor.execute(trigger.sql())
+            transaction.commit_unless_managed()
