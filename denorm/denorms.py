@@ -31,6 +31,7 @@ class Denorm(object):
             new_value = self.func(instance)
             if not getattr(instance,self.fieldname) == new_value:
                 setattr(instance,self.fieldname,new_value)
+                qs.filter(id=instance.id).update(**{self.fieldname:new_value})
                 instance.save()
         flush()
 
