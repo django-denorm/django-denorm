@@ -29,9 +29,11 @@ class Denorm(object):
         for instance in qs.distinct():
             # only write new values to the DB if they actually changed
             new_value = self.func(instance)
-            if not getattr(instance,self.fieldname) == new_value:
-                setattr(instance,self.fieldname,new_value)
-                qs.filter(id=instance.id).update(**{self.fieldname:new_value})
+            # Get attribute name (required for denormalising ForeignKeys)
+            attname = instance._meta.get_field(self.fieldname).attname
+            if not getattr(instance,attname) == new_value:
+                setattr(instance,attname,new_value)
+                qs.filter(id=instance.id).update(**{attname:new_value})
                 instance.save()
         flush()
 

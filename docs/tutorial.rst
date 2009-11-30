@@ -8,7 +8,7 @@ Counting related objects
 Maybe the most common use case for denormalization is to cache the number
 of objects associated with an object instance through a ForeignKey.
 
-So lets say we are building a gallery application with models like this::
+So let's say we are building a gallery application with models like this::
 
     class Gallery(models.Model):
         name = models.TextField()
@@ -127,6 +127,25 @@ In that you also need to specify the direction of the relation::
     ...
         @depend_on_related('self',type='forward')
     ...
+    
+Denormalizing ForeignKeys
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you wish to denormalize a ForeignKey (for example to cache a relationship that
+is through another model), then your computation should return the primary key of
+the related model. For example::
+
+class SomeOtherModel(models.Model):
+    third_model = models.ForeignKey('ThirdModel')
+
+class SomeModel(models.Model):
+    # the other fields
+    other = models.ForeignKey('SomeOtherModel')
+
+   @denormalized(models.ForeignKey,to='ThirdModel',blank=True, null=True)
+   @depend_on_related('SomeOtherModel')
+   def third_model(self):
+       return self.other.third_model.pk
 
 Callbacks are lazy
 ------------------
