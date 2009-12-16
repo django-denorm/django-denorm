@@ -48,11 +48,11 @@ class DependOnRelated(DenormDependency):
         foreign_key
             The name of the ForeignKey or ManyToManyField that creates the relation
             between the two models.
-            This is needed to specify witch one to use in case there are more than one.
+            Only necessary if there is more than one relationship between the two models.
 
         type
             One of 'forward', 'backward', 'forward_m2m' or 'backward_m2m'.
-            If there are relations in both directions specify witch one to use.
+            If there are relations in both directions specify which one to use.
         """
         self.other_model = othermodel
         self.fk_name = foreign_key
@@ -62,7 +62,7 @@ class DependOnRelated(DenormDependency):
 
         if not self.type:
             # 'resolved_model' model never got called...
-            raise ValueError("The model '%s' could not be resolved, it propably does not exist" % self.other_model)
+            raise ValueError("The model '%s' could not be resolved, it probably does not exist" % self.other_model)
 
         content_type = str(ContentType.objects.get_for_model(self.this_model).id)
 
