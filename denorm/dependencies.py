@@ -77,7 +77,7 @@ class DependOnRelated(DenormDependency):
                 values = triggers.TriggerNestedSelect(
                     self.this_model._meta.db_table,
                     (content_type,"id"),
-                    **{self.field.attname:"NEW.id"}
+                    **{self.field.get_attname_column()[1]:"NEW.%s" % self.other_model._meta.pk.get_attname_column()[1]}
                 )
             )
             action_old = triggers.TriggerActionInsert(
@@ -86,7 +86,7 @@ class DependOnRelated(DenormDependency):
                 values = triggers.TriggerNestedSelect(
                     self.this_model._meta.db_table,
                     (content_type,"id"),
-                    **{self.field.attname:"OLD.id"}
+                    **{self.field.get_attname_column()[1]:"OLD.%s" % self.other_model._meta.pk.get_attname_column()[1]}
                 )
             )
             return [
@@ -106,7 +106,7 @@ class DependOnRelated(DenormDependency):
                 columns = ("content_type_id","object_id"),
                 values = (
                     content_type,
-                    "NEW.%s" % self.field.attname,
+                    "NEW.%s" % self.field.get_attname_column()[1],
                 )
             )
             action_old = triggers.TriggerActionInsert(
@@ -114,7 +114,7 @@ class DependOnRelated(DenormDependency):
                 columns = ("content_type_id","object_id"),
                 values = (
                     content_type,
-                    "OLD.%s" % self.field.attname,
+                    "OLD.%s" % self.field.get_attname_column()[1],
                 )
             )
             return [
