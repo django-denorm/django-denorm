@@ -54,7 +54,7 @@ class Trigger:
             self.db_table = self.model._meta.db_table
             # FIXME, need to check get_parent_list and add triggers to those
             # The below will only check the fields on *this* model, not parents
-            self.fieldnames = [k.attname for k,v in self._meta.get_fields_with_model() if not v]
+            self.fieldnames = [k.attname for k,v in self.model._meta.get_fields_with_model() if not v]
         else:
             raise NotImplementedError
 
