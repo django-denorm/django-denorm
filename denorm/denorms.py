@@ -33,7 +33,7 @@ class Denorm(object):
             attname = instance._meta.get_field(self.fieldname).attname
             if not getattr(instance,attname) == new_value:
                 setattr(instance,attname,new_value)
-                qs.filter(id=instance.id).update(**{attname:new_value})
+                qs.filter(pk=instance.pk).update(**{attname:new_value})
                 instance.save()
         flush()
 
@@ -66,7 +66,7 @@ class CallbackDenorm(Denorm):
         to fields this denorm depends on.
         """
 
-        content_type = str(ContentType.objects.get_for_model(self.model).id)
+        content_type = str(ContentType.objects.get_for_model(self.model).pk)
 
         # Create a trigger that marks any updated or newly created
         # instance of the model containing the denormalized field
@@ -78,7 +78,7 @@ class CallbackDenorm(Denorm):
         action = triggers.TriggerActionInsert(
             model = DirtyInstance,
             columns = ("content_type_id","object_id"),
-            values = (content_type,"NEW.id")
+            values = (content_type,"NEW.%s" % self.model._meta.pk.get_attname_column()[1])
         )
         trigger_list = [
             triggers.Trigger(self.model,"after","update",[action]),
@@ -125,13 +125,13 @@ class CountDenorm(Denorm):
             model = self.model,
             columns = (self.fieldname,),
             values = ("%s+1" % self.fieldname,),
-            where = "id=NEW.%s" % fk_name,
+            where = "%s=NEW.%s" % (self.model._meta.pk.get_attname_column()[1], fk_name),
         )
         decrement = triggers.TriggerActionUpdate(
             model = self.model,
             columns = (self.fieldname,),
             values = ("%s-1" % self.fieldname,),
-            where = "id=OLD.%s" % fk_name,
+            where = "%s=OLD.%s" % (self.model._meta.pk.get_attname_column()[1], fk_name),
         )
 
         other_model = self.manager.related.model
