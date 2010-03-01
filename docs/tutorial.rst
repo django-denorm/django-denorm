@@ -5,7 +5,7 @@ Tutorial
 Counting related objects
 ========================
 
-Maybe the most common use case for denormalization is to cache the number
+Perhaps the most common use case for denormalization is to cache the number
 of objects associated with an object instance through a ForeignKey.
 
 So let's say we are building a gallery application with models like this::
@@ -17,12 +17,12 @@ So let's say we are building a gallery application with models like this::
         image = models.ImageField(...)
         gallery = models.ForeignKey(Gallery)
 
-Now if we want to know the number of pictures in a gallery, we usually do something like::
+To calculate the number of pictures in a gallery, we would normally have a Django view with code similar to::
 
     gallery = Gallery.objects.get(...)
     number_of_pictures = gallery.picture_set.count()
 
-The problem here is of course that this will hit the database with a COUNT query every time.
+However, this code will result in a COUNT query on the database for every tiem the page is viewed.
 
 To speed this up we can cache the number of pictures inside the gallery::
 
@@ -37,8 +37,7 @@ To speed this up we can cache the number of pictures inside the gallery::
         gallery = models.ForeignKey(Gallery)
 
 This will incrementally update the number when we add and delete related objects.
-Note that ``CountField`` updates are not lazy (like the callbacks described below), their
-value always gets updated immediately.
+Note that ``CountField`` updates are not lazy (like the callbacks described below), their value always gets updated immediately.
 
 
 Creating denormalized fields using callback functions
@@ -50,8 +49,7 @@ value. Any additional arguments will be passed into the constructor of the speci
 created.
 
 If you already use the ``@property`` decorator that comes with python to make your computed values accessible
-like attributes, you can just replace ``@property`` with ``@denormalized(..)`` and you probably won't need
-to change any code outside your model.
+like attributes, you can often just replace ``@property`` with ``@denormalized(..)`` and you  won't need to change any code outside your model.
 
 Now whenever an instance of your model gets saved, the value stored in the field will get updated
 with whatever value the decorated function returns.
@@ -60,12 +58,13 @@ Example::
 
     class SomeModel(models.Model):
         # the other fields
+        
         @denormalized(models.CharField,max_length=100)
         def some_computation(self):
            # your code
            return some_value
 
-in this example ``SomeModel`` will get a ``CharField`` named ``some_computation``.
+in this example ``SomeModel`` will have a ``CharField`` named ``some_computation``.
 
 
 Adding dependency information
@@ -135,17 +134,17 @@ If you wish to denormalize a ForeignKey (for example to cache a relationship tha
 is through another model), then your computation should return the primary key of
 the related model. For example::
 
-class SomeOtherModel(models.Model):
-    third_model = models.ForeignKey('ThirdModel')
+    class SomeOtherModel(models.Model):
+        third_model = models.ForeignKey('ThirdModel')
 
-class SomeModel(models.Model):
-    # the other fields
-    other = models.ForeignKey('SomeOtherModel')
+    class SomeModel(models.Model):
+        # the other fields
+        other = models.ForeignKey('SomeOtherModel')
 
-   @denormalized(models.ForeignKey,to='ThirdModel',blank=True, null=True)
-   @depend_on_related('SomeOtherModel')
-   def third_model(self):
-       return self.other.third_model.pk
+       @denormalized(models.ForeignKey,to='ThirdModel',blank=True, null=True)
+       @depend_on_related('SomeOtherModel')
+       def third_model(self):
+           return self.other.third_model.pk
 
 Callbacks are lazy
 ------------------
@@ -185,10 +184,21 @@ Final steps
 ===========
 
 Now that the models contain all information needed for the denormalization to work,
-we need to do some final steps do make the database use it. As django-denorm uses triggers,
+we need to do some final steps to make the database use it. As django-denorm uses triggers,
 those have to be created in the database with::
 
     ./manage.py denorm_init
 
 This has to be redone after every time you make changes to denormalized fields.
 
+Testing denormalized apps
+=========================
+
+When testing a denormalized app you will need to instal the triggers in the setUp method::
+
+    from denorm import denorms
+
+    class TestDenormalisation(TestCase):
+
+        def setUp(self):
+            denorms.install_triggers()
