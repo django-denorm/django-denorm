@@ -41,9 +41,7 @@ def denormalized(DBField,*args,**kwargs):
             Updates the value of the denormalized field before it gets saved.
             """
             value = self.denorm.func(model_instance)
-            print "new value is %s" % value
             setattr(model_instance, self.attname, value)
-            print "return it, %s" % getattr(model_instance, self.attname)
             return value
 
         def south_field_definition(self):

@@ -26,13 +26,10 @@ class Denorm(object):
         """
         Updates the denormalizations in all instances in the queryset 'qs'.
         """
-        print "CALLED UPDATE"
         for instance in qs.distinct():
-            print "here we are in qs %s" % qs
             # only write new values to the DB if they actually changed
             new_value = self.func(instance)
             
-            print "ooh, a new value? %s" % new_value
             # Get attribute name (required for denormalising ForeignKeys)
             attname = instance._meta.get_field(self.fieldname).attname
             if not getattr(instance,attname) == new_value:
