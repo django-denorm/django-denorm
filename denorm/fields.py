@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from django.db import models
 from denorm import denorms
+from django.conf import settings
 
 def denormalized(DBField,*args,**kwargs):
     """
@@ -40,7 +41,9 @@ def denormalized(DBField,*args,**kwargs):
             Updates the value of the denormalized field before it gets saved.
             """
             value = self.denorm.func(model_instance)
+            print "new value is %s" % value
             setattr(model_instance, self.attname, value)
+            print "return it, %s" % getattr(model_instance, self.attname)
             return value
 
         def south_field_definition(self):
@@ -71,7 +74,10 @@ def denormalized(DBField,*args,**kwargs):
                 )
 
     def deco(func):
-        denorm = denorms.CallbackDenorm()
+        if hasattr(settings, 'DENORM_BULK_UNSAFE_TRIGGERS') and settings.DENORM_BULK_UNSAFE_TRIGGERS:
+            denorm = denorms.BaseCallbackDenorm()
+        else:
+            denorm = denorms.CallbackDenorm()
         denorm.func = func
         kwargs["blank"] = True
         kwargs["null"] = True

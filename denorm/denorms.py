@@ -26,9 +26,13 @@ class Denorm(object):
         """
         Updates the denormalizations in all instances in the queryset 'qs'.
         """
+        print "CALLED UPDATE"
         for instance in qs.distinct():
+            print "here we are in qs %s" % qs
             # only write new values to the DB if they actually changed
             new_value = self.func(instance)
+            
+            print "ooh, a new value? %s" % new_value
             # Get attribute name (required for denormalising ForeignKeys)
             attname = instance._meta.get_field(self.fieldname).attname
             if not getattr(instance,attname) == new_value:
@@ -39,9 +43,8 @@ class Denorm(object):
 
     def get_triggers(self):
         return []
-
-class CallbackDenorm(Denorm):
-
+        
+class BaseCallbackDenorm(Denorm):
     """
     Handles the denormalization of one field, using a python function
     as a callback.
@@ -55,7 +58,7 @@ class CallbackDenorm(Denorm):
         if not hasattr(self.func,'depend'):
             self.func.depend = []
 
-        super(CallbackDenorm,self).setup(**kwargs)
+        super(BaseCallbackDenorm,self).setup(**kwargs)
 
         for dependency in self.func.depend:
             dependency.setup(self.model)
@@ -65,7 +68,21 @@ class CallbackDenorm(Denorm):
         Creates a list of all triggers needed to keep track of changes
         to fields this denorm depends on.
         """
+        trigger_list = list()
+        
+        # Get the triggers of all DenormDependency instances attached
+        # to our callback.
+        for dependency in self.func.depend:
+            trigger_list += dependency.get_triggers()
 
+        return trigger_list + super(BaseCallbackDenorm,self).get_triggers()
+
+class CallbackDenorm(Denorm):
+    """
+    As above, but with extra triggers on self as described below
+    """
+
+    def get_triggers(self):
         content_type = str(ContentType.objects.get_for_model(self.model).pk)
 
         # Create a trigger that marks any updated or newly created
@@ -84,11 +101,6 @@ class CallbackDenorm(Denorm):
             triggers.Trigger(self.model,"after","update",[action]),
             triggers.Trigger(self.model,"after","insert",[action]),
         ]
-
-        # Get the triggers of all DenormDependency instances attached
-        # to our callback.
-        for dependency in self.func.depend:
-            trigger_list += dependency.get_triggers()
 
         return trigger_list + super(CallbackDenorm,self).get_triggers()
 
