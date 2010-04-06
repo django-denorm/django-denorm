@@ -83,12 +83,13 @@ class BaseCallbackDenorm(Denorm):
 
         return trigger_list + super(BaseCallbackDenorm,self).get_triggers()
 
-class CallbackDenorm(Denorm):
+class CallbackDenorm(BaseCallbackDenorm):
     """
     As above, but with extra triggers on self as described below
     """
 
     def get_triggers(self):
+        
         content_type = str(ContentType.objects.get_for_model(self.model).pk)
 
         # Create a trigger that marks any updated or newly created
