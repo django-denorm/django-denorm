@@ -34,6 +34,8 @@ def denormalized(DBField,*args,**kwargs):
             self.denorm.fieldname = name
             self.field_args = (args, kwargs)
             models.signals.class_prepared.connect(self.denorm.setup,sender=cls)
+            # Add The many to many signal for this class
+            models.signals.pre_save.connect(denorms.many_to_many_pre_save,sender=cls)
             DBField.contribute_to_class(self,cls,name,*args,**kwargs)
 
         def pre_save(self,model_instance,add):

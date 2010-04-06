@@ -9,6 +9,15 @@ from denorm.models import DirtyInstance
 # this is used to rebuild all denormalized values in the whole DB
 alldenorms = []
 
+
+def many_to_many_pre_save(sender, instance, **kwargs):
+    """
+    Updates denormalised many-to-many fields for the model
+    """
+    for m2m in sender._meta.local_many_to_many:
+        values = m2m.denorm.func(instance)
+        setattr(instance, m2m.attname, values)
+
 class Denorm(object):
 
     def __init__(self):
