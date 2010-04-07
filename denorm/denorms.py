@@ -15,25 +15,27 @@ def many_to_many_pre_save(sender, instance, **kwargs):
     Updates denormalised many-to-many fields for the model
     """
     for m2m in sender._meta.local_many_to_many:
-        # Does some extra jiggery-pokery for "through" m2m models.
-        # May not work under lots of conditions.
-        if hasattr(m2m.rel, 'through_model'):
+        # This gets us all m2m fields, so limit it to just those that are denormed
+        if hasattr(m2m, "denorm"):
+            # Does some extra jiggery-pokery for "through" m2m models.
+            # May not work under lots of conditions.
+            if hasattr(m2m.rel, 'through_model'):
             
-            # Clear exisiting through records (bit heavy handed?)
-            kwargs = { m2m.related.var_name: instance, }
+                # Clear exisiting through records (bit heavy handed?)
+                kwargs = { m2m.related.var_name: instance, }
             
-            # Can't use m2m_column_name in a filter
-            # kwargs = { m2m.m2m_column_name(): instance.pk, }
-            m2m.rel.through_model.objects.filter(**kwargs).delete()
+                # Can't use m2m_column_name in a filter
+                # kwargs = { m2m.m2m_column_name(): instance.pk, }
+                m2m.rel.through_model.objects.filter(**kwargs).delete()
             
-            values = m2m.denorm.func(instance)
-            for value in values:
-                kwargs.update({m2m.m2m_reverse_name(): value.pk,})
-                m2m.rel.through_model.objects.create(**kwargs)
+                values = m2m.denorm.func(instance)
+                for value in values:
+                    kwargs.update({m2m.m2m_reverse_name(): value.pk,})
+                    m2m.rel.through_model.objects.create(**kwargs)
 
-        else:
-            values = m2m.denorm.func(instance)
-            setattr(instance, m2m.attname, values)
+            else:
+                values = m2m.denorm.func(instance)
+                setattr(instance, m2m.attname, values)
 
 class Denorm(object):
 
