@@ -1,36 +1,24 @@
-import os
+#!/usr/bin/python
 
-from distutils.core import setup
+from setuptools import setup, find_packages
 
-def fullsplit(path, result=None):
-    """
-    Split a pathname into components (the opposite of os.path.join) in a
-    platform-neutral way.
-    """
-    if result is None:
-        result = []
-    head, tail = os.path.split(path)
-    if head == "":
-        return [tail] + result
-    if head == path:
-        return result
-    return fullsplit(head, [tail] + result)
- 
-package_dir = "denorm"
- 
-packages = []
-for dirpath, dirnames, filenames in os.walk(package_dir):
-    # ignore dirnames that start with '.'
-    for i, dirname in enumerate(dirnames):
-        if dirname.startswith("."):
-            del dirnames[i]
-    if "__init__.py" in filenames:
-        packages.append(".".join(fullsplit(dirpath)))
-
-setup(name='django-denorm',
-    version='0.01',
+setup(
+    name='django-denorm',
+    version='0.2.0',
     description='Denormalization magic for Django',
-    author='Christian Schilling',
-    author_email='christian@initcrash.net',
-    url='http://django-denorm.aeracode.org/',
-    packages=packages)
+    long_description='django-denorm is a Django application to provide automatic management of denormalized database fields.',
+    author='James Turnbull & Christian Schilling',
+    author_email='james@incuna.com',
+    url='http://github.com/incuna/django-denorm/',
+    download_url='http://github.com/incuna/django-denorm/downloads',
+    classifiers=[
+        "Development Status :: 2 - Pre-Alpha",
+        "Framework :: Django",
+        "Intended Audience :: Developers",
+        "Intended Audience :: System Administrators",
+        "Intended Audience :: System Administrators",
+        "Operating System :: OS Independent",
+        "Topic :: Software Development"
+    ],
+    packages=['denorm', 'denorm.db', 'denorm.db.mysql', 'denorm.db.postgresql', 'denorm.db.postgresql_psycopg2', 'denorm.db.sqlite3', 'denorm.management', 'denorm.management.commands'],
+)

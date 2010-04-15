@@ -12,10 +12,15 @@ class Forum(models.Model):
 
     @denormalized(models.CharField,max_length=255)
     @depend_on_related('Post')
-    def authors(self):
+    def author_names(self):
         return ', '.join((m.author_name for m in self.post_set.all()))
+        
+    @denormalized(models.ManyToManyField,'Member',null=True,blank=True)
+    @depend_on_related('Post')
+    def authors(self):
+        return [m.author for m in self.post_set.all() if m.author]
 
-    # lets say this forums supports subforums, sub-subforums and so forth
+    # let's say this forums supports subforums, sub-subforums and so forth
     # so we can test depend_on_related('self') (for tree structures).
     parent_forum = models.ForeignKey('self',blank=True,null=True)
 
@@ -63,6 +68,14 @@ class Post(models.Model):
 class Attachment(models.Model):
 
     post = models.ForeignKey(Post,blank=True,null=True)
+    
+    @denormalized(models.ForeignKey, Forum, blank=True, null=True)
+    @depend_on_related(Post)
+    def forum(self):
+        if self.post and self.post.forum:
+            return self.post.forum.pk
+        return None
+        
 
 class Member(models.Model):
 

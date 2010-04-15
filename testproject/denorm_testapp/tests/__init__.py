@@ -94,7 +94,7 @@ class TestDenormalisation(TestCase):
         denorm.flush()
 
         # check the forums author list contains the member
-        self.assertEqual(Forum.objects.get(id=f1.id).authors, "memberone")
+        self.assertEqual(Forum.objects.get(id=f1.id).author_names, "memberone")
 
         # change the members name
         m1.name = "membertwo"
@@ -102,7 +102,7 @@ class TestDenormalisation(TestCase):
         denorm.flush()
 
         # check again
-        self.assertEqual(Forum.objects.get(id=f1.id).authors, "membertwo")
+        self.assertEqual(Forum.objects.get(id=f1.id).author_names, "membertwo")
 
     def test_trees(self):
         f1 = Forum.objects.create(title="forumone")
@@ -249,3 +249,44 @@ class TestDenormalisation(TestCase):
         Post.objects.filter(pk=p3.pk).update(forum=f1)
         self.assertEqual(Forum.objects.get(id=f1.id).post_count, 3)
         self.assertEqual(Forum.objects.get(id=f2.id).post_count, 0)
+        
+    def test_foreignkey(self):
+        f1 = Forum.objects.create(title="forumone")
+        f2 = Forum.objects.create(title="forumtwo")
+        m1 = Member.objects.create(first_name="first1",name="last1")
+        p1 = Post.objects.create(forum=f1,author=m1)
+        
+        a1 = Attachment.objects.create(post=p1)
+        self.assertEqual(Attachment.objects.get(id=a1.id).forum, f1)
+        
+        a2 = Attachment.objects.create()
+        self.assertEqual(Attachment.objects.get(id=a2.id).forum, None)
+        
+        # Change forum
+        p1.forum = f2
+        p1.save()
+        denorm.flush()
+        self.assertEqual(Attachment.objects.get(id=a1.id).forum, f2)
+        
+    def test_m2m(self):
+        f1 = Forum.objects.create(title="forumone")
+        m1 = Member.objects.create(name="memberone")
+        p1 = Post.objects.create(forum=f1,author=m1)
+        denorm.flush()
+
+        # check the forums author list contains the member
+        self.assertTrue(m1 in Forum.objects.get(id=f1.id).authors.all())
+
+        m2 = Member.objects.create(name="membertwo")
+        p2 = Post.objects.create(forum=f1,author=m2)
+        denorm.flush()
+        
+        self.assertTrue(m1 in Forum.objects.get(id=f1.id).authors.all())
+        self.assertTrue(m2 in Forum.objects.get(id=f1.id).authors.all())
+        
+        p2.delete()
+        denorm.flush()
+        
+        self.assertTrue(m2 not in Forum.objects.get(id=f1.id).authors.all())
+        
+        
