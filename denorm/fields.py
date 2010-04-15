@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from django.db import models
 from denorm import denorms
+from django.conf import settings
 
 def denormalized(DBField,*args,**kwargs):
     """
@@ -33,6 +34,8 @@ def denormalized(DBField,*args,**kwargs):
             self.denorm.fieldname = name
             self.field_args = (args, kwargs)
             models.signals.class_prepared.connect(self.denorm.setup,sender=cls)
+            # Add The many to many signal for this class
+            models.signals.pre_save.connect(denorms.many_to_many_pre_save,sender=cls)
             DBField.contribute_to_class(self,cls,name,*args,**kwargs)
 
         def pre_save(self,model_instance,add):
@@ -54,7 +57,10 @@ def denormalized(DBField,*args,**kwargs):
             return (field_class, args, kwargs)
 
     def deco(func):
-        denorm = denorms.CallbackDenorm()
+        if hasattr(settings, 'DENORM_BULK_UNSAFE_TRIGGERS') and settings.DENORM_BULK_UNSAFE_TRIGGERS:
+            denorm = denorms.BaseCallbackDenorm()
+        else:
+            denorm = denorms.CallbackDenorm()
         denorm.func = func
         kwargs["blank"] = True
         kwargs["null"] = True

@@ -9,6 +9,34 @@ from denorm.models import DirtyInstance
 # this is used to rebuild all denormalized values in the whole DB
 alldenorms = []
 
+
+def many_to_many_pre_save(sender, instance, **kwargs):
+    """
+    Updates denormalised many-to-many fields for the model
+    """
+    for m2m in sender._meta.local_many_to_many:
+        # This gets us all m2m fields, so limit it to just those that are denormed
+        if hasattr(m2m, "denorm"):
+            # Does some extra jiggery-pokery for "through" m2m models.
+            # May not work under lots of conditions.
+            if hasattr(m2m.rel, 'through_model'):
+            
+                # Clear exisiting through records (bit heavy handed?)
+                kwargs = { m2m.related.var_name: instance, }
+            
+                # Can't use m2m_column_name in a filter
+                # kwargs = { m2m.m2m_column_name(): instance.pk, }
+                m2m.rel.through_model.objects.filter(**kwargs).delete()
+            
+                values = m2m.denorm.func(instance)
+                for value in values:
+                    kwargs.update({m2m.m2m_reverse_name(): value.pk,})
+                    m2m.rel.through_model.objects.create(**kwargs)
+
+            else:
+                values = m2m.denorm.func(instance)
+                setattr(instance, m2m.attname, values)
+
 class Denorm(object):
 
     def __init__(self):
@@ -29,19 +57,19 @@ class Denorm(object):
         for instance in qs.distinct():
             # only write new values to the DB if they actually changed
             new_value = self.func(instance)
+            
             # Get attribute name (required for denormalising ForeignKeys)
             attname = instance._meta.get_field(self.fieldname).attname
             if not getattr(instance,attname) == new_value:
                 setattr(instance,attname,new_value)
-                qs.filter(id=instance.id).update(**{attname:new_value})
+                qs.filter(pk=instance.pk).update(**{attname:new_value})
                 instance.save()
         flush()
 
     def get_triggers(self):
         return []
-
-class CallbackDenorm(Denorm):
-
+        
+class BaseCallbackDenorm(Denorm):
     """
     Handles the denormalization of one field, using a python function
     as a callback.
@@ -55,7 +83,7 @@ class CallbackDenorm(Denorm):
         if not hasattr(self.func,'depend'):
             self.func.depend = []
 
-        super(CallbackDenorm,self).setup(**kwargs)
+        super(BaseCallbackDenorm,self).setup(**kwargs)
 
         for dependency in self.func.depend:
             dependency.setup(self.model)
@@ -65,8 +93,23 @@ class CallbackDenorm(Denorm):
         Creates a list of all triggers needed to keep track of changes
         to fields this denorm depends on.
         """
+        trigger_list = list()
+        
+        # Get the triggers of all DenormDependency instances attached
+        # to our callback.
+        for dependency in self.func.depend:
+            trigger_list += dependency.get_triggers()
 
-        content_type = str(ContentType.objects.get_for_model(self.model).id)
+        return trigger_list + super(BaseCallbackDenorm,self).get_triggers()
+
+class CallbackDenorm(BaseCallbackDenorm):
+    """
+    As above, but with extra triggers on self as described below
+    """
+
+    def get_triggers(self):
+        
+        content_type = str(ContentType.objects.get_for_model(self.model).pk)
 
         # Create a trigger that marks any updated or newly created
         # instance of the model containing the denormalized field
@@ -78,17 +121,12 @@ class CallbackDenorm(Denorm):
         action = triggers.TriggerActionInsert(
             model = DirtyInstance,
             columns = ("content_type_id","object_id"),
-            values = (content_type,"NEW.id")
+            values = (content_type,"NEW.%s" % self.model._meta.pk.get_attname_column()[1])
         )
         trigger_list = [
             triggers.Trigger(self.model,"after","update",[action]),
             triggers.Trigger(self.model,"after","insert",[action]),
         ]
-
-        # Get the triggers of all DenormDependency instances attached
-        # to our callback.
-        for dependency in self.func.depend:
-            trigger_list += dependency.get_triggers()
 
         return trigger_list + super(CallbackDenorm,self).get_triggers()
 
@@ -125,13 +163,13 @@ class CountDenorm(Denorm):
             model = self.model,
             columns = (self.fieldname,),
             values = ("%s+1" % self.fieldname,),
-            where = "id=NEW.%s" % fk_name,
+            where = "%s=NEW.%s" % (self.model._meta.pk.get_attname_column()[1], fk_name),
         )
         decrement = triggers.TriggerActionUpdate(
             model = self.model,
             columns = (self.fieldname,),
             values = ("%s-1" % self.fieldname,),
-            where = "id=OLD.%s" % fk_name,
+            where = "%s=OLD.%s" % (self.model._meta.pk.get_attname_column()[1], fk_name),
         )
 
         other_model = self.manager.related.model
