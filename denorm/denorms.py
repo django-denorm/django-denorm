@@ -139,14 +139,15 @@ class CountDenorm(Denorm):
             triggers.Trigger(other_model,"after","delete",[decrement]),
         ]
 
-def rebuildall():
+def rebuildall(model_name=None):
     """
     Updates all models containing denormalized fields.
     Used by the 'denormalize' management command.
     """
     global alldenorms
     for denorm in alldenorms:
-        denorm.update(denorm.model.objects.all())
+        if model_name is None or denorm.model.__name__ == model_name:
+            denorm.update(denorm.model.objects.all())
 
 def install_triggers():
     """

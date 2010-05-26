@@ -6,5 +6,5 @@ from denorm import denorms
 
 class Command(BaseCommand):
 
-    def handle(self, *args, **kwargs):
-        denorms.rebuildall()
+    def handle(self, model_name=None, *args, **kwargs):
+        denorms.rebuildall(model_name)
