@@ -40,7 +40,7 @@ class Trigger(base.Trigger):
 
 
         if event == "UPDATE":
-            when = "WHEN(%s)"%"OR".join(["(OLD.%s!=NEW.%s)"%(f,f) for f in self.fieldnames])
+            when = "WHEN(%s)"%"OR".join(["(OLD.%s!=NEW.%s)"%(f,f) for f,t in self.fields])
         else:
             when = ''
 
