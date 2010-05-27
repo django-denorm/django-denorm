@@ -48,13 +48,13 @@ class Trigger:
         if isinstance(subject,models.ManyToManyField):
             self.model = None
             self.db_table = subject.m2m_db_table()
-            self.fieldnames = [subject.m2m_column_name(),subject.m2m_reverse_name()]
+            self.fields = ((subject.m2m_column_name(), ''),(subject.m2m_reverse_name(),''))
         elif hasattr(subject,"_meta"):
             self.model = subject
             self.db_table = self.model._meta.db_table
             # FIXME, need to check get_parent_list and add triggers to those
             # The below will only check the fields on *this* model, not parents
-            self.fieldnames = [k.attname for k,v in self.model._meta.get_fields_with_model() if not v]
+            self.fields = ((k.attname, k.db_type()) for k,v in self.model._meta.get_fields_with_model() if not v)
         else:
             raise NotImplementedError
 
