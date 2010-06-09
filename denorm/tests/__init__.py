@@ -3,26 +3,46 @@ import datetime
 import sys
 import os
 
+from django.conf import settings
+from django.core.management import call_command
+from django.db.models import loading
+from django import test
 from django.core import management
 from django.test import TestCase
 from django.contrib.auth.models import User,Permission
 
-# Add the tests directory so the denorm_testapp is on sys.path
-test_root = os.path.dirname(__file__)
-sys.path.append(test_root)
-
-# Import denorm_testapp's models
-import denorm_testapp.models
-from denorm_testapp.models import *
 from denorm.denorms import install_triggers
 import denorm
-
+from models import *
 
 class TestDenormalisation(TestCase):
-
     """
     Tests for the denormalisation fields.
     """
+    
+    apps = ('denorm.tests',)
+    
+    # _pre_setup and _post_teardown add the test models to installed apps
+    # Snippet from 
+    # http://stackoverflow.com/questions/502916/django-how-to-create-a-model-dynamically-just-for-testing/2672444#2672444
+    
+    def _pre_setup(self):
+        # Add the models to the db.
+        self._original_installed_apps = list(settings.INSTALLED_APPS)
+        for app in self.apps:
+            settings.INSTALLED_APPS.append(app)
+        loading.cache.loaded = False
+        call_command('syncdb', interactive=False, verbosity=0)
+        # Call the original method that does the fixtures etc.
+        super(TestCase, self)._pre_setup()
+
+    def _post_teardown(self):
+        # Call the original method.
+        super(TestCase, self)._post_teardown()
+        # Restore the settings.
+        settings.INSTALLED_APPS = self._original_installed_apps
+        loading.cache.loaded = False
+        
 
     def setUp(self):
         install_triggers()
@@ -214,6 +234,7 @@ class TestDenormalisation(TestCase):
         self.assertTrue('thirdtitle' in Member.objects.get(id=m1.id).bookmark_titles)
 
     def test_middleware(self):
+        # FIXME, set and de-set middleware values
         f1 = Forum.objects.create(title="forumone")
         m1 = Member.objects.create(first_name="first1",name="last1")
         p1 = Post.objects.create(forum=f1,author=m1)
