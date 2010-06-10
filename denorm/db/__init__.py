@@ -8,7 +8,6 @@ else:
     from django.db import connections, DEFAULT_DB_ALIAS
     engine = connections[DEFAULT_DB_ALIAS].settings_dict['ENGINE']
     backend = engine.rsplit(".", 1)[1]
-    print backend
 
 triggers_module_name = ['denorm.db', backend, 'triggers']
 try:
