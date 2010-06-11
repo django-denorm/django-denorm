@@ -64,7 +64,8 @@ def denormalized(DBField,*args,**kwargs):
             denorm = denorms.CallbackDenorm()
         denorm.func = func
         kwargs["blank"] = True
-        kwargs["null"] = True
+        if 'default' not in kwargs:
+            kwargs["null"] = True
         dbfield = DenormDBField(*args,**kwargs)
         dbfield.denorm = denorm
         return dbfield
