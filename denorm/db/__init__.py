@@ -1,7 +1,6 @@
 from django.conf import settings
 
 if hasattr(settings, 'DATABASE_ENGINE') and settings.DATABASE_ENGINE:
-    print "ENGINE US %s" % settings.DATABASE_ENGINE
     backend = settings.DATABASE_ENGINE
 else:
     # Assume Django 1.2
