@@ -88,6 +88,7 @@ class CountField(models.PositiveIntegerField):
     def __init__(self,manager_name,**kwargs):
         self.denorm = denorms.CountDenorm()
         self.denorm.manager_name = manager_name
+        self.kwargs = kwargs
         kwargs['default'] = 0
         super(CountField,self).__init__(**kwargs)
 
@@ -96,6 +97,13 @@ class CountField(models.PositiveIntegerField):
         self.denorm.fieldname = name
         models.signals.class_prepared.connect(self.denorm.setup)
         super(CountField,self).contribute_to_class(cls,name,*args,**kwargs)
+
+    def south_field_triple(self):
+        return (
+            '.'.join(('models',models.PositiveIntegerField.__name__)),
+            [],
+            self.kwargs,
+        )
 
     def pre_save(self,model_instance,add):
         """
