@@ -10,6 +10,7 @@ from django import test
 from django.core import management
 from django.test import TestCase
 from django.contrib.auth.models import User,Permission
+from django.contrib.contenttypes.models import ContentType
 
 from denorm.denorms import install_triggers
 import denorm
@@ -49,7 +50,8 @@ class TestDenormalisation(TestCase):
 
         self.testuser = User.objects.create_user("testuser","testuser","testuser")
         self.testuser.is_staff = True
-        Permission.objects.get(name='Can change member').user_set.add(self.testuser)
+        ctype = ContentType.objects.get_for_model(Member)
+        Permission.objects.filter(content_type=ctype).get(name='Can change member').user_set.add(self.testuser)
         self.testuser.save()
 
     def tearDown(self):
