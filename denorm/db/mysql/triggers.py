@@ -1,4 +1,7 @@
 from denorm.db import base
+import random
+import string
+
 
 class TriggerNestedSelect(base.TriggerNestedSelect):
 
@@ -33,6 +36,11 @@ class Trigger(base.Trigger):
 
     def sql(self):
         name = self.name()
+        if len(name) > 50:
+            name = name[:45] + ''.join(
+                random.choice(string.ascii_uppercase + string.digits)
+                for x in range(5)
+            )
         actions = (";\n   ").join(set([a.sql() for a in self.actions if a.sql()])) + ";"
         table = self.db_table
         time = self.time.upper()
