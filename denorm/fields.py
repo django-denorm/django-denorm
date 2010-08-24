@@ -100,7 +100,7 @@ class CountField(models.PositiveIntegerField):
 
     def south_field_triple(self):
         return (
-            '.'.join(('models',models.PositiveIntegerField.__name__)),
+            '.'.join(('django','db','models',models.PositiveIntegerField.__name__)),
             [],
             self.kwargs,
         )
