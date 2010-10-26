@@ -14,7 +14,7 @@ class Forum(models.Model):
     @depend_on_related('Post')
     def author_names(self):
         return ', '.join((m.author_name for m in self.post_set.all()))
-        
+
     @denormalized(models.ManyToManyField,'Member',null=True,blank=True)
     @depend_on_related('Post')
     def authors(self):
@@ -68,14 +68,14 @@ class Post(models.Model):
 class Attachment(models.Model):
 
     post = models.ForeignKey(Post,blank=True,null=True)
-    
+
     @denormalized(models.ForeignKey, Forum, blank=True, null=True)
     @depend_on_related(Post)
     def forum(self):
         if self.post and self.post.forum:
             return self.post.forum.pk
         return None
-        
+
 
 class Member(models.Model):
 
