@@ -34,7 +34,7 @@ class DependOnRelated(DenormDependency):
     on either of them pointing to the other one.
     """
 
-    def __init__(self,othermodel,foreign_key=None,type=None):
+    def __init__(self,othermodel,foreign_key=None,type=None,skip=None):
         """
         Attaches a dependency to a callable, indicating the return value depends on
         fields in an other model that is related to the model the callable belongs to
@@ -53,10 +53,15 @@ class DependOnRelated(DenormDependency):
         type
             One of 'forward', 'backward', 'forward_m2m' or 'backward_m2m'.
             If there are relations in both directions specify which one to use.
+
+        skip
+            Use this to specify what fields change on every save().
+            These fields will not be checked and will not make a model dirty when they change, to prevent infinite loops.
         """
         self.other_model = othermodel
         self.fk_name = foreign_key
         self.type = type
+        self.skip = skip
 
     def get_triggers(self):
 
@@ -92,9 +97,9 @@ class DependOnRelated(DenormDependency):
                 )
             )
             return [
-                triggers.Trigger(self.other_model,"after","update",[action_new]),
-                triggers.Trigger(self.other_model,"after","insert",[action_new]),
-                triggers.Trigger(self.other_model,"after","delete",[action_old]),
+                triggers.Trigger(self.other_model,"after","update",[action_new],self.skip),
+                triggers.Trigger(self.other_model,"after","insert",[action_new],self.skip),
+                triggers.Trigger(self.other_model,"after","delete",[action_old],self.skip),
             ]
 
         if self.type == "backward":
@@ -120,9 +125,9 @@ class DependOnRelated(DenormDependency):
                 )
             )
             return [
-                triggers.Trigger(self.other_model,"after","update",[action_new,action_old]),
-                triggers.Trigger(self.other_model,"after","insert",[action_new]),
-                triggers.Trigger(self.other_model,"after","delete",[action_old]),
+                triggers.Trigger(self.other_model,"after","update",[action_new,action_old],self.skip),
+                triggers.Trigger(self.other_model,"after","insert",[action_new],self.skip),
+                triggers.Trigger(self.other_model,"after","delete",[action_old],self.skip),
             ]
 
         if "m2m" in self.type:
@@ -171,10 +176,10 @@ class DependOnRelated(DenormDependency):
             )
 
             return [
-                triggers.Trigger(self.field,"after","update",[action_m2m_new,action_m2m_old]),
-                triggers.Trigger(self.field,"after","insert",[action_m2m_new]),
-                triggers.Trigger(self.field,"after","delete",[action_m2m_old]),
-                triggers.Trigger(self.other_model,"after","update",[action_new]),
+                triggers.Trigger(self.field,"after","update",[action_m2m_new,action_m2m_old],self.skip),
+                triggers.Trigger(self.field,"after","insert",[action_m2m_new],self.skip),
+                triggers.Trigger(self.field,"after","delete",[action_m2m_old],self.skip),
+                triggers.Trigger(self.other_model,"after","update",[action_new],self.skip),
             ]
 
         return []

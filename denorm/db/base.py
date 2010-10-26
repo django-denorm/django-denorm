@@ -38,7 +38,7 @@ class TriggerActionUpdate(TriggerAction):
 
 class Trigger:
 
-    def __init__(self,subject, time, event,actions=[]):
+    def __init__(self, subject, time, event, actions=[], skip=None):
         self.subject = subject
         self.time = time
         self.event = event
@@ -54,7 +54,8 @@ class Trigger:
             self.db_table = self.model._meta.db_table
             # FIXME, need to check get_parent_list and add triggers to those
             # The below will only check the fields on *this* model, not parents
-            self.fields = [(k.attname, k.db_type()) for k,v in self.model._meta.get_fields_with_model() if not v]
+            skip = skip or ()
+            self.fields = [(k.attname, k.db_type()) for k,v in self.model._meta.get_fields_with_model() if not v and k.attname not in skip]
         else:
             raise NotImplementedError
 

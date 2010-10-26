@@ -58,10 +58,11 @@ def denormalized(DBField,*args,**kwargs):
             return (field_class, args, kwargs)
 
     def deco(func):
+        skip = kwargs.pop('skip', None)
         if hasattr(settings, 'DENORM_BULK_UNSAFE_TRIGGERS') and settings.DENORM_BULK_UNSAFE_TRIGGERS:
-            denorm = denorms.BaseCallbackDenorm()
+            denorm = denorms.BaseCallbackDenorm(skip=skip)
         else:
-            denorm = denorms.CallbackDenorm()
+            denorm = denorms.CallbackDenorm(skip=skip)
         denorm.func = func
         kwargs["blank"] = True
         kwargs["null"] = True
@@ -86,7 +87,8 @@ class CountField(models.PositiveIntegerField):
     PositiveIntegerField.
     """
     def __init__(self,manager_name,**kwargs):
-        self.denorm = denorms.CountDenorm()
+        skip = kwargs.pop('skip', None)
+        self.denorm = denorms.CountDenorm(skip)
         self.denorm.manager_name = manager_name
         self.kwargs = kwargs
         kwargs['default'] = 0
@@ -102,7 +104,9 @@ class CountField(models.PositiveIntegerField):
         return (
             '.'.join(('django','db','models',models.PositiveIntegerField.__name__)),
             [],
-            self.kwargs,
+            {
+                'default': '0',
+            },
         )
 
     def pre_save(self,model_instance,add):

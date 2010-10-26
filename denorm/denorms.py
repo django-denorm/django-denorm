@@ -52,8 +52,9 @@ def many_to_many_post_save(sender, instance, created, **kwargs):
 
 class Denorm(object):
 
-    def __init__(self):
+    def __init__(self, skip=None):
         self.func = None
+        self.skip = skip
 
     def setup(self,**kwargs):
         """
@@ -137,8 +138,8 @@ class CallbackDenorm(BaseCallbackDenorm):
             values = (content_type,"NEW.%s" % self.model._meta.pk.get_attname_column()[1])
         )
         trigger_list = [
-            triggers.Trigger(self.model,"after","update",[action]),
-            triggers.Trigger(self.model,"after","insert",[action]),
+            triggers.Trigger(self.model,"after","update",[action],self.skip),
+            triggers.Trigger(self.model,"after","insert",[action],self.skip),
         ]
 
         return trigger_list + super(CallbackDenorm,self).get_triggers()
@@ -150,12 +151,13 @@ class CountDenorm(Denorm):
     updates.
     """
 
-    def __init__(self):
+    def __init__(self, skip=None):
         # in case we want to set the value without relying on the
         # correctness of the incremental updates we create a function that
         # calculates it from scratch.
         self.func = lambda obj: getattr(obj,self.manager_name).count()
         self.manager = None
+        self.skip = skip
 
     def setup(self,sender,**kwargs):
         # as we connected to the ``class_prepared`` signal for any sender
@@ -187,9 +189,9 @@ class CountDenorm(Denorm):
 
         other_model = self.manager.related.model
         return [
-            triggers.Trigger(other_model,"after","update",[increment,decrement]),
-            triggers.Trigger(other_model,"after","insert",[increment]),
-            triggers.Trigger(other_model,"after","delete",[decrement]),
+            triggers.Trigger(other_model,"after","update",[increment,decrement],self.skip),
+            triggers.Trigger(other_model,"after","insert",[increment],self.skip),
+            triggers.Trigger(other_model,"after","delete",[decrement],self.skip),
         ]
 
 def rebuildall():
