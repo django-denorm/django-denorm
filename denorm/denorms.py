@@ -82,8 +82,9 @@ class Denorm(object):
 
             elif not getattr(instance,attname) == new_value:
                 setattr(instance,attname,new_value)
+                # an update before the save is needed to handle CountFields
+                # CountField does not update its value during pre_save
                 qs.filter(pk=instance.pk).update(**{attname:new_value})
-                # FIXME: what's the point of doing the update if we just call a save anyway?
                 instance.save()
         flush()
 
