@@ -48,12 +48,12 @@ class Trigger(base.Trigger):
             for field, native_type in self.fields:
                 if native_type is None:
                     # If Django didn't know what this field type should be
-                    # then compare it as text - Fixes a problem of trying to 
+                    # then compare it as text - Fixes a problem of trying to
                     # compare PostGIS geometry fields.
                     conditions.append("(OLD.%(f)s::%(t)s <> NEW.%(f)s::%(t)s)" % {'f': field, 't': 'text'})
                 else:
                     conditions.append("( OLD.%(f)s <> NEW.%(f)s )" % {'f': field,})
-                
+
             cond = "(%s)"%"OR".join(conditions)
         else:
             cond = 'TRUE'

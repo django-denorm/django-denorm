@@ -33,7 +33,7 @@ if hasattr(settings, 'DATABASE_ENGINE') and settings.DATABASE_ENGINE:
         backend = settings.DATABASE_DENORM_BACKEND
     else:
         backend = backend_for_dbname(settings.DATABASE_ENGINE)
-        
+
 else:
     # Assume >= Django 1.2 syntax
     from django.db import connections, DEFAULT_DB_ALIAS
