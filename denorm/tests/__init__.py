@@ -118,7 +118,7 @@ class TestDenormalisation(TestCase):
         # check the forums author list contains the member
         self.assertEqual(Forum.objects.get(id=f1.id).author_names, "memberone")
 
-        # change the members name
+        # change the member's name
         m1.name = "membertwo"
         m1.save()
         denorm.flush()
@@ -314,5 +314,18 @@ class TestDenormalisation(TestCase):
         denorm.flush()
         
         self.assertTrue(m2 not in Forum.objects.get(id=f1.id).authors.all())
-        
-        
+
+    def test_denorm_rebuild(self):
+
+        f1 = Forum.objects.create(title="forumone")
+        m1 = Member.objects.create(name="memberone")
+        p1 = Post.objects.create(forum=f1,author=m1)
+
+        denorm.denorms.rebuildall()
+
+        f1 = Forum.objects.get(id=f1.id)
+        m1 = Member.objects.get(id=m1.id)
+        p1 = Post.objects.get(id=p1.id)
+
+        self.assertEqual(f1.post_count, 1)
+        self.assertEqual(f1.authors.all()[0],m1)
