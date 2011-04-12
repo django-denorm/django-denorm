@@ -1,7 +1,5 @@
-
 from django.db import models
-from denorm import *
-
+from denorm import denormalized, depend_on_related, CountField
 
 class Forum(models.Model):
 
@@ -95,4 +93,3 @@ class Member(models.Model):
     def bookmark_titles(self):
         if self.id:
             return '\n'.join([p.title for p in self.bookmarks.all()])
-

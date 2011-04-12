@@ -14,36 +14,12 @@ from django.contrib.contenttypes.models import ContentType
 
 from denorm.denorms import install_triggers
 import denorm
-from models import *
+from models import Attachment, Post, Forum, Member
 
 class TestDenormalisation(TestCase):
     """
     Tests for the denormalisation fields.
     """
-
-    apps = ('denorm.tests',)
-
-    # _pre_setup and _post_teardown add the test models to installed apps
-    # Snippet from
-    # http://stackoverflow.com/questions/502916/django-how-to-create-a-model-dynamically-just-for-testing/2672444#2672444
-
-    def _pre_setup(self):
-        # Add the models to the db.
-        self._original_installed_apps = list(settings.INSTALLED_APPS)
-        for app in self.apps:
-            settings.INSTALLED_APPS.append(app)
-        loading.cache.loaded = False
-        call_command('syncdb', interactive=False, verbosity=0)
-        # Call the original method that does the fixtures etc.
-        super(TestCase, self)._pre_setup()
-
-    def _post_teardown(self):
-        # Call the original method.
-        super(TestCase, self)._post_teardown()
-        # Restore the settings.
-        settings.INSTALLED_APPS = self._original_installed_apps
-        loading.cache.loaded = False
-
 
     def setUp(self):
         install_triggers()
