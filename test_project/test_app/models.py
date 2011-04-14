@@ -1,7 +1,27 @@
 from django.db import models
+from django.contrib.contenttypes.generic import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.models import ContentType
 from denorm import denormalized, depend_on_related, CountField
 
-class Forum(models.Model):
+class Tag(models.Model):
+    name = models.CharField(max_length=255)
+
+    content_type = models.ForeignKey(ContentType)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+class TaggedModel(models.Model):
+    tags = GenericRelation(Tag)
+
+    @denormalized(models.TextField)
+    @depend_on_related(Tag)
+    def tags_string(self):
+        return ', '.join(sorted([t.name for t in self.tags.all()]))
+
+    class Meta:
+        abstract = True
+
+class Forum(TaggedModel):
 
     title = models.CharField(max_length=255)
 
@@ -31,7 +51,7 @@ class Forum(models.Model):
             return '/'+self.title+'/'
 
 
-class Post(models.Model):
+class Post(TaggedModel):
 
     forum = models.ForeignKey(Forum, blank=True, null=True)
     author = models.ForeignKey('Member', blank=True, null=True)

@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.contenttypes.generic import GenericRelation
 
 class TriggerNestedSelect:
     def __init__(self,table,columns,**kwargs):
@@ -38,10 +39,12 @@ class TriggerActionUpdate(TriggerAction):
 
 class Trigger:
 
-    def __init__(self,subject, time, event,actions=[]):
+    def __init__(self,subject, time, event,actions, content_type):
         self.subject = subject
         self.time = time
         self.event = event
+        self.content_type = content_type
+        self.content_type_field = None
         self.actions = []
         self.append(actions)
 
@@ -49,6 +52,11 @@ class Trigger:
             self.model = None
             self.db_table = subject.m2m_db_table()
             self.fields = [(subject.m2m_column_name(), ''),(subject.m2m_reverse_name(),'')]
+        elif isinstance(subject, GenericRelation):
+            self.model = None
+            self.db_table = subject.m2m_db_table()
+            self.fields = [(k.attname, k.db_type()) for k, v in subject.rel.to._meta.get_fields_with_model() if not v]
+            content_type_field = subject.content_type_field_name + '_id'
         elif hasattr(subject,"_meta"):
             self.model = subject
             self.db_table = self.model._meta.db_table

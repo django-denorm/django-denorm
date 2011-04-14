@@ -92,9 +92,9 @@ class DependOnRelated(DenormDependency):
                 )
             )
             return [
-                triggers.Trigger(self.other_model,"after","update",[action_new]),
-                triggers.Trigger(self.other_model,"after","insert",[action_new]),
-                triggers.Trigger(self.other_model,"after","delete",[action_old]),
+                triggers.Trigger(self.other_model,"after","update",[action_new],content_type),
+                triggers.Trigger(self.other_model,"after","insert",[action_new],content_type),
+                triggers.Trigger(self.other_model,"after","delete",[action_old],content_type),
             ]
 
         if self.type == "backward":
@@ -120,9 +120,9 @@ class DependOnRelated(DenormDependency):
                 )
             )
             return [
-                triggers.Trigger(self.other_model,"after","update",[action_new,action_old]),
-                triggers.Trigger(self.other_model,"after","insert",[action_new]),
-                triggers.Trigger(self.other_model,"after","delete",[action_old]),
+                triggers.Trigger(self.other_model,"after","update",[action_new,action_old],content_type),
+                triggers.Trigger(self.other_model,"after","insert",[action_new],content_type),
+                triggers.Trigger(self.other_model,"after","delete",[action_old],content_type),
             ]
 
         if "m2m" in self.type:
@@ -171,10 +171,10 @@ class DependOnRelated(DenormDependency):
             )
 
             return [
-                triggers.Trigger(self.field,"after","update",[action_m2m_new,action_m2m_old]),
-                triggers.Trigger(self.field,"after","insert",[action_m2m_new]),
-                triggers.Trigger(self.field,"after","delete",[action_m2m_old]),
-                triggers.Trigger(self.other_model,"after","update",[action_new]),
+                triggers.Trigger(self.field,"after","update",[action_m2m_new,action_m2m_old],content_type),
+                triggers.Trigger(self.field,"after","insert",[action_m2m_new],content_type),
+                triggers.Trigger(self.field,"after","delete",[action_m2m_old],content_type),
+                triggers.Trigger(self.other_model,"after","update",[action_new],content_type),
             ]
 
         return []
@@ -234,7 +234,7 @@ def make_depend_decorator(Class):
         def deco(func):
             if not hasattr(func,'depend'):
                 func.depend = []
-            func.depend += [Class(*args,**kwargs)]
+            func.depend.append((Class, args, kwargs))
             return func
         return deco
     functools.update_wrapper(decorator,Class.__init__)

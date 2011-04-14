@@ -101,13 +101,9 @@ class BaseCallbackDenorm(Denorm):
         """
         Calls setup() on all DenormDependency resolvers
         """
-        # ensure self.func.depend is always a list
-        if not hasattr(self.func,'depend'):
-            self.func.depend = []
-
         super(BaseCallbackDenorm,self).setup(**kwargs)
 
-        for dependency in self.func.depend:
+        for dependency in self.depend:
             dependency.setup(self.model)
 
     def get_triggers(self):
@@ -119,7 +115,7 @@ class BaseCallbackDenorm(Denorm):
 
         # Get the triggers of all DenormDependency instances attached
         # to our callback.
-        for dependency in self.func.depend:
+        for dependency in self.depend:
             trigger_list += dependency.get_triggers()
 
         return trigger_list + super(BaseCallbackDenorm,self).get_triggers()
@@ -146,8 +142,8 @@ class CallbackDenorm(BaseCallbackDenorm):
             values = (content_type,"NEW.%s" % self.model._meta.pk.get_attname_column()[1])
         )
         trigger_list = [
-            triggers.Trigger(self.model,"after","update",[action]),
-            triggers.Trigger(self.model,"after","insert",[action]),
+            triggers.Trigger(self.model,"after","update",[action],content_type),
+            triggers.Trigger(self.model,"after","insert",[action],content_type),
         ]
 
         return trigger_list + super(CallbackDenorm,self).get_triggers()
@@ -179,6 +175,7 @@ class CountDenorm(Denorm):
 
     def get_triggers(self):
         fk_name = self.manager.related.field.attname
+        content_type = str(ContentType.objects.get_for_model(self.model).pk)
 
         # create the triggers for the incremental updates
         increment = triggers.TriggerActionUpdate(
@@ -196,9 +193,9 @@ class CountDenorm(Denorm):
 
         other_model = self.manager.related.model
         return [
-            triggers.Trigger(other_model,"after","update",[increment,decrement]),
-            triggers.Trigger(other_model,"after","insert",[increment]),
-            triggers.Trigger(other_model,"after","delete",[decrement]),
+            triggers.Trigger(other_model,"after","update",[increment,decrement],content_type),
+            triggers.Trigger(other_model,"after","insert",[increment],content_type),
+            triggers.Trigger(other_model,"after","delete",[decrement],content_type),
         ]
 
 def rebuildall():

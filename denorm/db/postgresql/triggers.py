@@ -35,6 +35,11 @@ class TriggerActionUpdate(base.TriggerActionUpdate):
         return """ UPDATE %(table)s SET %(updates)s WHERE %(where)s """ % locals()
 
 class Trigger(base.Trigger):
+    def name(self):
+        name = base.Trigger.name(self)
+        if self.content_type_field:
+            name += "_%s" % self.content_type
+        return name
 
     def sql(self):
         name = self.name()
@@ -42,9 +47,12 @@ class Trigger(base.Trigger):
         table = self.db_table
         time = self.time.upper()
         event = self.event.upper()
+        content_type = self.content_type
+        ct_field = self.content_type_field
+
+        conditions = []
 
         if event == "UPDATE":
-            conditions = list()
             for field, native_type in self.fields:
                 if native_type is None:
                     # If Django didn't know what this field type should be
@@ -54,9 +62,20 @@ class Trigger(base.Trigger):
                 else:
                     conditions.append("( OLD.%(f)s <> NEW.%(f)s )" % {'f': field,})
 
-            cond = "(%s)"%"OR".join(conditions)
+            conditions = ["(%s)"%"OR".join(conditions)]
+
+        if ct_field:
+            if event == "UPDATE":
+                conditions.append("(OLD.%(ctf)s=%(ct)s)OR(NEW.%(ctf)s=%(ct)s)" % {'ctf': ct_field, 'ct': content_type})
+            elif event == "CREATE":
+                conditions.append("(NEW.%s=%s)" % (ct_field, content_type))
+            elif event == "DELETE":
+                conditions.append("(OLD.%s=%s)" % (ct_field, content_type))
+
+        if not conditions:
+            cond = "TRUE"
         else:
-            cond = 'TRUE'
+            cond = "AND".join(conditions)
 
         return (
              """ CREATE OR REPLACE FUNCTION func_%(name)s()\n"""

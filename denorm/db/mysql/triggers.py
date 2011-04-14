@@ -41,6 +41,8 @@ class Trigger(base.Trigger):
                 random.choice(string.ascii_uppercase + string.digits)
                 for x in range(5)
             )
+        # FIXME: actions should depend on content_type and content_type_field, if applicable
+        # now we flag too many things dirty, e.g. a change for ('forum', 1) also flags ('post', 1)
         actions = (";\n   ").join(set([a.sql() for a in self.actions if a.sql()])) + ";"
         table = self.db_table
         time = self.time.upper()

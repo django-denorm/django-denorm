@@ -29,7 +29,17 @@ def denormalized(DBField,*args,**kwargs):
         Special subclass of the given DBField type, with a few extra additions.
         """
 
+        def __init__(self, func, *args, **kwargs):
+            self.func = func
+            DBField.__init__(self, *args, **kwargs)
+
         def contribute_to_class(self,cls,name,*args,**kwargs):
+            if hasattr(settings, 'DENORM_BULK_UNSAFE_TRIGGERS') and settings.DENORM_BULK_UNSAFE_TRIGGERS:
+                self.denorm = denorms.BaseCallbackDenorm()
+            else:
+                self.denorm = denorms.CallbackDenorm()
+            self.denorm.func = self.func
+            self.denorm.depend = [dcls(*dargs, **dkwargs) for (dcls, dargs, dkwargs) in getattr(self.func, 'depend', [])]
             self.denorm.model = cls
             self.denorm.fieldname = name
             self.field_args = (args, kwargs)
@@ -58,15 +68,9 @@ def denormalized(DBField,*args,**kwargs):
             return (field_class, args, kwargs)
 
     def deco(func):
-        if hasattr(settings, 'DENORM_BULK_UNSAFE_TRIGGERS') and settings.DENORM_BULK_UNSAFE_TRIGGERS:
-            denorm = denorms.BaseCallbackDenorm()
-        else:
-            denorm = denorms.CallbackDenorm()
-        denorm.func = func
         kwargs["blank"] = True
         kwargs["null"] = True
-        dbfield = DenormDBField(*args,**kwargs)
-        dbfield.denorm = denorm
+        dbfield = DenormDBField(func,*args,**kwargs)
         return dbfield
     return deco
 

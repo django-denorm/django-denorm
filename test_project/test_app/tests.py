@@ -1,20 +1,10 @@
-import unittest
-import datetime
-import sys
-import os
-
-from django.conf import settings
-from django.core.management import call_command
-from django.db.models import loading
-from django import test
-from django.core import management
 from django.test import TestCase
 from django.contrib.auth.models import User,Permission
 from django.contrib.contenttypes.models import ContentType
 
 from denorm.denorms import install_triggers
 import denorm
-from models import Attachment, Post, Forum, Member
+from models import Attachment, Post, Forum, Member, Tag
 
 class TestDenormalisation(TestCase):
     """
@@ -292,7 +282,6 @@ class TestDenormalisation(TestCase):
         self.assertTrue(m2 not in Forum.objects.get(id=f1.id).authors.all())
 
     def test_denorm_rebuild(self):
-
         f1 = Forum.objects.create(title="forumone")
         m1 = Member.objects.create(name="memberone")
         p1 = Post.objects.create(forum=f1,author=m1)
@@ -305,3 +294,44 @@ class TestDenormalisation(TestCase):
 
         self.assertEqual(f1.post_count, 1)
         self.assertEqual(f1.authors.all()[0],m1)
+
+    def test_denorm_subclass(self):
+        f1 = Forum.objects.create(title="forumone")
+        m1 = Member.objects.create(name="memberone")
+        p1 = Post.objects.create(forum=f1,author=m1)
+
+        self.assertEqual(f1.tags_string, '')
+        self.assertEqual(p1.tags_string, '')
+
+        t1 = Tag.objects.create(name='tagone', content_object=f1)
+        t2 = Tag.objects.create(name='tagtwo', content_object=f1)
+
+        denorm.denorms.flush()
+        f1 = Forum.objects.get(id=f1.id)
+        m1 = Member.objects.get(id=m1.id)
+        p1 = Post.objects.get(id=p1.id)
+
+        self.assertEqual(f1.tags_string, 'tagone, tagtwo')
+        self.assertEqual(p1.tags_string, '')
+
+        t3 = Tag.objects.create(name='tagthree', content_object=p1)
+        t4 = Tag.objects.create(name='tagfour', content_object=p1)
+
+        denorm.denorms.flush()
+        f1 = Forum.objects.get(id=f1.id)
+        m1 = Member.objects.get(id=m1.id)
+        p1 = Post.objects.get(id=p1.id)
+
+        self.assertEqual(f1.tags_string, 'tagone, tagtwo')
+        self.assertEqual(p1.tags_string, 'tagfour, tagthree')
+
+        t4.content_object = f1
+        t4.save()
+
+        denorm.denorms.flush()
+        f1 = Forum.objects.get(id=f1.id)
+        m1 = Member.objects.get(id=m1.id)
+        p1 = Post.objects.get(id=p1.id)
+
+        self.assertEqual(f1.tags_string, 'tagfour, tagone, tagtwo')
+        self.assertEqual(p1.tags_string, 'tagthree')
