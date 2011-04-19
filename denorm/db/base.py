@@ -56,7 +56,7 @@ class Trigger:
             self.model = None
             self.db_table = subject.m2m_db_table()
             self.fields = [(k.attname, k.db_type()) for k, v in subject.rel.to._meta.get_fields_with_model() if not v]
-            content_type_field = subject.content_type_field_name + '_id'
+            self.content_type_field = subject.content_type_field_name + '_id'
         elif hasattr(subject,"_meta"):
             self.model = subject
             self.db_table = self.model._meta.db_table
