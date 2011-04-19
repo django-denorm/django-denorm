@@ -49,7 +49,7 @@ class Trigger(base.Trigger):
 
         when = []
         if event == "UPDATE":
-            when.append("("+"OR".join(["(OLD.%s!=NEW.%s)"%(f,f) for f,t in self.fields])+")")
+            when.append("("+"OR".join(["(OLD.%s IS NOT NEW.%s)"%(f,f) for f,t in self.fields])+")")
         if ct_field:
             if event == "DELETE":
                 when.append("(OLD.%s==%s)" % (ct_field, content_type))

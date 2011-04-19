@@ -58,9 +58,9 @@ class Trigger(base.Trigger):
                     # If Django didn't know what this field type should be
                     # then compare it as text - Fixes a problem of trying to
                     # compare PostGIS geometry fields.
-                    conditions.append("(OLD.%(f)s::%(t)s <> NEW.%(f)s::%(t)s)" % {'f': field, 't': 'text'})
+                    conditions.append("(OLD.%(f)s::%(t)s IS DISTINCT FROM NEW.%(f)s::%(t)s)" % {'f': field, 't': 'text'})
                 else:
-                    conditions.append("( OLD.%(f)s <> NEW.%(f)s )" % {'f': field,})
+                    conditions.append("( OLD.%(f)s IS DISTINCT FROM NEW.%(f)s )" % {'f': field,})
 
             conditions = ["(%s)"%"OR".join(conditions)]
 

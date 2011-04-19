@@ -52,7 +52,7 @@ class Trigger(base.Trigger):
             conditions = list()
             for field, native_type in self.fields:
                 # TODO: find out if we need to compare some fields as text like in postgres
-                conditions.append("( OLD.%(f)s <> NEW.%(f)s )" % {'f': field,})
+                conditions.append("(NOT( OLD.%(f)s <=> NEW.%(f)s ))" % {'f': field,})
 
             cond = "(%s)"%"OR".join(conditions)
         else:
