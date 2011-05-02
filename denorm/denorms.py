@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from django.db import models
 from django.contrib.contenttypes.models import ContentType
 from denorm.db import triggers
+from django.db.models.manager import Manager
 from denorm.models import DirtyInstance
 
 # remember all denormalizations.
@@ -74,8 +74,17 @@ class Denorm(object):
 
             # Get attribute name (required for denormalising ForeignKeys)
             attname = instance._meta.get_field(self.fieldname).attname
-            if not getattr(instance,attname) == new_value:
+
+            if isinstance(getattr(instance,attname), Manager) and getattr(instance,attname).all() != new_value:
+                # many to many field
+                for o in qs.filter(pk=instance.pk):
+                    o.attname = new_value
+                instance.save()
+
+            elif not getattr(instance,attname) == new_value:
                 setattr(instance,attname,new_value)
+                # an update before the save is needed to handle CountFields
+                # CountField does not update its value during pre_save
                 qs.filter(pk=instance.pk).update(**{attname:new_value})
                 instance.save()
         flush()

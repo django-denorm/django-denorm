@@ -60,6 +60,9 @@ class Post(models.Model):
     @denormalized(models.PositiveIntegerField)
     @depend_on_related('self',type='backward')
     def response_count(self):
+        # Work around odd issue during testing with PostgresDB
+        if not self.pk:
+            return 0
         rcount = self.responses.count()
         rcount += sum((x.response_count for x in self.responses.all()))
         return rcount

@@ -46,11 +46,24 @@ class Trigger(base.Trigger):
         time = self.time.upper()
         event = self.event.upper()
 
+        if event == "UPDATE":
+            conditions = list()
+            for field, native_type in self.fields:
+                # TODO: find out if we need to compare some fields as text like in postgres
+                conditions.append("( OLD.%(f)s <> NEW.%(f)s )" % {'f': field,})
+
+            cond = "(%s)"%"OR".join(conditions)
+        else:
+            cond = 'TRUE'
+
         return (
              """ CREATE TRIGGER %(name)s\n"""
             +"""  %(time)s %(event)s ON %(table)s\n"""
             +"""  FOR EACH ROW BEGIN\n"""
-            +"""   %(actions)s\n  END;\n"""
+            +"""   IF %(cond)s THEN\n"""
+            +"""    %(actions)s\n"""
+            +"""   END IF;\n"""
+            +"""  END;\n"""
             ) % locals()
 
 class TriggerSet(base.TriggerSet):
