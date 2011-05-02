@@ -69,7 +69,11 @@ class Trigger(base.Trigger):
 class TriggerSet(base.TriggerSet):
 
     def install(self):
-        from django.db import connection
+        if self.using:
+            from django.db import connections
+            connection = connections[self.using]
+        else:
+            from django.db import connection
         cursor = connection.cursor()
 
         cursor.execute("SHOW TRIGGERS;")
