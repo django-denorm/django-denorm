@@ -97,12 +97,10 @@ class TriggerSet(base.TriggerSet):
         from django.db import connection, transaction
         cursor = connection.cursor()
 
-        cursor.execute("SELECT * FROM pg_trigger;")
-        for result in cursor.fetchall():
-            if result[1].startswith("denorm_"):
-                x,table = result[1].rsplit("_on_",)
-                cursor.execute("""DROP TRIGGER %s ON %s;""" % (result[1],table))
-                transaction.commit_unless_managed()
+        cursor.execute("SELECT pg_class.relname, pg_trigger.tgname FROM pg_trigger LEFT JOIN pg_class ON (pg_trigger.tgrelid = pg_class.oid) WHERE pg_trigger.tgname LIKE 'denorm_%%';")
+        for table_name, trigger_name in cursor.fetchall():
+            cursor.execute("""DROP TRIGGER %s ON %s;""" % (trigger_name, table_name))
+            transaction.commit_unless_managed()
 
         for name,trigger in self.triggers.iteritems():
             cursor.execute(trigger.sql())
