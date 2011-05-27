@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from django.db import models
 from django.contrib.contenttypes.models import ContentType
 from denorm.db import triggers
+from django.db.models.manager import Manager
 from denorm.models import DirtyInstance
 
 # remember all denormalizations.
