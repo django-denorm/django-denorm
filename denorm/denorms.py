@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
+from django.db import models
 from django.contrib.contenttypes.models import ContentType
 from denorm.db import triggers
-from django.db.models.manager import Manager
 from denorm.models import DirtyInstance
 
 # remember all denormalizations.
@@ -52,8 +52,10 @@ def many_to_many_post_save(sender, instance, created, **kwargs):
 
 class Denorm(object):
 
-    def __init__(self):
+    def __init__(self, using=None, skip=None):
         self.func = None
+        self.using = using
+        self.skip = skip
 
     def setup(self,**kwargs):
         """
@@ -142,8 +144,8 @@ class CallbackDenorm(BaseCallbackDenorm):
             values = (content_type,"NEW.%s" % self.model._meta.pk.get_attname_column()[1])
         )
         trigger_list = [
-            triggers.Trigger(self.model,"after","update",[action],content_type),
-            triggers.Trigger(self.model,"after","insert",[action],content_type),
+            triggers.Trigger(self.model,"after","update",[action],content_type,self.using,self.skip),
+            triggers.Trigger(self.model,"after","insert",[action],content_type,self.using,self.skip),
         ]
 
         return trigger_list + super(CallbackDenorm,self).get_triggers()
@@ -155,12 +157,14 @@ class CountDenorm(Denorm):
     updates.
     """
 
-    def __init__(self):
+    def __init__(self, using=None, skip=None):
         # in case we want to set the value without relying on the
         # correctness of the incremental updates we create a function that
         # calculates it from scratch.
         self.func = lambda obj: getattr(obj,self.manager_name).count()
         self.manager = None
+        self.using = using
+        self.skip = skip
 
     def setup(self,sender,**kwargs):
         # as we connected to the ``class_prepared`` signal for any sender
@@ -193,9 +197,9 @@ class CountDenorm(Denorm):
 
         other_model = self.manager.related.model
         return [
-            triggers.Trigger(other_model,"after","update",[increment,decrement],content_type),
-            triggers.Trigger(other_model,"after","insert",[increment],content_type),
-            triggers.Trigger(other_model,"after","delete",[decrement],content_type),
+            triggers.Trigger(other_model,"after","update",[increment,decrement],content_type,self.using,self.skip),
+            triggers.Trigger(other_model,"after","insert",[increment],content_type,self.using,self.skip),
+            triggers.Trigger(other_model,"after","delete",[decrement],content_type,self.using,self.skip),
         ]
 
 def rebuildall():
@@ -207,17 +211,17 @@ def rebuildall():
     for denorm in alldenorms:
         denorm.update(denorm.model.objects.all())
 
-def install_triggers():
+def install_triggers(using=None):
     """
     Installs all required triggers in the database
     """
-    build_triggerset().install()
+    build_triggerset(using=using).install()
 
-def build_triggerset():
+def build_triggerset(using=None):
     global alldenorms
 
     # Use a TriggerSet to ensure each event gets just one trigger
-    triggerset = triggers.TriggerSet()
+    triggerset = triggers.TriggerSet(using=using)
     for denorm in alldenorms:
         triggerset.append(denorm.get_triggers())
     return triggerset

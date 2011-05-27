@@ -94,14 +94,18 @@ class Trigger(base.Trigger):
 class TriggerSet(base.TriggerSet):
 
     def install(self):
-        from django.db import connection, transaction
+        if self.using:
+            from django.db import connections, transaction
+            connection = connections[self.using]
+        else:
+            from django.db import connection, transaction
         cursor = connection.cursor()
 
         cursor.execute("SELECT pg_class.relname, pg_trigger.tgname FROM pg_trigger LEFT JOIN pg_class ON (pg_trigger.tgrelid = pg_class.oid) WHERE pg_trigger.tgname LIKE 'denorm_%%';")
         for table_name, trigger_name in cursor.fetchall():
             cursor.execute("""DROP TRIGGER %s ON %s;""" % (trigger_name, table_name))
-            transaction.commit_unless_managed()
+            transaction.commit_unless_managed(using=self.using)
 
         for name,trigger in self.triggers.iteritems():
             cursor.execute(trigger.sql())
-            transaction.commit_unless_managed()
+            transaction.commit_unless_managed(using=self.using)
