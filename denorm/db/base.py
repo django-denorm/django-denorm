@@ -39,7 +39,7 @@ class TriggerActionUpdate(TriggerAction):
 
 class Trigger:
 
-    def __init__(self,subject, time, event,actions, content_type):
+    def __init__(self, subject, time, event, actions, content_type, using=None, skip=None):
         self.subject = subject
         self.time = time
         self.event = event
@@ -47,6 +47,7 @@ class Trigger:
         self.content_type_field = None
         self.actions = []
         self.append(actions)
+        self.using = using
 
         if isinstance(subject,models.ManyToManyField):
             self.model = None
@@ -62,7 +63,13 @@ class Trigger:
             self.db_table = self.model._meta.db_table
             # FIXME, need to check get_parent_list and add triggers to those
             # The below will only check the fields on *this* model, not parents
-            self.fields = [(k.attname, k.db_type()) for k,v in self.model._meta.get_fields_with_model() if not v]
+            skip = skip or ()
+            if self.using:
+                from django.db import connections
+                connection = connections[self.using]
+            else:
+                from django.db import connection
+            self.fields = [(k.attname, k.db_type(connection=connection)) for k,v in self.model._meta.get_fields_with_model() if not v and k.attname not in skip]
         else:
             raise NotImplementedError
 
@@ -87,7 +94,8 @@ class Trigger:
         raise NotImplementedError
 
 class TriggerSet:
-    def __init__(self):
+    def __init__(self, using=None):
+        self.using = using
         self.triggers = {}
 
     def append(self,triggers):
