@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 from denorm.helpers import find_fks,find_m2ms
+from django.db import models
 from django.db.models.fields import related
 from denorm.models import DirtyInstance
 from django.contrib.contenttypes.models import ContentType
 from denorm.db import triggers
-
 
 class DenormDependency(object):
 
@@ -155,27 +155,33 @@ class DependOnRelated(DenormDependency):
                 )
             )
 
-            # Additionally to the dependency on the intermediate table
-            # ``this_model`` is dependant on updates to the ``other_model``-
-            # There is no need to track insert or delete events here,
-            # because a relation can only be created or deleted by
-            # by modifying the intermediate table.
-            action_new = triggers.TriggerActionInsert(
-                model = DirtyInstance,
-                columns = ("content_type_id","object_id"),
-                values = triggers.TriggerNestedSelect(
-                    self.field.m2m_db_table(),
-                    (content_type,column_name),
-                    **{reverse_column_name:"NEW.id"}
-                )
-            )
-
-            return [
+            trigger_list = [
                 triggers.Trigger(self.field,"after","update",[action_m2m_new,action_m2m_old],content_type),
                 triggers.Trigger(self.field,"after","insert",[action_m2m_new],content_type),
                 triggers.Trigger(self.field,"after","delete",[action_m2m_old],content_type),
-                triggers.Trigger(self.other_model,"after","update",[action_new],content_type),
             ]
+
+            if isinstance(self.field, models.ManyToManyField):
+                # Additionally to the dependency on the intermediate table
+                # ``this_model`` is dependant on updates to the ``other_model``-
+                # There is no need to track insert or delete events here,
+                # because a relation can only be created or deleted by
+                # by modifying the intermediate table.
+                #
+                # Generic relations are excluded because they have the
+                # same m2m_table and model table.
+                action_new = triggers.TriggerActionInsert(
+                    model = DirtyInstance,
+                    columns = ("content_type_id","object_id"),
+                    values = triggers.TriggerNestedSelect(
+                        self.field.m2m_db_table(),
+                        (content_type,column_name),
+                        **{reverse_column_name:"NEW.id"}
+                        )
+                    )
+                trigger_list.append(triggers.Trigger(self.other_model,"after","update",[action_new],content_type))
+
+            return trigger_list
 
         return []
 
