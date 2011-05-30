@@ -31,13 +31,14 @@ def denormalized(DBField,*args,**kwargs):
 
         def __init__(self, func, *args, **kwargs):
             self.func = func
+            self.skip = kwargs.pop('skip', None)
             DBField.__init__(self, *args, **kwargs)
 
         def contribute_to_class(self,cls,name,*args,**kwargs):
             if hasattr(settings, 'DENORM_BULK_UNSAFE_TRIGGERS') and settings.DENORM_BULK_UNSAFE_TRIGGERS:
-                self.denorm = denorms.BaseCallbackDenorm()
+                self.denorm = denorms.BaseCallbackDenorm(skip=self.skip)
             else:
-                self.denorm = denorms.CallbackDenorm()
+                self.denorm = denorms.CallbackDenorm(skip=self.skip)
             self.denorm.func = self.func
             self.denorm.depend = [dcls(*dargs, **dkwargs) for (dcls, dargs, dkwargs) in getattr(self.func, 'depend', [])]
             self.denorm.model = cls
@@ -68,12 +69,6 @@ def denormalized(DBField,*args,**kwargs):
             return (field_class, args, kwargs)
 
     def deco(func):
-        skip = kwargs.pop('skip', None)
-        if hasattr(settings, 'DENORM_BULK_UNSAFE_TRIGGERS') and settings.DENORM_BULK_UNSAFE_TRIGGERS:
-            denorm = denorms.BaseCallbackDenorm(skip=skip)
-        else:
-            denorm = denorms.CallbackDenorm(skip=skip)
-        denorm.func = func
         kwargs["blank"] = True
         if 'default' not in kwargs:
             kwargs["null"] = True
