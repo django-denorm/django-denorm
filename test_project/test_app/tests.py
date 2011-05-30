@@ -1,11 +1,79 @@
 from django.test import TestCase
 from django.contrib.auth.models import User,Permission
 from django.contrib.contenttypes.models import ContentType
+from django.db import models
 
-from denorm.denorms import install_triggers
 import denorm
+from denorm.denorms import install_triggers
+from denorm import denormalized, depend_on_related, CountField
+
 from models import Attachment, Post, Forum, Member, Tag
 
+class SkipPost(models.Model):
+    # Skip feature test main model.
+    text = models.TextField()
+    
+    class Meta:
+        app_label = 'test_app'
+
+class SkipComment(models.Model):
+    post = models.ForeignKey(SkipPost)
+    text = models.TextField()
+    created_on = models.DateTimeField(auto_now_add=True)
+    updated_on = models.DateTimeField(auto_now=True, null=True, blank=True)
+    
+    class Meta:
+        app_label = 'test_app'
+        abstract = True
+    
+class SkipCommentWithoutSkip(SkipComment):
+    # Skip feature test model without a skip parameter on an updatable field. 
+    # he updatable field will not be skipped.
+    @denormalized(models.TextField)
+    @depend_on_related(SkipPost)
+    def post_text(self):
+        return self.post.text
+
+class SkipCommentWithSkip(SkipComment):
+    # Skip feature test model witha skip parameter on an updatable field.
+    @denormalized(models.TextField, skip=('updated_on',))
+    @depend_on_related(SkipPost)
+    def post_text(self):
+        return self.post.text
+
+class TestSkip(TestCase):
+    """
+    Tests for the skip feature.
+    """
+    
+    def setUp(self):
+        install_triggers()
+
+        post = SkipPost(text='Here be ponies.')
+        post.save()
+        
+        self.post = post
+
+    # TODO: Enable and check!
+    # Unsure on how to test this behaviour. It results in an endless loop:
+    # update -> trigger -> update -> trigger -> ...
+    #
+    #def test_without_skip(self):
+    #    # This results in an infinate loop on SQLite.
+    #    comment = SkipCommentWithoutSkip(post=self.post, text='Oh really?')
+    #    comment.save()
+    #
+    #    denorm.flush()
+
+    # TODO: Check if an infinate loop happens and stop it.
+    def test_with_skip(self):
+        # This should not result in an endless loop.
+        comment = SkipCommentWithSkip(post=self.post, text='Oh really?')
+        comment.save()
+        
+        denorm.flush()
+
+        
 class TestDenormalisation(TestCase):
     """
     Tests for the denormalisation fields.
