@@ -67,7 +67,7 @@ class Trigger(base.Trigger):
         if ct_field:
             if event == "UPDATE":
                 conditions.append("(OLD.%(ctf)s=%(ct)s)OR(NEW.%(ctf)s=%(ct)s)" % {'ctf': ct_field, 'ct': content_type})
-            elif event == "CREATE":
+            elif event == "INSERT":
                 conditions.append("(NEW.%s=%s)" % (ct_field, content_type))
             elif event == "DELETE":
                 conditions.append("(OLD.%s=%s)" % (ct_field, content_type))
