@@ -11,7 +11,7 @@ class DirtyInstance(models.Model):
     when related objects change.
     """
     content_type = models.ForeignKey(ContentType)
-    object_id = models.PositiveIntegerField(blank=True,null=True)
+    object_id = models.TextField(blank=True, null=True)
     content_object = generic.GenericForeignKey(fk_field="object_id")
 
     class Meta:
