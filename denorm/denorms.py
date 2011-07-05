@@ -211,6 +211,10 @@ def rebuildall():
     for denorm in alldenorms:
         denorm.update(denorm.model.objects.all())
 
+def drop_triggers(using=None):
+    triggerset = triggers.TriggerSet(using=using)
+    triggerset.drop()
+
 def install_triggers(using=None):
     """
     Installs all required triggers in the database

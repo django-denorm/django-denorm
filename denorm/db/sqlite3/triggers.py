@@ -1,5 +1,5 @@
 from denorm.db import base
-from django.db import DatabaseError
+from django.db import transaction
 
 class TriggerNestedSelect(base.TriggerNestedSelect):
 
@@ -70,18 +70,17 @@ class Trigger(base.Trigger):
             ) % locals()
 
 class TriggerSet(base.TriggerSet):
+    def drop(self):
+        cursor = self.cursor()
+
+        cursor.execute("SELECT name, tbl_name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'denorm_%%';")
+        for trigger_name, table_name in cursor.fetchall():
+            cursor.execute("DROP TRIGGER %s;" % (trigger_name,))
+            transaction.commit_unless_managed(using=self.using)
 
     def install(self):
-        if self.using:
-            from django.db import connections
-            connection = connections[self.using]
-        else:
-            from django.db import connection
-        cursor = connection.cursor()
+        cursor = self.cursor()
 
-        for name,trigger in self.triggers.iteritems():
-            try:
-                cursor.execute(trigger.sql())
-            except DatabaseError:
-                cursor.execute("DROP TRIGGER "+trigger.name())
-                cursor.execute(trigger.sql())
+        for name, trigger in self.triggers.iteritems():
+            cursor.execute(trigger.sql())
+            transaction.commit_unless_managed(using=self.using)

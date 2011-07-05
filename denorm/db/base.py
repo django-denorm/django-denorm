@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, connections, connection
 from django.contrib.contenttypes.generic import GenericRelation
 
 class TriggerNestedSelect:
@@ -98,6 +98,12 @@ class TriggerSet:
         self.using = using
         self.triggers = {}
 
+    def cursor(self):
+        if self.using:
+            return connections[self.using].cursor()
+        else:
+            return connection.cursor()
+
     def append(self,triggers):
         if not isinstance(triggers,list):
             triggers = [triggers]
@@ -110,4 +116,7 @@ class TriggerSet:
                 self.triggers[name] = trigger
 
     def install(self):
+        raise NotImplementedError
+
+    def drop(self):
         raise NotImplementedError
