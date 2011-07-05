@@ -12,7 +12,7 @@ class DenormDependency(object):
     Base class for real dependency classes.
     """
 
-    def get_triggers(self):
+    def get_triggers(self, using):
         """
         Must return a list of ``denorm.triggers.Trigger`` instances
         """
@@ -34,7 +34,7 @@ class DependOnRelated(DenormDependency):
     on either of them pointing to the other one.
     """
 
-    def __init__(self,othermodel,foreign_key=None,type=None,using=None,skip=None):
+    def __init__(self,othermodel,foreign_key=None,type=None,skip=None):
         """
         Attaches a dependency to a callable, indicating the return value depends on
         fields in an other model that is related to the model the callable belongs to
@@ -61,10 +61,9 @@ class DependOnRelated(DenormDependency):
         self.other_model = othermodel
         self.fk_name = foreign_key
         self.type = type
-        self.using = using
         self.skip = skip
 
-    def get_triggers(self):
+    def get_triggers(self, using):
 
         if not self.type:
             # 'resolved_model' model never got called...
@@ -98,9 +97,9 @@ class DependOnRelated(DenormDependency):
                 )
             )
             return [
-                triggers.Trigger(self.other_model,"after","update",[action_new],content_type,self.using,self.skip),
-                triggers.Trigger(self.other_model,"after","insert",[action_new],content_type,self.using,self.skip),
-                triggers.Trigger(self.other_model,"after","delete",[action_old],content_type,self.using,self.skip),
+                triggers.Trigger(self.other_model,"after","update",[action_new],content_type,using,self.skip),
+                triggers.Trigger(self.other_model,"after","insert",[action_new],content_type,using,self.skip),
+                triggers.Trigger(self.other_model,"after","delete",[action_old],content_type,using,self.skip),
             ]
 
         if self.type == "backward":
@@ -126,9 +125,9 @@ class DependOnRelated(DenormDependency):
                 )
             )
             return [
-                triggers.Trigger(self.other_model,"after","update",[action_new,action_old],content_type,self.using,self.skip),
-                triggers.Trigger(self.other_model,"after","insert",[action_new],content_type,self.using,self.skip),
-                triggers.Trigger(self.other_model,"after","delete",[action_old],content_type,self.using,self.skip),
+                triggers.Trigger(self.other_model,"after","update",[action_new,action_old],content_type,using,self.skip),
+                triggers.Trigger(self.other_model,"after","insert",[action_new],content_type,using,self.skip),
+                triggers.Trigger(self.other_model,"after","delete",[action_old],content_type,using,self.skip),
             ]
 
         if "m2m" in self.type:
@@ -162,9 +161,9 @@ class DependOnRelated(DenormDependency):
             )
 
             trigger_list = [
-                triggers.Trigger(self.field,"after","update",[action_m2m_new,action_m2m_old],content_type,self.using,self.skip),
-                triggers.Trigger(self.field,"after","insert",[action_m2m_new],content_type,self.using,self.skip),
-                triggers.Trigger(self.field,"after","delete",[action_m2m_old],content_type,self.using,self.skip),
+                triggers.Trigger(self.field,"after","update",[action_m2m_new,action_m2m_old],content_type,using,self.skip),
+                triggers.Trigger(self.field,"after","insert",[action_m2m_new],content_type,using,self.skip),
+                triggers.Trigger(self.field,"after","delete",[action_m2m_old],content_type,using,self.skip),
             ]
 
             if isinstance(self.field, models.ManyToManyField):
@@ -185,7 +184,7 @@ class DependOnRelated(DenormDependency):
                         **{reverse_column_name:"NEW.id"}
                         )
                     )
-                trigger_list.append(triggers.Trigger(self.other_model,"after","update",[action_new],content_type,self.skip))
+                trigger_list.append(triggers.Trigger(self.other_model,"after","update",[action_new],content_type,using,self.skip))
 
             return trigger_list
 

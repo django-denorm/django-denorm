@@ -49,6 +49,11 @@ class Trigger:
         self.append(actions)
         self.using = using
 
+        if self.using:
+            cconnection = connections[self.using]
+        else:
+            cconnection = connection
+
         if isinstance(subject,models.ManyToManyField):
             self.model = None
             self.db_table = subject.m2m_db_table()
@@ -56,7 +61,7 @@ class Trigger:
         elif isinstance(subject, GenericRelation):
             self.model = None
             self.db_table = subject.m2m_db_table()
-            self.fields = [(k.attname, k.db_type()) for k, v in subject.rel.to._meta.get_fields_with_model() if not v]
+            self.fields = [(k.attname, k.db_type(connection=cconnection)) for k, v in subject.rel.to._meta.get_fields_with_model() if not v]
             self.content_type_field = subject.content_type_field_name + '_id'
         elif hasattr(subject,"_meta"):
             self.model = subject
@@ -64,12 +69,7 @@ class Trigger:
             # FIXME, need to check get_parent_list and add triggers to those
             # The below will only check the fields on *this* model, not parents
             skip = skip or ()
-            if self.using:
-                from django.db import connections
-                connection = connections[self.using]
-            else:
-                from django.db import connection
-            self.fields = [(k.attname, k.db_type(connection=connection)) for k,v in self.model._meta.get_fields_with_model() if not v and k.attname not in skip]
+            self.fields = [(k.attname, k.db_type(connection=cconnection)) for k,v in self.model._meta.get_fields_with_model() if not v and k.attname not in skip]
         else:
             raise NotImplementedError
 

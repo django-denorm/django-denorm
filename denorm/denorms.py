@@ -52,9 +52,8 @@ def many_to_many_post_save(sender, instance, created, **kwargs):
 
 class Denorm(object):
 
-    def __init__(self, using=None, skip=None):
+    def __init__(self, skip=None):
         self.func = None
-        self.using = using
         self.skip = skip
 
     def setup(self,**kwargs):
@@ -90,7 +89,7 @@ class Denorm(object):
                 instance.save()
         flush()
 
-    def get_triggers(self):
+    def get_triggers(self, using):
         return []
 
 class BaseCallbackDenorm(Denorm):
@@ -108,7 +107,7 @@ class BaseCallbackDenorm(Denorm):
         for dependency in self.depend:
             dependency.setup(self.model)
 
-    def get_triggers(self):
+    def get_triggers(self, using):
         """
         Creates a list of all triggers needed to keep track of changes
         to fields this denorm depends on.
@@ -118,16 +117,16 @@ class BaseCallbackDenorm(Denorm):
         # Get the triggers of all DenormDependency instances attached
         # to our callback.
         for dependency in self.depend:
-            trigger_list += dependency.get_triggers()
+            trigger_list += dependency.get_triggers(using=using)
 
-        return trigger_list + super(BaseCallbackDenorm,self).get_triggers()
+        return trigger_list + super(BaseCallbackDenorm,self).get_triggers(using=using)
 
 class CallbackDenorm(BaseCallbackDenorm):
     """
     As above, but with extra triggers on self as described below
     """
 
-    def get_triggers(self):
+    def get_triggers(self, using):
 
         content_type = str(ContentType.objects.get_for_model(self.model).pk)
 
@@ -144,11 +143,11 @@ class CallbackDenorm(BaseCallbackDenorm):
             values = (content_type,"NEW.%s" % self.model._meta.pk.get_attname_column()[1])
         )
         trigger_list = [
-            triggers.Trigger(self.model,"after","update",[action],content_type,self.using,self.skip),
-            triggers.Trigger(self.model,"after","insert",[action],content_type,self.using,self.skip),
+            triggers.Trigger(self.model,"after","update",[action],content_type,using,self.skip),
+            triggers.Trigger(self.model,"after","insert",[action],content_type,using,self.skip),
         ]
 
-        return trigger_list + super(CallbackDenorm,self).get_triggers()
+        return trigger_list + super(CallbackDenorm,self).get_triggers(using=using)
 
 class CountDenorm(Denorm):
 
@@ -157,13 +156,12 @@ class CountDenorm(Denorm):
     updates.
     """
 
-    def __init__(self, using=None, skip=None):
+    def __init__(self, skip=None):
         # in case we want to set the value without relying on the
         # correctness of the incremental updates we create a function that
         # calculates it from scratch.
         self.func = lambda obj: getattr(obj,self.manager_name).count()
         self.manager = None
-        self.using = using
         self.skip = skip
 
     def setup(self,sender,**kwargs):
@@ -177,7 +175,7 @@ class CountDenorm(Denorm):
         if not self.manager and hasattr(self.model,self.manager_name):
             self.manager = getattr(self.model,self.manager_name)
 
-    def get_triggers(self):
+    def get_triggers(self, using):
         fk_name = self.manager.related.field.attname
         content_type = str(ContentType.objects.get_for_model(self.model).pk)
 
@@ -197,9 +195,9 @@ class CountDenorm(Denorm):
 
         other_model = self.manager.related.model
         return [
-            triggers.Trigger(other_model,"after","update",[increment,decrement],content_type,self.using,self.skip),
-            triggers.Trigger(other_model,"after","insert",[increment],content_type,self.using,self.skip),
-            triggers.Trigger(other_model,"after","delete",[decrement],content_type,self.using,self.skip),
+            triggers.Trigger(other_model,"after","update",[increment,decrement],content_type,using,self.skip),
+            triggers.Trigger(other_model,"after","insert",[increment],content_type,using,self.skip),
+            triggers.Trigger(other_model,"after","delete",[decrement],content_type,using,self.skip),
         ]
 
 def rebuildall():
@@ -227,7 +225,7 @@ def build_triggerset(using=None):
     # Use a TriggerSet to ensure each event gets just one trigger
     triggerset = triggers.TriggerSet(using=using)
     for denorm in alldenorms:
-        triggerset.append(denorm.get_triggers())
+        triggerset.append(denorm.get_triggers(using=using))
     return triggerset
 
 def flush():
