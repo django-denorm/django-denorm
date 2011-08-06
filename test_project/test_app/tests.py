@@ -1,58 +1,26 @@
-from django.test import TestCase
+from djangosanetesting import cases
 from django.contrib.auth.models import User,Permission
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
 
 import denorm
-from denorm.denorms import install_triggers
-from denorm import denormalized, depend_on_related, CountField
+from denorm import denorms
 
-from models import Attachment, Post, Forum, Member, Tag
+import models
 
-class SkipPost(models.Model):
-    # Skip feature test main model.
-    text = models.TextField()
-    
-    class Meta:
-        app_label = 'test_app'
-
-class SkipComment(models.Model):
-    post = models.ForeignKey(SkipPost)
-    text = models.TextField()
-    created_on = models.DateTimeField(auto_now_add=True)
-    updated_on = models.DateTimeField(auto_now=True, null=True, blank=True)
-    
-    class Meta:
-        app_label = 'test_app'
-        abstract = True
-    
-class SkipCommentWithoutSkip(SkipComment):
-    # Skip feature test model without a skip parameter on an updatable field. 
-    # he updatable field will not be skipped.
-    @denormalized(models.TextField)
-    @depend_on_related(SkipPost)
-    def post_text(self):
-        return self.post.text
-
-class SkipCommentWithSkip(SkipComment):
-    # Skip feature test model witha skip parameter on an updatable field.
-    @denormalized(models.TextField, skip=('updated_on',))
-    @depend_on_related(SkipPost)
-    def post_text(self):
-        return self.post.text
-
-class TestSkip(TestCase):
+class TestSkip(cases.DestructiveDatabaseTestCase):
     """
     Tests for the skip feature.
     """
     
     def setUp(self):
-        install_triggers()
+        denorms.drop_triggers()
+        denorms.install_triggers()
 
-        post = SkipPost(text='Here be ponies.')
+        post = models.SkipPost(text='Here be ponies.')
         post.save()
         
         self.post = post
+        
 
     # TODO: Enable and check!
     # Unsure on how to test this behaviour. It results in an endless loop:
@@ -68,53 +36,54 @@ class TestSkip(TestCase):
     # TODO: Check if an infinate loop happens and stop it.
     def test_with_skip(self):
         # This should not result in an endless loop.
-        comment = SkipCommentWithSkip(post=self.post, text='Oh really?')
+        comment = models.SkipCommentWithSkip(post=self.post, text='Oh really?')
         comment.save()
         
         denorm.flush()
 
         
-class TestDenormalisation(TestCase):
+class TestDenormalisation(cases.DestructiveDatabaseTestCase):
     """
     Tests for the denormalisation fields.
     """
 
     def setUp(self):
-        install_triggers()
+        denorms.drop_triggers()
+        denorms.install_triggers()
 
         self.testuser = User.objects.create_user("testuser","testuser","testuser")
         self.testuser.is_staff = True
-        ctype = ContentType.objects.get_for_model(Member)
+        ctype = ContentType.objects.get_for_model(models.Member)
         Permission.objects.filter(content_type=ctype).get(name='Can change member').user_set.add(self.testuser)
         self.testuser.save()
 
     def tearDown(self):
         # delete all model instances
         self.testuser.delete()
-        Attachment.objects.all().delete()
-        Post.objects.all().delete()
-        Forum.objects.all().delete()
+        models.Attachment.objects.all().delete()
+        models.Post.objects.all().delete()
+        models.Forum.objects.all().delete()
 
     def test_depends_related(self):
         """
         Test the DependsOnRelated stuff.
         """
         # Make a forum, check it's got no posts
-        f1 = Forum.objects.create(title="forumone")
+        f1 = models.Forum.objects.create(title="forumone")
         self.assertEqual(f1.post_count, 0)
         # Check its database copy too
-        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 0)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 0)
 
         # Add a post
-        p1 = Post.objects.create(forum=f1)
+        p1 = models.Post.objects.create(forum=f1)
         # Has the post count updated?
-        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 1)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 1)
 
         denorm.flush()
 
         # Check its title, in p1 and the DB
         self.assertEqual(p1.forum_title, "forumone")
-        self.assertEqual(Post.objects.get(id=p1.id).forum_title, "forumone")
+        self.assertEqual(models.Post.objects.get(id=p1.id).forum_title, "forumone")
 
         # Update the forum title
         f1.title = "forumtwo"
@@ -123,19 +92,19 @@ class TestDenormalisation(TestCase):
         denorm.flush()
 
         # Has the post's title changed?
-        self.assertEqual(Post.objects.get(id=p1.id).forum_title, "forumtwo")
+        self.assertEqual(models.Post.objects.get(id=p1.id).forum_title, "forumtwo")
 
         # Add and remove some posts and check the post count
-        p2 = Post.objects.create(forum=f1)
-        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 2)
-        p3 = Post.objects.create(forum=f1)
-        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 3)
+        models.Post.objects.create(forum=f1)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 2)
+        models.Post.objects.create(forum=f1)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 3)
         p1.delete()
-        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 2)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 2)
 
         # Delete everything, check once more.
-        Post.objects.all().delete()
-        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 0)
+        models.Post.objects.all().delete()
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 0)
 
         # Make an orphaned post, see what its title is.
         # Doesn't work yet - no support for null FKs
@@ -144,13 +113,13 @@ class TestDenormalisation(TestCase):
 
     def test_dependency_chains(self):
         # create a forum, a member and a post
-        f1 = Forum.objects.create(title="forumone")
-        m1 = Member.objects.create(name="memberone")
-        p1 = Post.objects.create(forum=f1,author=m1)
+        f1 = models.Forum.objects.create(title="forumone")
+        m1 = models.Member.objects.create(name="memberone")
+        models.Post.objects.create(forum=f1,author=m1)
         denorm.flush()
 
         # check the forums author list contains the member
-        self.assertEqual(Forum.objects.get(id=f1.id).author_names, "memberone")
+        self.assertEqual(models.Forum.objects.get(id=f1.id).author_names, "memberone")
 
         # change the member's name
         m1.name = "membertwo"
@@ -158,12 +127,12 @@ class TestDenormalisation(TestCase):
         denorm.flush()
 
         # check again
-        self.assertEqual(Forum.objects.get(id=f1.id).author_names, "membertwo")
+        self.assertEqual(models.Forum.objects.get(id=f1.id).author_names, "membertwo")
 
     def test_trees(self):
-        f1 = Forum.objects.create(title="forumone")
-        f2 = Forum.objects.create(title="forumtwo",parent_forum=f1)
-        f3 = Forum.objects.create(title="forumthree",parent_forum=f2)
+        f1 = models.Forum.objects.create(title="forumone")
+        f2 = models.Forum.objects.create(title="forumtwo",parent_forum=f1)
+        f3 = models.Forum.objects.create(title="forumthree",parent_forum=f2)
         denorm.flush()
 
         self.assertEqual(f1.path,'/forumone/')
@@ -174,19 +143,19 @@ class TestDenormalisation(TestCase):
         f1.save()
         denorm.flush()
 
-        f1 = Forum.objects.get(id=f1.id)
-        f2 = Forum.objects.get(id=f2.id)
-        f3 = Forum.objects.get(id=f3.id)
+        f1 = models.Forum.objects.get(id=f1.id)
+        f2 = models.Forum.objects.get(id=f2.id)
+        f3 = models.Forum.objects.get(id=f3.id)
 
         self.assertEqual(f1.path,'/someothertitle/')
         self.assertEqual(f2.path,'/someothertitle/forumtwo/')
         self.assertEqual(f3.path,'/someothertitle/forumtwo/forumthree/')
 
     def test_reverse_fk_null(self):
-        f1 = Forum.objects.create(title="forumone")
-        m1 = Member.objects.create(name="memberone")
-        p1 = Post.objects.create(forum=f1,author=m1)
-        a1 = Attachment.objects.create()
+        f1 = models.Forum.objects.create(title="forumone")
+        m1 = models.Member.objects.create(name="memberone")
+        models.Post.objects.create(forum=f1,author=m1)
+        models.Attachment.objects.create()
         denorm.flush()
 
 
@@ -194,201 +163,201 @@ class TestDenormalisation(TestCase):
         """
         Test the DependsOnRelated stuff.
         """
-        f1 = Forum.objects.create(title="forumone")
-        f2 = Forum.objects.create(title="forumtwo")
-        p1 = Post.objects.create(forum=f1)
-        p2 = Post.objects.create(forum=f2)
+        f1 = models.Forum.objects.create(title="forumone")
+        f2 = models.Forum.objects.create(title="forumtwo")
+        p1 = models.Post.objects.create(forum=f1)
+        p2 = models.Post.objects.create(forum=f2)
         denorm.flush()
 
-        self.assertEqual(Post.objects.get(id=p1.id).forum_title, "forumone")
-        self.assertEqual(Post.objects.get(id=p2.id).forum_title, "forumtwo")
-        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 1)
-        self.assertEqual(Forum.objects.get(id=f2.id).post_count, 1)
+        self.assertEqual(models.Post.objects.get(id=p1.id).forum_title, "forumone")
+        self.assertEqual(models.Post.objects.get(id=p2.id).forum_title, "forumtwo")
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 1)
+        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count, 1)
 
-        Post.objects.update(forum=f1)
+        models.Post.objects.update(forum=f1)
         denorm.flush()
-        self.assertEqual(Post.objects.get(id=p1.id).forum_title, "forumone")
-        self.assertEqual(Post.objects.get(id=p2.id).forum_title, "forumone")
-        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 2)
-        self.assertEqual(Forum.objects.get(id=f2.id).post_count, 0)
+        self.assertEqual(models.Post.objects.get(id=p1.id).forum_title, "forumone")
+        self.assertEqual(models.Post.objects.get(id=p2.id).forum_title, "forumone")
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 2)
+        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count, 0)
 
-        Forum.objects.update(title="oneforall")
+        models.Forum.objects.update(title="oneforall")
         denorm.flush()
-        self.assertEqual(Post.objects.get(id=p1.id).forum_title, "oneforall")
-        self.assertEqual(Post.objects.get(id=p2.id).forum_title, "oneforall")
+        self.assertEqual(models.Post.objects.get(id=p1.id).forum_title, "oneforall")
+        self.assertEqual(models.Post.objects.get(id=p2.id).forum_title, "oneforall")
 
     def test_no_dependency(self):
-        m1 = Member.objects.create(first_name="first",name="last")
+        m1 = models.Member.objects.create(first_name="first",name="last")
         denorm.flush()
 
-        self.assertEqual(Member.objects.get(id=m1.id).full_name,"first last")
+        self.assertEqual(models.Member.objects.get(id=m1.id).full_name,"first last")
 
-        Member.objects.filter(id=m1.id).update(first_name="second")
+        models.Member.objects.filter(id=m1.id).update(first_name="second")
         denorm.flush()
-        self.assertEqual(Member.objects.get(id=m1.id).full_name,"second last")
+        self.assertEqual(models.Member.objects.get(id=m1.id).full_name,"second last")
 
     def test_self_backward_relation(self):
 
-        f1 = Forum.objects.create(title="forumone")
-        p1 = Post.objects.create(forum=f1,)
-        p2 = Post.objects.create(forum=f1,response_to=p1)
-        p3 = Post.objects.create(forum=f1,response_to=p1)
-        p4 = Post.objects.create(forum=f1,response_to=p2)
+        f1 = models.Forum.objects.create(title="forumone")
+        p1 = models.Post.objects.create(forum=f1,)
+        p2 = models.Post.objects.create(forum=f1,response_to=p1)
+        p3 = models.Post.objects.create(forum=f1,response_to=p1)
+        p4 = models.Post.objects.create(forum=f1,response_to=p2)
         denorm.flush()
 
-        self.assertEqual(Post.objects.get(id=p1.id).response_count, 3)
-        self.assertEqual(Post.objects.get(id=p2.id).response_count, 1)
-        self.assertEqual(Post.objects.get(id=p3.id).response_count, 0)
-        self.assertEqual(Post.objects.get(id=p4.id).response_count, 0)
+        self.assertEqual(models.Post.objects.get(id=p1.id).response_count, 3)
+        self.assertEqual(models.Post.objects.get(id=p2.id).response_count, 1)
+        self.assertEqual(models.Post.objects.get(id=p3.id).response_count, 0)
+        self.assertEqual(models.Post.objects.get(id=p4.id).response_count, 0)
 
     def test_m2m_relation(self):
-        f1 = Forum.objects.create(title="forumone")
-        p1 = Post.objects.create(forum=f1,title="post1")
-        m1 = Member.objects.create(first_name="first1",name="last1")
+        f1 = models.Forum.objects.create(title="forumone")
+        p1 = models.Post.objects.create(forum=f1,title="post1")
+        m1 = models.Member.objects.create(first_name="first1",name="last1")
 
         denorm.flush()
         m1.bookmarks.add(p1)
         denorm.flush()
 
-        self.assertTrue('post1' in Member.objects.get(id=m1.id).bookmark_titles)
+        self.assertTrue('post1' in models.Member.objects.get(id=m1.id).bookmark_titles)
         p1.title = "othertitle"
         p1.save()
         denorm.flush()
-        self.assertTrue('post1' not in Member.objects.get(id=m1.id).bookmark_titles)
-        self.assertTrue('othertitle' in Member.objects.get(id=m1.id).bookmark_titles)
+        self.assertTrue('post1' not in models.Member.objects.get(id=m1.id).bookmark_titles)
+        self.assertTrue('othertitle' in models.Member.objects.get(id=m1.id).bookmark_titles)
 
-        p2 = Post.objects.create(forum=f1,title="thirdtitle")
+        p2 = models.Post.objects.create(forum=f1,title="thirdtitle")
         m1.bookmarks.add(p2)
         denorm.flush()
-        self.assertTrue('post1' not in Member.objects.get(id=m1.id).bookmark_titles)
-        self.assertTrue('othertitle' in Member.objects.get(id=m1.id).bookmark_titles)
-        self.assertTrue('thirdtitle' in Member.objects.get(id=m1.id).bookmark_titles)
+        self.assertTrue('post1' not in models.Member.objects.get(id=m1.id).bookmark_titles)
+        self.assertTrue('othertitle' in models.Member.objects.get(id=m1.id).bookmark_titles)
+        self.assertTrue('thirdtitle' in models.Member.objects.get(id=m1.id).bookmark_titles)
 
         m1.bookmarks.remove(p1)
         denorm.flush()
-        self.assertTrue('othertitle' not in Member.objects.get(id=m1.id).bookmark_titles)
-        self.assertTrue('thirdtitle' in Member.objects.get(id=m1.id).bookmark_titles)
+        self.assertTrue('othertitle' not in models.Member.objects.get(id=m1.id).bookmark_titles)
+        self.assertTrue('thirdtitle' in models.Member.objects.get(id=m1.id).bookmark_titles)
 
     def test_middleware(self):
         # FIXME, this test currently does not work with a transactional
         # database, so it's skipped for now.
         return
         # FIXME, set and de-set middleware values
-        f1 = Forum.objects.create(title="forumone")
-        m1 = Member.objects.create(first_name="first1",name="last1")
-        p1 = Post.objects.create(forum=f1,author=m1)
+        f1 = models.Forum.objects.create(title="forumone")
+        m1 = models.Member.objects.create(first_name="first1",name="last1")
+        p1 = models.Post.objects.create(forum=f1,author=m1)
 
-        self.assertEqual(Post.objects.get(id=p1.id).author_name, "last1")
+        self.assertEqual(models.Post.objects.get(id=p1.id).author_name, "last1")
 
         self.client.login(username="testuser",password="testuser")
-        response = self.client.post("/admin/denorm_testapp/member/%s/"%(m1.pk),
+        self.client.post("/admin/denorm_testapp/member/%s/"%(m1.pk),
                                 {'name':'last2','first_name':'first2'})
 
-        self.assertEqual(Post.objects.get(id=p1.id).author_name, "last2")
+        self.assertEqual(models.Post.objects.get(id=p1.id).author_name, "last2")
 
     def test_countfield(self):
-        f1 = Forum.objects.create(title="forumone")
-        f2 = Forum.objects.create(title="forumone")
-        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 0)
-        self.assertEqual(Forum.objects.get(id=f2.id).post_count, 0)
+        f1 = models.Forum.objects.create(title="forumone")
+        f2 = models.Forum.objects.create(title="forumone")
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 0)
+        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count, 0)
 
-        p1 = Post.objects.create(forum=f1)
-        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 1)
-        self.assertEqual(Forum.objects.get(id=f2.id).post_count, 0)
+        models.Post.objects.create(forum=f1)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 1)
+        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count, 0)
 
-        p2 = Post.objects.create(forum=f2)
-        p3 = Post.objects.create(forum=f2)
-        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 1)
-        self.assertEqual(Forum.objects.get(id=f2.id).post_count, 2)
+        p2 = models.Post.objects.create(forum=f2)
+        p3 = models.Post.objects.create(forum=f2)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 1)
+        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count, 2)
 
         p2.forum = f1
         p2.save()
-        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 2)
-        self.assertEqual(Forum.objects.get(id=f2.id).post_count, 1)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 2)
+        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count, 1)
 
-        Post.objects.filter(pk=p3.pk).update(forum=f1)
-        self.assertEqual(Forum.objects.get(id=f1.id).post_count, 3)
-        self.assertEqual(Forum.objects.get(id=f2.id).post_count, 0)
+        models.Post.objects.filter(pk=p3.pk).update(forum=f1)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 3)
+        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count, 0)
 
     def test_foreignkey(self):
-        f1 = Forum.objects.create(title="forumone")
-        f2 = Forum.objects.create(title="forumtwo")
-        m1 = Member.objects.create(first_name="first1",name="last1")
-        p1 = Post.objects.create(forum=f1,author=m1)
+        f1 = models.Forum.objects.create(title="forumone")
+        f2 = models.Forum.objects.create(title="forumtwo")
+        m1 = models.Member.objects.create(first_name="first1",name="last1")
+        p1 = models.Post.objects.create(forum=f1,author=m1)
 
-        a1 = Attachment.objects.create(post=p1)
-        self.assertEqual(Attachment.objects.get(id=a1.id).forum, f1)
+        a1 = models.Attachment.objects.create(post=p1)
+        self.assertEqual(models.Attachment.objects.get(id=a1.id).forum, f1)
 
-        a2 = Attachment.objects.create()
-        self.assertEqual(Attachment.objects.get(id=a2.id).forum, None)
+        a2 = models.Attachment.objects.create()
+        self.assertEqual(models.Attachment.objects.get(id=a2.id).forum, None)
 
         # Change forum
         p1.forum = f2
         p1.save()
         denorm.flush()
-        self.assertEqual(Attachment.objects.get(id=a1.id).forum, f2)
+        self.assertEqual(models.Attachment.objects.get(id=a1.id).forum, f2)
 
     def test_m2m(self):
-        f1 = Forum.objects.create(title="forumone")
-        m1 = Member.objects.create(name="memberone")
-        p1 = Post.objects.create(forum=f1,author=m1)
+        f1 = models.Forum.objects.create(title="forumone")
+        m1 = models.Member.objects.create(name="memberone")
+        models.Post.objects.create(forum=f1,author=m1)
         denorm.flush()
 
         # check the forums author list contains the member
-        self.assertTrue(m1 in Forum.objects.get(id=f1.id).authors.all())
+        self.assertTrue(m1 in models.Forum.objects.get(id=f1.id).authors.all())
 
-        m2 = Member.objects.create(name="membertwo")
-        p2 = Post.objects.create(forum=f1,author=m2)
+        m2 = models.Member.objects.create(name="membertwo")
+        p2 = models.Post.objects.create(forum=f1,author=m2)
         denorm.flush()
 
-        self.assertTrue(m1 in Forum.objects.get(id=f1.id).authors.all())
-        self.assertTrue(m2 in Forum.objects.get(id=f1.id).authors.all())
+        self.assertTrue(m1 in models.Forum.objects.get(id=f1.id).authors.all())
+        self.assertTrue(m2 in models.Forum.objects.get(id=f1.id).authors.all())
 
         p2.delete()
         denorm.flush()
 
-        self.assertTrue(m2 not in Forum.objects.get(id=f1.id).authors.all())
+        self.assertTrue(m2 not in models.Forum.objects.get(id=f1.id).authors.all())
 
     def test_denorm_rebuild(self):
-        f1 = Forum.objects.create(title="forumone")
-        m1 = Member.objects.create(name="memberone")
-        p1 = Post.objects.create(forum=f1,author=m1)
+        f1 = models.Forum.objects.create(title="forumone")
+        m1 = models.Member.objects.create(name="memberone")
+        p1 = models.Post.objects.create(forum=f1,author=m1)
 
         denorm.denorms.rebuildall()
 
-        f1 = Forum.objects.get(id=f1.id)
-        m1 = Member.objects.get(id=m1.id)
-        p1 = Post.objects.get(id=p1.id)
+        f1 = models.Forum.objects.get(id=f1.id)
+        m1 = models.Member.objects.get(id=m1.id)
+        p1 = models.Post.objects.get(id=p1.id)
 
         self.assertEqual(f1.post_count, 1)
         self.assertEqual(f1.authors.all()[0],m1)
 
     def test_denorm_subclass(self):
-        f1 = Forum.objects.create(title="forumone")
-        m1 = Member.objects.create(name="memberone")
-        p1 = Post.objects.create(forum=f1,author=m1)
+        f1 = models.Forum.objects.create(title="forumone")
+        m1 = models.Member.objects.create(name="memberone")
+        p1 = models.Post.objects.create(forum=f1,author=m1)
 
         self.assertEqual(f1.tags_string, '')
         self.assertEqual(p1.tags_string, '')
 
-        t1 = Tag.objects.create(name='tagone', content_object=f1)
-        t2 = Tag.objects.create(name='tagtwo', content_object=f1)
+        models.Tag.objects.create(name='tagone', content_object=f1)
+        models.Tag.objects.create(name='tagtwo', content_object=f1)
 
         denorm.denorms.flush()
-        f1 = Forum.objects.get(id=f1.id)
-        m1 = Member.objects.get(id=m1.id)
-        p1 = Post.objects.get(id=p1.id)
+        f1 = models.Forum.objects.get(id=f1.id)
+        m1 = models.Member.objects.get(id=m1.id)
+        p1 = models.Post.objects.get(id=p1.id)
 
         self.assertEqual(f1.tags_string, 'tagone, tagtwo')
         self.assertEqual(p1.tags_string, '')
 
-        t3 = Tag.objects.create(name='tagthree', content_object=p1)
-        t4 = Tag.objects.create(name='tagfour', content_object=p1)
+        models.Tag.objects.create(name='tagthree', content_object=p1)
+        t4 = models.Tag.objects.create(name='tagfour', content_object=p1)
 
         denorm.denorms.flush()
-        f1 = Forum.objects.get(id=f1.id)
-        m1 = Member.objects.get(id=m1.id)
-        p1 = Post.objects.get(id=p1.id)
+        f1 = models.Forum.objects.get(id=f1.id)
+        m1 = models.Member.objects.get(id=m1.id)
+        p1 = models.Post.objects.get(id=p1.id)
 
         self.assertEqual(f1.tags_string, 'tagone, tagtwo')
         self.assertEqual(p1.tags_string, 'tagfour, tagthree')
@@ -397,9 +366,9 @@ class TestDenormalisation(TestCase):
         t4.save()
 
         denorm.denorms.flush()
-        f1 = Forum.objects.get(id=f1.id)
-        m1 = Member.objects.get(id=m1.id)
-        p1 = Post.objects.get(id=p1.id)
+        f1 = models.Forum.objects.get(id=f1.id)
+        m1 = models.Member.objects.get(id=m1.id)
+        p1 = models.Post.objects.get(id=p1.id)
 
         self.assertEqual(f1.tags_string, 'tagfour, tagone, tagtwo')
         self.assertEqual(p1.tags_string, 'tagthree')

@@ -71,9 +71,14 @@ class Trigger(base.Trigger):
 class TriggerSet(base.TriggerSet):
     def drop(self):
         cursor = self.cursor()
-        cursor.execute("SHOW TRIGGERS WHERE Trigger LIKE 'denorm_%%';")
+        
+        # FIXME: according to MySQL docs the LIKE statement should work
+        # but it doesn't. MySQL reports a Syntax Error
+        #cursor.execute(r"SHOW TRIGGERS WHERE Trigger LIKE 'denorm_%%'")
+        cursor.execute(r"SHOW TRIGGERS")
         for result in cursor.fetchall():
-            cursor.execute("DROP TRIGGER %s;" % result[0])
+            if result[0].startswith("denorm_"):
+                cursor.execute("DROP TRIGGER %s;" % result[0])
 
     def install(self):
         cursor = self.cursor()

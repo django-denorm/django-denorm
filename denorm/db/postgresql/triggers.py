@@ -102,6 +102,9 @@ class TriggerSet(base.TriggerSet):
 
     def install(self):
         cursor = self.cursor()
+        cursor.execute("SELECT lanname FROM pg_catalog.pg_language WHERE lanname ='plpgsql'")
+        if not cursor.fetchall():
+            cursor.execute("CREATE LANGUAGE plpgsql")
         for name, trigger in self.triggers.iteritems():
             cursor.execute(trigger.sql())
             transaction.commit_unless_managed(using=self.using)

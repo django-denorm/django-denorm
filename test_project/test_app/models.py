@@ -113,3 +113,31 @@ class Member(models.Model):
     def bookmark_titles(self):
         if self.id:
             return '\n'.join([p.title for p in self.bookmarks.all()])
+        
+class SkipPost(models.Model):
+    # Skip feature test main model.
+    text = models.TextField()
+
+class SkipComment(models.Model):
+    post = models.ForeignKey(SkipPost)
+    text = models.TextField()
+    created_on = models.DateTimeField(auto_now_add=True)
+    updated_on = models.DateTimeField(auto_now=True, null=True, blank=True)
+    
+    class Meta:
+        abstract = True
+    
+class SkipCommentWithoutSkip(SkipComment):
+    # Skip feature test model without a skip parameter on an updatable field. 
+    # he updatable field will not be skipped.
+    @denormalized(models.TextField)
+    @depend_on_related(SkipPost)
+    def post_text(self):
+        return self.post.text
+
+class SkipCommentWithSkip(SkipComment):
+    # Skip feature test model witha skip parameter on an updatable field.
+    @denormalized(models.TextField, skip=('updated_on',))
+    @depend_on_related(SkipPost)
+    def post_text(self):
+        return self.post.text
