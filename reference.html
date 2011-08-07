@@ -8,8 +8,8 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
     <title>Reference &mdash; django-denorm v0.1 documentation</title>
-    <link rel="stylesheet" href="_static/default.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="static/default.css" type="text/css" />
+    <link rel="stylesheet" href="static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
@@ -19,9 +19,9 @@
         HAS_SOURCE:  true
       };
     </script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="static/jquery.js"></script>
+    <script type="text/javascript" src="static/underscore.js"></script>
+    <script type="text/javascript" src="static/doctools.js"></script>
     <link rel="top" title="django-denorm v0.1 documentation" href="index.html" />
     <link rel="prev" title="Tutorial" href="tutorial.html" /> 
   </head>
@@ -32,6 +32,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="tutorial.html" title="Tutorial"
              accesskey="P">previous</a> |</li>
@@ -48,29 +51,108 @@
 <h1>Reference<a class="headerlink" href="#reference" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="decorators">
 <h2>Decorators<a class="headerlink" href="#decorators" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="denorm.denormalized">
+<tt class="descclassname">denorm.</tt><tt class="descname">denormalized</tt><big>(</big><em>DBField</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#denorm.denormalized" title="Permalink to this definition">¶</a></dt>
+<dd><p>Turns a callable into model field, analogous to python&#8217;s <tt class="docutils literal"><span class="pre">&#64;property</span></tt> decorator.
+The callable will be used to compute the value of the field every time the model
+gets saved.
+If the callable has dependency information attached to it the fields value will
+also be recomputed if the dependencies require it.</p>
+<p><strong>Arguments:</strong></p>
+<dl class="docutils">
+<dt>DBField (required)</dt>
+<dd>The type of field you want to use to save the data.
+Note that you have to use the field class and not an instance
+of it.</dd>
+<dt>*args, **kwargs:</dt>
+<dd>Those will be passed unaltered into the constructor of <tt class="docutils literal"><span class="pre">DBField</span></tt>
+once it gets actually created.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="denorm.depend_on_related">
+<tt class="descclassname">denorm.</tt><tt class="descname">depend_on_related</tt><big>(</big><em>othermodel</em>, <em>foreign_key=None</em>, <em>type=None</em><big>)</big><a class="headerlink" href="#denorm.depend_on_related" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attaches a dependency to a callable, indicating the return value depends on
+fields in an other model that is related to the model the callable belongs to
+either through a ForeignKey in either direction or a ManyToManyField.</p>
+<p><strong>Arguments:</strong></p>
+<dl class="docutils">
+<dt>othermodel (required)</dt>
+<dd>Either a model class or a string naming a model class.</dd>
+<dt>foreign_key</dt>
+<dd>The name of the ForeignKey or ManyToManyField that creates the relation
+between the two models.
+Only necessary if there is more than one relationship between the two models.</dd>
+<dt>type</dt>
+<dd>One of &#8216;forward&#8217;, &#8216;backward&#8217;, &#8216;forward_m2m&#8217; or &#8216;backward_m2m&#8217;.
+If there are relations in both directions specify which one to use.</dd>
+</dl>
+</dd></dl>
+
 </div>
 <div class="section" id="fields">
 <h2>Fields<a class="headerlink" href="#fields" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="denorm.CountField">
+<em class="property">class </em><tt class="descclassname">denorm.</tt><tt class="descname">CountField</tt><big>(</big><em>manager_name</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#denorm.CountField" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <tt class="docutils literal"><span class="pre">PositiveIntegerField</span></tt> that stores the number of rows
+related to this model instance through the specified manager.
+The value will be incrementally updated when related objects
+are added and removed.</p>
+<p><strong>Arguments:</strong></p>
+<dl class="docutils">
+<dt>manager_name:</dt>
+<dd>The name of the related manager to be counted.</dd>
+</dl>
+<p>Any additional arguments are passed on to the contructor of
+PositiveIntegerField.</p>
+</dd></dl>
+
 </div>
 <div class="section" id="functions">
 <h2>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="denorm.flush">
+<tt class="descclassname">denorm.</tt><tt class="descname">flush</tt><big>(</big><big>)</big><a class="headerlink" href="#denorm.flush" title="Permalink to this definition">¶</a></dt>
+<dd><p>Updates all model instances marked as dirty by the DirtyInstance
+model.
+After this method finishes the DirtyInstance table is empty and
+all denormalized fields have consistent data.</p>
+</dd></dl>
+
 </div>
 <div class="section" id="middleware">
 <h2>Middleware<a class="headerlink" href="#middleware" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="denorm.middleware.DenormMiddleware">
+<em class="property">class </em><tt class="descclassname">denorm.middleware.</tt><tt class="descname">DenormMiddleware</tt><a class="headerlink" href="#denorm.middleware.DenormMiddleware" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calls <tt class="docutils literal"><span class="pre">denorm.flush</span></tt> during the response stage of every request. If your data mostly or only changes during requests
+this should be a good idea. If you run into performance problems with this (because <tt class="docutils literal"><span class="pre">flush()</span></tt> takes
+to long to complete) you can try using a daemon or handle flushing manually instead.</p>
+<p>As usual the order of middleware classes matters. It makes a lot of sense to put <tt class="docutils literal"><span class="pre">DenormMiddleware</span></tt>
+after <tt class="docutils literal"><span class="pre">TransactionMiddleware</span></tt> in your <tt class="docutils literal"><span class="pre">MIDDLEWARE_CLASSES</span></tt> setting.</p>
+</dd></dl>
+
 </div>
 <div class="section" id="management-commands">
 <h2>Management commands<a class="headerlink" href="#management-commands" title="Permalink to this headline">¶</a></h2>
 <dl class="docutils">
 <dt><strong>denorm_init</strong></dt>
-<dd></dd>
+<dd><span class="target" id="module-denorm.management.commands.denorm_init"></span>Creates all triggers needed to track changes to models that may cause
+data to become inconsistent.</dd>
 <dt><strong>denorm_rebuild</strong></dt>
-<dd></dd>
+<dd><span class="target" id="module-denorm.management.commands.denorm_rebuild"></span>Recalculates the value of every single denormalized model field in the whole project.</dd>
 <dt><strong>denorm_flush</strong></dt>
-<dd></dd>
+<dd><span class="target" id="module-denorm.management.commands.denorm_flush"></span>Recalculates the value of every denormalized field that was marked dirty.</dd>
 <dt><strong>denorm_daemon</strong></dt>
-<dd></dd>
+<dd><span class="target" id="module-denorm.management.commands.denorm_daemon"></span>Runs a daemon that checks for dirty fields and updates them in regular intervals.
+The default interval ist one second, this can be overridden by specifying the desired
+interval as a numeric argument to the command.</dd>
 <dt><strong>denorm_sql</strong></dt>
-<dd></dd>
+<dd><span class="target" id="module-denorm.management.commands.denorm_sql"></span>Prints out the SQL used to create all triggers needed to track changes
+to models that may cause data to become inconsistent.</dd>
 </dl>
 </div>
 </div>
@@ -98,7 +180,7 @@
                         title="previous chapter">Tutorial</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
-    <li><a href="_sources/reference.txt"
+    <li><a href="sources/reference.txt"
            rel="nofollow">Show Source</a></li>
   </ul>
 <div id="searchbox" style="display: none">
@@ -124,6 +206,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="tutorial.html" title="Tutorial"
              >previous</a> |</li>
