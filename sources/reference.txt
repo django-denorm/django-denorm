@@ -13,7 +13,12 @@ Decorators
 Fields
 ======
 
+.. autoclass:: denorm.CacheKeyField
+   :members: __init__,depend_on_related
+
 .. autoclass:: denorm.CountField
+   :members: __init__
+
 
 Functions
 =========

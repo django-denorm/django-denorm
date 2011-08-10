@@ -88,6 +88,9 @@ Only necessary if there is more than one relationship between the two models.</d
 <dt>type</dt>
 <dd>One of &#8216;forward&#8217;, &#8216;backward&#8217;, &#8216;forward_m2m&#8217; or &#8216;backward_m2m&#8217;.
 If there are relations in both directions specify which one to use.</dd>
+<dt>skip</dt>
+<dd>Use this to specify what fields change on every save().
+These fields will not be checked and will not make a model dirty when they change, to prevent infinite loops.</dd>
 </dl>
 </dd></dl>
 
@@ -95,19 +98,45 @@ If there are relations in both directions specify which one to use.</dd>
 <div class="section" id="fields">
 <h2>Fields<a class="headerlink" href="#fields" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
+<dt id="denorm.CacheKeyField">
+<em class="property">class </em><tt class="descclassname">denorm.</tt><tt class="descname">CacheKeyField</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#denorm.CacheKeyField" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <tt class="docutils literal"><span class="pre">BigIntegerField</span></tt> that gets set to a random value anytime
+the model is saved or a dependency is triggered.</p>
+<dl class="method">
+<dt id="denorm.CacheKeyField.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#denorm.CacheKeyField.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>All arguments are passed on to the contructor of
+BigIntegerField.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="denorm.CacheKeyField.depend_on_related">
+<tt class="descname">depend_on_related</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#denorm.CacheKeyField.depend_on_related" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add dependency information to the CacheKeyField.
+Accepts the same arguments like the <em>denorm.depend_on_related</em> decorator</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
 <dt id="denorm.CountField">
 <em class="property">class </em><tt class="descclassname">denorm.</tt><tt class="descname">CountField</tt><big>(</big><em>manager_name</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#denorm.CountField" title="Permalink to this definition">¶</a></dt>
 <dd><p>A <tt class="docutils literal"><span class="pre">PositiveIntegerField</span></tt> that stores the number of rows
 related to this model instance through the specified manager.
 The value will be incrementally updated when related objects
 are added and removed.</p>
-<p><strong>Arguments:</strong></p>
+<dl class="method">
+<dt id="denorm.CountField.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>manager_name</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#denorm.CountField.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p><strong>Arguments:</strong></p>
 <dl class="docutils">
 <dt>manager_name:</dt>
 <dd>The name of the related manager to be counted.</dd>
 </dl>
 <p>Any additional arguments are passed on to the contructor of
 PositiveIntegerField.</p>
+</dd></dl>
+
 </dd></dl>
 
 </div>
@@ -140,8 +169,7 @@ after <tt class="docutils literal"><span class="pre">TransactionMiddleware</span
 <h2>Management commands<a class="headerlink" href="#management-commands" title="Permalink to this headline">¶</a></h2>
 <dl class="docutils">
 <dt><strong>denorm_init</strong></dt>
-<dd><span class="target" id="module-denorm.management.commands.denorm_init"></span>Creates all triggers needed to track changes to models that may cause
-data to become inconsistent.</dd>
+<dd><span class="target" id="module-denorm.management.commands.denorm_init"></span></dd>
 <dt><strong>denorm_rebuild</strong></dt>
 <dd><span class="target" id="module-denorm.management.commands.denorm_rebuild"></span>Recalculates the value of every single denormalized model field in the whole project.</dd>
 <dt><strong>denorm_flush</strong></dt>
