@@ -372,3 +372,79 @@ class TestDenormalisation(cases.DestructiveDatabaseTestCase):
 
         self.assertEqual(f1.tags_string, 'tagfour, tagone, tagtwo')
         self.assertEqual(p1.tags_string, 'tagthree')
+        
+    
+    def test_cache_key_field_backward(self):
+        f1 = models.Forum.objects.create(title="forumone")
+        f2 = models.Forum.objects.create(title="forumtwo")
+        ck1 = f1.cachekey
+        ck2 = f2.cachekey
+
+        p1 = models.Post.objects.create(forum=f1)
+        f1 = models.Forum.objects.get(id=f1.id)
+        f2 = models.Forum.objects.get(id=f2.id)
+        self.assertNotEqual(ck1,f1.cachekey)
+        self.assertEqual(ck2,f2.cachekey)
+        
+        ck1 = f1.cachekey
+        ck2 = f2.cachekey
+        
+        p1 = models.Post.objects.get(id=p1.id)
+        p1.forum = f2
+        p1.save()
+        
+        f1 = models.Forum.objects.get(id=f1.id)
+        f2 = models.Forum.objects.get(id=f2.id)
+        
+        self.assertNotEqual(ck1,f1.cachekey)
+        self.assertNotEqual(ck2,f2.cachekey)
+        
+    def test_cache_key_field_forward(self):
+        f1 = models.Forum.objects.create(title="forumone")
+        p1 = models.Post.objects.create(title='initial_title',forum=f1)
+        a1 = models.Attachment.objects.create(post=p1)
+        a2 = models.Attachment.objects.create(post=p1)
+        
+        a1 = models.Attachment.objects.get(id=a1.id)
+        a2 = models.Attachment.objects.get(id=a2.id)
+        self.assertNotEqual(a1.cachekey,a2.cachekey)
+        
+        ck1 = a1.cachekey
+        ck2 = a2.cachekey
+        p1.title = 'new_title'
+        p1.save()
+        
+        a1 = models.Attachment.objects.get(id=a1.id)
+        a2 = models.Attachment.objects.get(id=a2.id)
+        self.assertNotEqual(ck1,a1.cachekey)
+        self.assertNotEqual(ck2,a2.cachekey)
+        
+        a1 = models.Attachment.objects.get(id=a1.id)
+        a2 = models.Attachment.objects.get(id=a2.id)
+        self.assertNotEqual(a1.cachekey,a2.cachekey)
+        
+    def test_cache_key_field_m2m(self):
+        f1 = models.Forum.objects.create(title="forumone")
+        m1 = models.Member.objects.create(name="memberone")
+        p1 = models.Post.objects.create(title='initial_title',forum=f1)
+        
+        m1 = models.Member.objects.get(id=m1.id)
+        ck1 = m1.cachekey
+        
+        m1.bookmarks.add(p1)
+        
+        m1 = models.Member.objects.get(id=m1.id)
+        self.assertNotEqual(ck1,m1.cachekey)
+        
+        ck1 = m1.cachekey
+        
+        p1 = models.Post.objects.get(id=p1.id)
+        p1.title = 'new_title'
+        p1.save()
+        
+        m1 = models.Member.objects.get(id=m1.id)
+        self.assertNotEqual(ck1,m1.cachekey)
+        
+        
+        
+        

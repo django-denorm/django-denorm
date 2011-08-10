@@ -83,15 +83,17 @@ class CountField(models.PositiveIntegerField):
     The value will be incrementally updated when related objects
     are added and removed.
 
-    **Arguments:**
-
-    manager_name:
-        The name of the related manager to be counted.
-
-    Any additional arguments are passed on to the contructor of
-    PositiveIntegerField.
     """
     def __init__(self,manager_name,**kwargs):
+        """
+        **Arguments:**
+
+        manager_name:
+            The name of the related manager to be counted.
+
+        Any additional arguments are passed on to the contructor of
+        PositiveIntegerField.
+        """
         skip = kwargs.pop('skip', None)
         self.denorm = denorms.CountDenorm(skip)
         self.denorm.manager_name = manager_name
@@ -135,3 +137,60 @@ class CountField(models.PositiveIntegerField):
 
         setattr(model_instance, self.attname, value)
         return value
+
+class CacheKeyField(models.BigIntegerField):
+    """
+    A ``BigIntegerField`` that gets set to a random value anytime
+    the model is saved or a dependency is triggered.
+    The field gets updated immediately and does not require *denorm.flush()*.
+    It currently cannot detect a direct (bulk)update to the model
+    it is declared in.
+    """
+
+    def __init__(self,**kwargs):
+        """
+        All arguments are passed on to the contructor of
+        BigIntegerField.
+        """
+        self.dependencies = []
+        self.kwargs = kwargs
+        kwargs['default'] = 0
+        super(CacheKeyField,self).__init__(**kwargs)
+
+    def depend_on_related(self,*args,**kwargs):
+        """
+        Add dependency information to the CacheKeyField.
+        Accepts the same arguments like the *denorm.depend_on_related* decorator
+        """
+        from dependencies import CacheKeyDependOnRelated
+        self.dependencies.append(CacheKeyDependOnRelated(*args,**kwargs))
+
+    def contribute_to_class(self,cls,name,*args,**kwargs):
+        for depend in self.dependencies:
+            depend.fieldname = name
+        self.denorm = denorms.BaseCacheKeyDenorm(depend_on_related=self.dependencies)
+        self.denorm.model = cls
+        self.denorm.fieldname = name
+        models.signals.class_prepared.connect(self.denorm.setup)
+        super(CacheKeyField,self).contribute_to_class(cls,name,*args,**kwargs)
+
+    def pre_save(self,model_instance,add):
+        if add:
+            value = self.denorm.func(model_instance)
+        else:
+            value = self.denorm.model.objects.filter(
+                pk=model_instance.pk,
+            ).values_list(
+                self.attname,flat=True,
+            )[0]
+        setattr(model_instance, self.attname, value)
+        return value
+
+    def south_field_triple(self):
+        return (
+            '.'.join(('django','db','models',models.BigIntegerField.__name__)),
+            [],
+            {
+                'default': '0',
+            },
+        )

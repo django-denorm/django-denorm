@@ -149,6 +149,63 @@ class CallbackDenorm(BaseCallbackDenorm):
 
         return trigger_list + super(CallbackDenorm,self).get_triggers(using=using)
 
+class BaseCacheKeyDenorm(Denorm):
+    def __init__(self,depend_on_related,*args,**kwargs):
+        self.depend = depend_on_related
+        super(BaseCacheKeyDenorm,self).__init__(*args,**kwargs)
+        import random
+        self.func = lambda o: random.randint(-9223372036854775808,9223372036854775807)
+
+    def setup(self,**kwargs):
+        """
+        Calls setup() on all DenormDependency resolvers
+        """
+        super(BaseCacheKeyDenorm,self).setup(**kwargs)
+
+        for dependency in self.depend:
+            dependency.setup(self.model)
+
+    def get_triggers(self,using):
+        """
+        Creates a list of all triggers needed to keep track of changes
+        to fields this denorm depends on.
+        """
+        trigger_list = list()
+
+        # Get the triggers of all DenormDependency instances attached
+        # to our callback.
+        for dependency in self.depend:
+            trigger_list += dependency.get_triggers(using=using)
+
+        return trigger_list + super(BaseCacheKeyDenorm,self).get_triggers(using=using)
+
+class CacheKeyDenorm(BaseCacheKeyDenorm):
+    """
+    As above, but with extra triggers on self as described below
+    """
+
+    def get_triggers(self, using):
+
+        content_type = str(ContentType.objects.get_for_model(self.model).pk)
+
+        # This is only really needed if the instance was changed without
+        # using the ORM or if it was part of a bulk update.
+        # In those cases the self_save_handler won't get called by the
+        # pre_save signal
+        action = triggers.TriggerActionUpdate(
+            model = self.model,
+            columns = (self.fieldname,),
+            values = (triggers.RandomBigInt(),),
+            where = "%s=NEW.%s"%((self.model._meta.pk.get_attname_column()[1],)*2),
+        )
+        trigger_list = [
+            triggers.Trigger(self.model,"after","update",[action],content_type,using,self.skip),
+            triggers.Trigger(self.model,"after","insert",[action],content_type,using,self.skip),
+        ]
+
+        return trigger_list + super(CacheKeyDenorm,self).get_triggers(using=using)
+
+
 class CountDenorm(Denorm):
 
     """

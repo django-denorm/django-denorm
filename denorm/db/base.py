@@ -1,6 +1,10 @@
 from django.db import models, connections, connection
 from django.contrib.contenttypes.generic import GenericRelation
 
+class RandomBigInt(object):
+    def sql(self):
+        raise NotImplementedError
+
 class TriggerNestedSelect:
     def __init__(self,table,columns,**kwargs):
         self.table = table
@@ -31,8 +35,14 @@ class TriggerActionUpdate(TriggerAction):
     def __init__(self,model,columns,values,where):
         self.model = model
         self.columns = columns
-        self.values = values
         self.where = where
+        
+        self.values = []
+        for value in values:
+            if hasattr(value,'sql'):
+                self.values.append(value.sql())
+            else:
+                self.values.append(value)
 
     def sql(self):
         raise NotImplementedError

@@ -1,6 +1,10 @@
 from denorm.db import base
 from django.db import transaction
 
+class RandomBigInt(base.RandomBigInt):
+    def sql(self):
+        return 'RANDOM()'
+
 class TriggerNestedSelect(base.TriggerNestedSelect):
 
     def sql(self):

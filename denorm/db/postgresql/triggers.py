@@ -1,6 +1,10 @@
 from django.db import transaction
 from denorm.db import base
 
+class RandomBigInt(base.RandomBigInt):
+    def sql(self):
+        return '(9223372036854775806::INT8 * ((RANDOM()-0.5)*2.0) )::INT8'
+
 class TriggerNestedSelect(base.TriggerNestedSelect):
 
     def sql(self):

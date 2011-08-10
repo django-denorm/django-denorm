@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.contenttypes.generic import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
-from denorm import denormalized, depend_on_related, CountField
+from denorm import denormalized, depend_on_related, CountField, CacheKeyField
 
 class Tag(models.Model):
     name = models.CharField(max_length=255)
@@ -27,6 +27,9 @@ class Forum(TaggedModel):
 
     # Simple count() aggregate
     post_count = CountField('post_set')
+    
+    cachekey = CacheKeyField()
+    cachekey.depend_on_related('Post')
 
     @denormalized(models.CharField,max_length=255)
     @depend_on_related('Post')
@@ -58,8 +61,6 @@ class Post(TaggedModel):
     response_to = models.ForeignKey('self',blank=True,null=True,related_name='responses')
     title = models.CharField(max_length=255,blank=True)
 
-    attachment_count = CountField('attachment_set')
-
     # Brings down the forum title
     @denormalized(models.CharField, max_length=255)
     @depend_on_related(Forum)
@@ -89,6 +90,9 @@ class Post(TaggedModel):
 class Attachment(models.Model):
 
     post = models.ForeignKey(Post,blank=True,null=True)
+    
+    cachekey = CacheKeyField()
+    cachekey.depend_on_related('Post')
 
     @denormalized(models.ForeignKey, Forum, blank=True, null=True)
     @depend_on_related(Post)
@@ -103,6 +107,9 @@ class Member(models.Model):
     first_name = models.CharField(max_length=255)
     name = models.CharField(max_length=255)
     bookmarks = models.ManyToManyField('Post',blank=True)
+    
+    cachekey = CacheKeyField()
+    cachekey.depend_on_related('Post',foreign_key='bookmarks')
 
     @denormalized(models.CharField,max_length=255)
     def full_name(self):

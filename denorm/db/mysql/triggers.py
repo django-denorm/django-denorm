@@ -2,6 +2,9 @@ from denorm.db import base
 import random
 import string
 
+class RandomBigInt(base.RandomBigInt):
+    def sql(self):
+        return '(9223372036854775806 * ((RAND()-0.5)*2.0) )'
 
 class TriggerNestedSelect(base.TriggerNestedSelect):
 
