@@ -62,7 +62,8 @@ class Denorm(object):
         and connects all needed signals.
         """
         global alldenorms
-        alldenorms += [self]
+        if self not in alldenorms:
+            alldenorms.append(self)
 
     def update(self,qs):
         """
@@ -257,13 +258,15 @@ class CountDenorm(Denorm):
             triggers.Trigger(other_model,"after","delete",[decrement],content_type,using,self.skip),
         ]
 
-def rebuildall():
+def rebuildall(verbose=False):
     """
     Updates all models containing denormalized fields.
     Used by the 'denormalize' management command.
     """
     global alldenorms
-    for denorm in alldenorms:
+    for i,denorm in enumerate(alldenorms):
+        if verbose:
+            print 'rebuilding','%s/%s'%(i+1,len(alldenorms)),denorm.fieldname,'in',denorm.model
         denorm.update(denorm.model.objects.all())
 
 def drop_triggers(using=None):
