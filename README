@@ -2,6 +2,6 @@ django-denorm is a Django application to provide automatic management of denorma
 
 This app uses database-level triggers, so is *not* database independent, but support is provided for MySQL, PostgreSQL and sqlite.
 
-Documentation is available from http://django-denorm.initcrash.net/
+Documentation is available from http://initcrash.github.com/django-denorm/
 
 Issues can be reported at http://github.com/initcrash/django-denorm/issues
