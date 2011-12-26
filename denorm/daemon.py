@@ -35,7 +35,7 @@ __url__ = "http://www.clapper.org/software/python/daemon/"
 __copyright__ = "(c) 2008 Brian M. Clapper"
 __license__ = "BSD-style license"
 
-__all__ = ['daemonize', 'DaemonError']
+__all__ = ['daemonize', 'DaemonException']
 
 # ---------------------------------------------------------------------------
 # Imports
@@ -77,7 +77,7 @@ log = logging.getLogger('daemonize')
 # Public classes
 # ---------------------------------------------------------------------------
 
-class DaemonError(Exception):
+class DaemonException(Exception):
     """
     Thrown by C{daemonize()} when an error occurs while attempting to create
     a daemon. A C{DaemonException} object always contains a single string
@@ -185,7 +185,7 @@ def _fork():
     try:
         return os.fork()
     except OSError, e:
-        raise DaemonException, 'Cannot fork: %s [%d]' % (e.strerror, e.errno)
+        raise DaemonException('Cannot fork: %s [%d]' % (e.strerror, e.errno))
 
 
 def _redirectFileDescriptors():
