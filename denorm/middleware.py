@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-
 from denorm import flush
+
 
 class DenormMiddleware(object):
     """
@@ -14,4 +14,3 @@ class DenormMiddleware(object):
     def process_response(self, request, response):
         flush()
         return response
-

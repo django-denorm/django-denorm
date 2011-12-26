@@ -1,43 +1,48 @@
 from django.db import transaction
 from denorm.db import base
 
+
 class RandomBigInt(base.RandomBigInt):
     def sql(self):
         return '(9223372036854775806::INT8 * ((RANDOM()-0.5)*2.0) )::INT8'
+
 
 class TriggerNestedSelect(base.TriggerNestedSelect):
 
     def sql(self):
         columns = self.columns
         table = self.table
-        where = ",".join(["%s = %s"%(k,v) for k,v in self.kwargs.iteritems()])
+        where = ",".join(["%s = %s" % (k, v) for k, v in self.kwargs.iteritems()])
         return """ SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s """ % locals()
+
 
 class TriggerActionInsert(base.TriggerActionInsert):
 
     def sql(self):
         table = self.model._meta.db_table
-        columns = "("+",".join(self.columns)+")"
-        if isinstance(self.values,TriggerNestedSelect):
-            values = "("+self.values.sql()+")"
+        columns = "(" + ",".join(self.columns) + ")"
+        if isinstance(self.values, TriggerNestedSelect):
+            values = "(" + self.values.sql() + ")"
         else:
-            values = "VALUES("+",".join(self.values)+")"
+            values = "VALUES(" + ",".join(self.values) + ")"
 
-        return (
-             """ BEGIN\n"""
-            +"""     INSERT INTO %(table)s %(columns)s %(values)s;\n"""
-            +"""    EXCEPTION WHEN unique_violation THEN\n     -- do nothing\n """
-            +"""   END"""
-            ) % locals()
+        return ("""
+            BEGIN
+            INSERT INTO %(table)s %(columns)s %(values)s;
+            EXCEPTION WHEN unique_violation THEN  -- do nothing
+            END
+            """) % locals()
+
 
 class TriggerActionUpdate(base.TriggerActionUpdate):
 
     def sql(self):
         table = self.model._meta.db_table
-        updates = ','.join(["%s=%s"%(k,v) for k,v in zip(self.columns,self.values)])
+        updates = ','.join(["%s=%s" % (k, v) for k, v in zip(self.columns, self.values)])
         where = self.where
 
         return """ UPDATE %(table)s SET %(updates)s WHERE %(where)s """ % locals()
+
 
 class Trigger(base.Trigger):
     def name(self):
@@ -65,9 +70,9 @@ class Trigger(base.Trigger):
                     # compare PostGIS geometry fields.
                     conditions.append("(OLD.%(f)s::%(t)s IS DISTINCT FROM NEW.%(f)s::%(t)s)" % {'f': field, 't': 'text'})
                 else:
-                    conditions.append("( OLD.%(f)s IS DISTINCT FROM NEW.%(f)s )" % {'f': field,})
+                    conditions.append("( OLD.%(f)s IS DISTINCT FROM NEW.%(f)s )" % {'f': field})
 
-            conditions = ["(%s)"%"OR".join(conditions)]
+            conditions = ["(%s)" % "OR".join(conditions)]
 
         if ct_field:
             if event == "UPDATE":
@@ -82,19 +87,20 @@ class Trigger(base.Trigger):
         else:
             cond = "AND".join(conditions)
 
-        return (
-             """ CREATE OR REPLACE FUNCTION func_%(name)s()\n"""
-            +"""  RETURNS TRIGGER AS $$\n"""
-            +"""  BEGIN\n"""
-            +"""   IF %(cond)s THEN\n"""
-            +"""    %(actions)s\n"""
-            +"""   END IF;\n"""
-            +"""  RETURN NULL; END;\n"""
-            +"""  $$ LANGUAGE plpgsql;\n"""
-            +"""  CREATE TRIGGER %(name)s\n"""
-            +"""  %(time)s %(event)s ON %(table)s\n"""
-            +"""  FOR EACH ROW EXECUTE PROCEDURE func_%(name)s();\n"""
-            ) % locals()
+        return ("""
+            CREATE OR REPLACE FUNCTION func_%(name)s()
+            RETURNS TRIGGER AS $$
+            BEGIN
+            IF %(cond)s THEN
+            %(actions)s
+            END IF;
+            RETURN NULL; END;
+            $$ LANGUAGE plpgsql;
+            CREATE TRIGGER %(name)s
+            %(time)s %(event)s ON %(table)s
+            FOR EACH ROW EXECUTE PROCEDURE func_%(name)s();
+            """) % locals()
+
 
 class TriggerSet(base.TriggerSet):
     def drop(self):

@@ -1,12 +1,14 @@
 from django.db import models, connections, connection
 from django.contrib.contenttypes.generic import GenericRelation
 
+
 class RandomBigInt(object):
     def sql(self):
         raise NotImplementedError
 
+
 class TriggerNestedSelect:
-    def __init__(self,table,columns,**kwargs):
+    def __init__(self, table, columns, **kwargs):
         self.table = table
         self.columns = ", ".join(columns)
         self.kwargs = kwargs
@@ -22,8 +24,9 @@ class TriggerAction:
     def sql(self):
         pass
 
+
 class TriggerActionInsert(TriggerAction):
-    def __init__(self,model,columns,values):
+    def __init__(self, model, columns, values):
         self.model = model
         self.columns = columns
         self.values = values
@@ -31,21 +34,23 @@ class TriggerActionInsert(TriggerAction):
     def sql(self):
         raise NotImplementedError
 
+
 class TriggerActionUpdate(TriggerAction):
-    def __init__(self,model,columns,values,where):
+    def __init__(self, model, columns, values, where):
         self.model = model
         self.columns = columns
         self.where = where
-        
+
         self.values = []
         for value in values:
-            if hasattr(value,'sql'):
+            if hasattr(value, 'sql'):
                 self.values.append(value.sql())
             else:
                 self.values.append(value)
 
     def sql(self):
         raise NotImplementedError
+
 
 class Trigger:
 
@@ -64,27 +69,27 @@ class Trigger:
         else:
             cconnection = connection
 
-        if isinstance(subject,models.ManyToManyField):
+        if isinstance(subject, models.ManyToManyField):
             self.model = None
             self.db_table = subject.m2m_db_table()
-            self.fields = [(subject.m2m_column_name(), ''),(subject.m2m_reverse_name(),'')]
+            self.fields = [(subject.m2m_column_name(), ''), (subject.m2m_reverse_name(), '')]
         elif isinstance(subject, GenericRelation):
             self.model = None
             self.db_table = subject.m2m_db_table()
             self.fields = [(k.attname, k.db_type(connection=cconnection)) for k, v in subject.rel.to._meta.get_fields_with_model() if not v]
             self.content_type_field = subject.content_type_field_name + '_id'
-        elif hasattr(subject,"_meta"):
+        elif hasattr(subject, "_meta"):
             self.model = subject
             self.db_table = self.model._meta.db_table
             # FIXME, need to check get_parent_list and add triggers to those
             # The below will only check the fields on *this* model, not parents
             skip = skip or ()
-            self.fields = [(k.attname, k.db_type(connection=cconnection)) for k,v in self.model._meta.get_fields_with_model() if not v and k.attname not in skip]
+            self.fields = [(k.attname, k.db_type(connection=cconnection)) for k, v in self.model._meta.get_fields_with_model() if not v and k.attname not in skip]
         else:
             raise NotImplementedError
 
-    def append(self,actions):
-        if not isinstance(actions,list):
+    def append(self, actions):
+        if not isinstance(actions, list):
             actions = [actions]
 
         for action in actions:
@@ -103,6 +108,7 @@ class Trigger:
     def sql(self):
         raise NotImplementedError
 
+
 class TriggerSet:
     def __init__(self, using=None):
         self.using = using
@@ -114,13 +120,13 @@ class TriggerSet:
         else:
             return connection.cursor()
 
-    def append(self,triggers):
-        if not isinstance(triggers,list):
+    def append(self, triggers):
+        if not isinstance(triggers, list):
             triggers = [triggers]
 
         for trigger in triggers:
             name = trigger.name()
-            if self.triggers.has_key(name):
+            if name in self.triggers:
                 self.triggers[name].append(trigger.actions)
             else:
                 self.triggers[name] = trigger

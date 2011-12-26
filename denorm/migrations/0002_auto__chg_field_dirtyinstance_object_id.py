@@ -7,20 +7,20 @@ from django.db import models
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
-        
+
         # Remove unique constraint on 'DirtyInstance', fields ['object_id', 'content_type']
         db.delete_unique('denorm_dirtyinstance', ['object_id', 'content_type_id'])
-        
+
         # Changing field 'DirtyInstance.object_id'
         db.alter_column('denorm_dirtyinstance', 'object_id', self.gf('django.db.models.fields.TextField')(null=True))
-        
+
 
 
     def backwards(self, orm):
-        
+
         # Adding unique constraint on 'DirtyInstance', fields ['object_id', 'content_type']
         db.create_unique('denorm_dirtyinstance', ['object_id', 'content_type_id'])
-        
+
         # Changing field 'DirtyInstance.object_id'
         db.alter_column('denorm_dirtyinstance', 'object_id', self.gf('django.db.models.fields.PositiveIntegerField')(null=True))
 

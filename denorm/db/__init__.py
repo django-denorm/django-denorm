@@ -20,9 +20,10 @@ DATABASES = {
 
 # Default mappings from common postgresql equivalents
 DB_GUESS_MAPPING = {
-    'postgis':'postgresql',
-    'postgresql_psycopg2':'postgresql',
+    'postgis': 'postgresql',
+    'postgresql_psycopg2': 'postgresql',
  }
+
 
 def backend_for_dbname(db_name):
     return 'denorm.db.%s' % DB_GUESS_MAPPING.get(db_name, db_name)
@@ -44,6 +45,6 @@ else:
         backend = backend_for_dbname(engine.rsplit(".", 1)[1])
 
 try:
-    triggers = __import__('.'.join([backend, 'triggers']),{},{},[''])
+    triggers = __import__('.'.join([backend, 'triggers']), {}, {}, [''])
 except ImportError:
     raise ImportError("""There is no django-denorm database module for the engine '%s'. Please either choose a supported one, or remove 'denorm' from INSTALLED_APPS.\n""" % backend)

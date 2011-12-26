@@ -9,6 +9,7 @@ from denorm import denorms
 from django.db import transaction
 from optparse import make_option
 
+
 class Command(BaseCommand):
     pidfile = "/tmp/django-denorm-daemon-pid"
 
@@ -24,7 +25,7 @@ class Command(BaseCommand):
     def pid_exists(self):
         import os
         try:
-            pid = int(file(self.pidfile,"r").read())
+            pid = int(file(self.pidfile, "r").read())
             os.kill(pid, 0)
             print "daemon alreay running as pid: %s" % (pid,)
             return 1
@@ -37,7 +38,7 @@ class Command(BaseCommand):
                 raise
 
     @transaction.commit_manually
-    def handle(self,interval=1,foreground=False,**kwargs):
+    def handle(self, interval=1, foreground=False, **kwargs):
         print interval
         if self.pid_exists():
             return
@@ -45,7 +46,7 @@ class Command(BaseCommand):
 
         if not foreground:
             from denorm import daemon
-            pid = daemon.daemonize(noClose=True,pidfile=self.pidfile)
+            pid = daemon.daemonize(noClose=True, pidfile=self.pidfile)
 
         interval = int(interval)
         while True:
