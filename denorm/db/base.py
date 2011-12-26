@@ -17,7 +17,7 @@ class TriggerNestedSelect:
         raise NotImplementedError
 
 
-class TriggerAction:
+class TriggerAction(object):
     def __init__(self):
         pass
 
@@ -52,7 +52,7 @@ class TriggerActionUpdate(TriggerAction):
         raise NotImplementedError
 
 
-class Trigger:
+class Trigger(object):
 
     def __init__(self, subject, time, event, actions, content_type, using=None, skip=None):
         self.subject = subject
@@ -109,7 +109,7 @@ class Trigger:
         raise NotImplementedError
 
 
-class TriggerSet:
+class TriggerSet(object):
     def __init__(self, using=None):
         self.using = using
         self.triggers = {}
