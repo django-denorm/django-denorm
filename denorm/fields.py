@@ -120,10 +120,9 @@ class CountField(models.PositiveIntegerField):
 
     def pre_save(self, model_instance, add):
         """
-        Makes sure we never overwrite the count with an
-        outdated value.
+        Makes sure we never overwrite the count with an outdated value.
         This is necessary because if the count was changed by
-        a trigger after this model instance was created the value
+        a trigger after this model instance was created, the value
         we would write has not been updated.
         """
         if add:

@@ -6,7 +6,7 @@ class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
         make_option('--using', dest='using', help='Select database connection'),
     )
-    help_test = 'Removes all triggers created by django-denorm'
+    help = "Removes all triggers created by django-denorm."
 
     def handle(self, **kwargs):
         from denorm import denorms

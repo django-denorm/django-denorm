@@ -4,8 +4,8 @@ from denorm.db import triggers
 from django.db.models.manager import Manager
 from denorm.models import DirtyInstance
 
-# remember all denormalizations.
-# this is used to rebuild all denormalized values in the whole DB
+# Remember all denormalizations.
+# This is used to rebuild all denormalized values in the whole DB.
 alldenorms = []
 
 
@@ -14,10 +14,10 @@ def many_to_many_pre_save(sender, instance, **kwargs):
     Updates denormalised many-to-many fields for the model
     """
     if instance.pk:
-        # need a primary key to do m2m stuff
+        # Need a primary key to do m2m stuff
         for m2m in sender._meta.local_many_to_many:
             # This gets us all m2m fields, so limit it to just those that are denormed
-            if hasattr(m2m, "denorm"):
+            if hasattr(m2m, 'denorm'):
                 # Does some extra jiggery-pokery for "through" m2m models.
                 # May not work under lots of conditions.
                 if hasattr(m2m.rel, 'through_model'):
@@ -43,7 +43,7 @@ def many_to_many_post_save(sender, instance, created, **kwargs):
     if created:
         def check_resave():
             for m2m in sender._meta.local_many_to_many:
-                if hasattr(m2m, "denorm"):
+                if hasattr(m2m, 'denorm'):
                     return True
             return False
 
@@ -233,7 +233,7 @@ class CountDenorm(Denorm):
         if sender is self.model:
             super(CountDenorm, self).setup(sender=sender, **kwargs)
 
-        # related managers will only by available after both models are initialized
+        # related managers will only be available after both models are initialized
         # so check if its available already, and get our manager
         if not self.manager and hasattr(self.model, self.manager_name):
             self.manager = getattr(self.model, self.manager_name)

@@ -1,8 +1,3 @@
-"""
-Runs a daemon that checks for dirty fields and updates them in regular intervals.
-The default interval ist one second, this can be overridden by specifying the desired
-interval as a numeric argument to the command.
-"""
 from django.core.management.base import BaseCommand
 from denorm import denorms
 
@@ -21,6 +16,9 @@ class Command(BaseCommand):
             help='run in foreground',
         ),
     )
+    help = "Runs a daemon that checks for dirty fields and updates them in regular intervals." \
+        "The default interval is one second, this can be overridden by specifying the desired" \
+        "interval as a numeric argument to the command."
 
     def pid_exists(self):
         import os
