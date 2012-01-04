@@ -13,7 +13,7 @@ class TriggerNestedSelect(base.TriggerNestedSelect):
         columns = self.columns
         table = self.table
         where = ",".join(["%s = %s" % (k, v) for k, v in self.kwargs.iteritems()])
-        return """ SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s """ % locals()
+        return 'SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s' % locals()
 
 
 class TriggerActionInsert(base.TriggerActionInsert):
@@ -26,12 +26,12 @@ class TriggerActionInsert(base.TriggerActionInsert):
         else:
             values = "VALUES(" + ",".join(self.values) + ")"
 
-        return ("""
-            BEGIN
-            INSERT INTO %(table)s %(columns)s %(values)s;
-            EXCEPTION WHEN unique_violation THEN  -- do nothing
-            END
-            """) % locals()
+        return (
+            'BEGIN'
+            'INSERT INTO %(table)s %(columns)s %(values)s;'
+            'EXCEPTION WHEN unique_violation THEN  -- do nothing'
+            'END'
+        ) % locals()
 
 
 class TriggerActionUpdate(base.TriggerActionUpdate):
@@ -41,7 +41,7 @@ class TriggerActionUpdate(base.TriggerActionUpdate):
         updates = ','.join(["%s=%s" % (k, v) for k, v in zip(self.columns, self.values)])
         where = self.where
 
-        return """ UPDATE %(table)s SET %(updates)s WHERE %(where)s """ % locals()
+        return 'UPDATE %(table)s SET %(updates)s WHERE %(where)s' % locals()
 
 
 class Trigger(base.Trigger):
@@ -88,18 +88,19 @@ class Trigger(base.Trigger):
             cond = "AND".join(conditions)
 
         return ("""
-            CREATE OR REPLACE FUNCTION func_%(name)s()
-            RETURNS TRIGGER AS $$
-            BEGIN
-            IF %(cond)s THEN
+CREATE OR REPLACE FUNCTION func_%(name)s()
+    RETURNS TRIGGER AS $$
+    BEGIN
+        IF %(cond)s THEN
             %(actions)s
-            END IF;
-            RETURN NULL; END;
-            $$ LANGUAGE plpgsql;
-            CREATE TRIGGER %(name)s
-            %(time)s %(event)s ON %(table)s
-            FOR EACH ROW EXECUTE PROCEDURE func_%(name)s();
-            """) % locals()
+        END IF;
+        RETURN NULL;
+    END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER %(name)s
+    %(time)s %(event)s ON %(table)s
+    FOR EACH ROW EXECUTE PROCEDURE func_%(name)s();
+""" % locals()
 
 
 class TriggerSet(base.TriggerSet):
@@ -107,14 +108,14 @@ class TriggerSet(base.TriggerSet):
         cursor = self.cursor()
         cursor.execute("SELECT pg_class.relname, pg_trigger.tgname FROM pg_trigger LEFT JOIN pg_class ON (pg_trigger.tgrelid = pg_class.oid) WHERE pg_trigger.tgname LIKE 'denorm_%%';")
         for table_name, trigger_name in cursor.fetchall():
-            cursor.execute("DROP TRIGGER %s ON %s;" % (trigger_name, table_name))
+            cursor.execute('DROP TRIGGER %s ON %s;' % (trigger_name, table_name))
             transaction.commit_unless_managed(using=self.using)
 
     def install(self):
         cursor = self.cursor()
         cursor.execute("SELECT lanname FROM pg_catalog.pg_language WHERE lanname ='plpgsql'")
         if not cursor.fetchall():
-            cursor.execute("CREATE LANGUAGE plpgsql")
+            cursor.execute('CREATE LANGUAGE plpgsql')
         for name, trigger in self.triggers.iteritems():
             cursor.execute(trigger.sql())
             transaction.commit_unless_managed(using=self.using)

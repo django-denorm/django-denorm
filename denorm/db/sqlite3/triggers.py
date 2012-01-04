@@ -12,8 +12,8 @@ class TriggerNestedSelect(base.TriggerNestedSelect):
     def sql(self):
         columns = self.columns
         table = self.table
-        where = ",".join(["%s=%s"%(k, v) for k, v in self.kwargs.iteritems()])
-        return """ SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s """ % locals()
+        where = ",".join(["%s = %s" % (k, v) for k, v in self.kwargs.iteritems()])
+        return 'SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s' % locals()
 
 
 class TriggerActionInsert(base.TriggerActionInsert):
@@ -26,7 +26,7 @@ class TriggerActionInsert(base.TriggerActionInsert):
         else:
             values = "VALUES(" + ",".join(self.values) + ")"
 
-        return """ INSERT OR REPLACE INTO %(table)s %(columns)s %(values)s """ % locals()
+        return 'INSERT OR REPLACE INTO %(table)s %(columns)s %(values)s' % locals()
 
 
 class TriggerActionUpdate(base.TriggerActionUpdate):
@@ -36,7 +36,7 @@ class TriggerActionUpdate(base.TriggerActionUpdate):
         updates = ','.join(["%s=%s"%(k, v) for k, v in zip(self.columns, self.values)])
         where = self.where
 
-        return """ UPDATE %(table)s SET %(updates)s WHERE %(where)s """ % locals()
+        return 'UPDATE %(table)s SET %(updates)s WHERE %(where)s' % locals()
 
 
 class Trigger(base.Trigger):
@@ -71,12 +71,13 @@ class Trigger(base.Trigger):
         if when:
             when = "WHEN(%s)" % (when,)
 
-        return ("""
-            CREATE TRIGGER %(name)s
-            %(time)s %(event)s ON %(table)s
-            FOR EACH ROW %(when)s BEGIN
-            %(actions)s\n  END;
-            """) % locals()
+        return """
+CREATE TRIGGER %(name)s
+    %(time)s %(event)s ON %(table)s
+    FOR EACH ROW %(when)s BEGIN
+        %(actions)s
+    END;
+""" % locals()
 
 
 class TriggerSet(base.TriggerSet):

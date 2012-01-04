@@ -14,7 +14,7 @@ class TriggerNestedSelect(base.TriggerNestedSelect):
         columns = self.columns
         table = self.table
         where = ",".join(["%s = %s" % (k, v) for k, v in self.kwargs.iteritems()])
-        return """ SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s """ % locals()
+        return 'SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s' % locals()
 
 
 class TriggerActionInsert(base.TriggerActionInsert):
@@ -27,7 +27,7 @@ class TriggerActionInsert(base.TriggerActionInsert):
         else:
             values = "VALUES(" + ",".join(self.values) + ")"
 
-        return """ INSERT IGNORE INTO %(table)s %(columns)s %(values)s """ % locals()
+        return 'INSERT IGNORE INTO %(table)s %(columns)s %(values)s' % locals()
 
 
 class TriggerActionUpdate(base.TriggerActionUpdate):
@@ -37,7 +37,7 @@ class TriggerActionUpdate(base.TriggerActionUpdate):
         updates = ','.join(["%s=%s" % (k, v) for k,  v in zip(self.columns, self.values)])
         where = self.where
 
-        return """ UPDATE %(table)s SET %(updates)s WHERE %(where)s """ % locals()
+        return 'UPDATE %(table)s SET %(updates)s WHERE %(where)s' % locals()
 
 
 class Trigger(base.Trigger):
@@ -67,14 +67,14 @@ class Trigger(base.Trigger):
             cond = 'TRUE'
 
         return ("""
-            CREATE TRIGGER %(name)s
-            %(time)s %(event)s ON %(table)s
-            FOR EACH ROW BEGIN
-            IF %(cond)s THEN
+CREATE TRIGGER %(name)s
+    %(time)s %(event)s ON %(table)s
+    FOR EACH ROW BEGIN
+        IF %(cond)s THEN
             %(actions)s
-            END IF;
-            END;
-            """) % locals()
+        END IF;
+    END;
+""" % locals()
 
 
 class TriggerSet(base.TriggerSet):
@@ -84,10 +84,10 @@ class TriggerSet(base.TriggerSet):
         # FIXME: according to MySQL docs the LIKE statement should work
         # but it doesn't. MySQL reports a Syntax Error
         #cursor.execute(r"SHOW TRIGGERS WHERE Trigger LIKE 'denorm_%%'")
-        cursor.execute(r"SHOW TRIGGERS")
+        cursor.execute('SHOW TRIGGERS')
         for result in cursor.fetchall():
-            if result[0].startswith("denorm_"):
-                cursor.execute("DROP TRIGGER %s;" % result[0])
+            if result[0].startswith('denorm_'):
+                cursor.execute('DROP TRIGGER %s;' % result[0])
 
     def install(self):
         cursor = self.cursor()
