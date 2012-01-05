@@ -1,14 +1,14 @@
-from django.core.management.base import BaseCommand
+from django.core.management.base import NoArgsCommand
 from optparse import make_option
 
 
-class Command(BaseCommand):
-    option_list = BaseCommand.option_list + (
+class Command(NoArgsCommand):
+    option_list = NoArgsCommand.option_list + (
         make_option('--using', dest='using', help='Select database connection'),
     )
     help = "Removes all triggers created by django-denorm."
 
-    def handle(self, **kwargs):
+    def handle_noargs(self, **options):
         from denorm import denorms
-        using = kwargs.get('using')
+        using = options.get('using')
         denorms.drop_triggers(using=using)

@@ -1,9 +1,9 @@
-from django.core.management.base import BaseCommand
+from django.core.management.base import NoArgsCommand
 from denorm import denorms
 
 
-class Command(BaseCommand):
+class Command(NoArgsCommand):
     help = "Recalculates the value of every single denormalized model field in the whole project."
 
-    def handle(self, *args, **kwargs):
+    def handle_noargs(self, **options):
         denorms.rebuildall(verbose=True)
