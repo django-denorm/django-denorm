@@ -27,10 +27,10 @@ class TriggerActionInsert(base.TriggerActionInsert):
             values = "VALUES(" + ",".join(self.values) + ")"
 
         return (
-            'BEGIN'
-            'INSERT INTO %(table)s %(columns)s %(values)s;'
-            'EXCEPTION WHEN unique_violation THEN  -- do nothing'
-            'END'
+            'BEGIN\n'
+            'INSERT INTO %(table)s %(columns)s %(values)s;\n'
+            'EXCEPTION WHEN unique_violation THEN  -- do nothing\n'
+            'END\n'
         ) % locals()
 
 
