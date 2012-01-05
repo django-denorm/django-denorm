@@ -66,7 +66,7 @@ class Trigger(base.Trigger):
         else:
             cond = 'TRUE'
 
-        return ("""
+        return """
 CREATE TRIGGER %(name)s
     %(time)s %(event)s ON %(table)s
     FOR EACH ROW BEGIN
