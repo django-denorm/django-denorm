@@ -87,7 +87,7 @@ class Trigger(base.Trigger):
         else:
             cond = "AND".join(conditions)
 
-        return ("""
+        return """
 CREATE OR REPLACE FUNCTION func_%(name)s()
     RETURNS TRIGGER AS $$
     BEGIN
