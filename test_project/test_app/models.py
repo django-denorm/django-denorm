@@ -148,3 +148,11 @@ class SkipCommentWithSkip(SkipComment):
     @depend_on_related(SkipPost)
     def post_text(self):
         return self.post.text
+
+class SkipCommentWithAttributeSkip(SkipComment):
+    @denormalized(models.TextField)
+    @depend_on_related(SkipPost)
+    def post_text(self):
+        return self.post.text
+
+    denorm_always_skip = ('updated_on',)

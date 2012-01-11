@@ -29,7 +29,7 @@ class DependOnRelated(DenormDependency):
         self.other_model = othermodel
         self.fk_name = foreign_key
         self.type = type
-        self.skip = skip
+        self.skip = skip or () + getattr(othermodel, 'denorm_always_skip', ())
 
     def setup(self, this_model):
         super(DependOnRelated,self).setup(this_model)

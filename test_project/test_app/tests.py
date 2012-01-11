@@ -41,6 +41,13 @@ class TestSkip(cases.DestructiveDatabaseTestCase):
         
         denorm.flush()
 
+    def test_meta_skip(self):
+        """Test a model with the attribute listed under denorm_always_skip."""
+        comment = models.SkipCommentWithAttributeSkip(post=self.post, text='Yup, and they have wings!')
+        comment.save()
+
+        denorm.flush()
+
         
 class TestDenormalisation(cases.DestructiveDatabaseTestCase):
     """
