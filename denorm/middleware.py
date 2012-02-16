@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from denorm import flush
-from django.db import IntegrityError
+from django.db import DatabaseError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ class DenormMiddleware(object):
     def process_response(self, request, response):
         try:
             flush()
-        except IntegrityError as e:
+        except DatabaseError as e:
             logger.error(e)
         return response
 
