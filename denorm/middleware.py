@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from denorm import flush
+from django.db import IntegrityError
 import logging
 
 logger = logging.getLogger(__name__)
