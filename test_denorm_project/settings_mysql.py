@@ -6,6 +6,6 @@ DATABASES = {
         'NAME': 'denorm',
         'HOST': 'localhost',
         'USER': 'denorm',
-        'PASSWORD': 'denorm1',
+        'PASSWORD': '',
     }
 }

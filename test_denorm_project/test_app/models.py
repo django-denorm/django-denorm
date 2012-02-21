@@ -148,3 +148,11 @@ class SkipCommentWithSkip(SkipComment):
     @depend_on_related(SkipPost)
     def post_text(self):
         return self.post.text
+
+class FilterCountModel(models.Model):
+    # Simple count() aggregate
+    active_item_count = CountField('items', filter = {'active__exact':True})
+
+class FilterCountItem(models.Model):
+    parent = models.ForeignKey(FilterCountModel, related_name='items')
+    active = models.BooleanField(default=False)

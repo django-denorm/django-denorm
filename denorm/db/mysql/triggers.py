@@ -12,28 +12,34 @@ class TriggerNestedSelect(base.TriggerNestedSelect):
         columns = self.columns
         table = self.table
         where = ",".join(["%s = %s"%(k,v) for k,v in self.kwargs.iteritems()])
-        return """ SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s """ % locals()
+        return """ SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s """ % locals(), tuple()
 
 class TriggerActionInsert(base.TriggerActionInsert):
 
     def sql(self):
         table = self.model._meta.db_table
         columns = "("+",".join(self.columns)+")"
+        params = []
         if isinstance(self.values,TriggerNestedSelect):
-            values = "("+self.values.sql()+")"
+            sql, nested_params = self.values.sql()
+            values = "("+ sql +")"
+            params.extend(nested_params)
         else:
             values = "VALUES("+",".join(self.values)+")"
 
-        return """ INSERT IGNORE INTO %(table)s %(columns)s %(values)s """ % locals()
+        return """ INSERT IGNORE INTO %(table)s %(columns)s %(values)s """ % locals(), tuple()
 
 class TriggerActionUpdate(base.TriggerActionUpdate):
 
     def sql(self):
         table = self.model._meta.db_table
         updates = ','.join(["%s=%s"%(k,v) for k,v in zip(self.columns,self.values)])
-        where = self.where
+        if isinstance(self.where, tuple):
+            where, where_params = self.where
+        else:
+            where, where_params = self.where, []
 
-        return """ UPDATE %(table)s SET %(updates)s WHERE %(where)s """ % locals()
+        return """ UPDATE %(table)s SET %(updates)s WHERE %(where)s """ % locals(), tuple(where_params)
 
 class Trigger(base.Trigger):
 
@@ -44,9 +50,17 @@ class Trigger(base.Trigger):
                 random.choice(string.ascii_uppercase + string.digits)
                 for x in range(5)
             )
+        params = []
+        action_set = set()
+        for a in self.actions:
+            sql, action_params = a.sql()
+            if sql:
+                action_set.add(sql)
+                params.extend(action_params)
+
         # FIXME: actions should depend on content_type and content_type_field, if applicable
         # now we flag too many things dirty, e.g. a change for ('forum', 1) also flags ('post', 1)
-        actions = (";\n   ").join(set([a.sql() for a in self.actions if a.sql()])) + ";"
+        actions = ";\n   ".join(action_set) + ';'
         table = self.db_table
         time = self.time.upper()
         event = self.event.upper()
@@ -69,7 +83,7 @@ class Trigger(base.Trigger):
             +"""    %(actions)s\n"""
             +"""   END IF;\n"""
             +"""  END;\n"""
-            ) % locals()
+            ) % locals(), tuple(params)
 
 class TriggerSet(base.TriggerSet):
     def drop(self):
@@ -86,4 +100,5 @@ class TriggerSet(base.TriggerSet):
     def install(self):
         cursor = self.cursor()
         for name, trigger in self.triggers.iteritems():
-            cursor.execute(trigger.sql())
+            sql, args = trigger.sql()
+            cursor.execute(sql, args)

@@ -2,11 +2,17 @@
 
 from django.contrib.contenttypes.models import ContentType
 from denorm.db import triggers
+from django.db import connection
+from django.db.models import sql
 from django.db.models.manager import Manager
 from denorm.models import DirtyInstance
 
 # remember all denormalizations.
 # this is used to rebuild all denormalized values in the whole DB
+from django.db.models.query import QuerySet
+from django.db.models.sql.compiler import SQLCompiler
+from django.db.models.sql.where import WhereNode
+
 alldenorms = []
 
 
@@ -206,6 +212,32 @@ class CacheKeyDenorm(BaseCacheKeyDenorm):
 
         return trigger_list + super(CacheKeyDenorm,self).get_triggers(using=using)
 
+class TriggerWhereNode(WhereNode):
+    def sql_for_columns(self, data, qn, connection):
+        """
+        Returns the SQL fragment used for the left-hand side of a column
+        constraint (for example, the "T1.foo" portion in the clause
+        "WHERE ... T1.foo = 6").
+        """
+        table_alias, name, db_type = data
+        if table_alias:
+            if table_alias in ('NEW','OLD'):
+                lhs = '%s.%s' % (table_alias, qn(name))
+            else:
+                lhs = '%s.%s' % (qn(table_alias), qn(name))
+        else:
+            lhs = qn(name)
+        return connection.ops.field_cast_sql(db_type) % lhs
+
+
+class TriggerFilterQuery(sql.Query):
+    def __init__(self, model, trigger_alias, where=TriggerWhereNode):
+        super(TriggerFilterQuery, self).__init__(model, where)
+        self.trigger_alias = trigger_alias
+
+    def get_initial_alias(self):
+        return self.trigger_alias
+
 
 class CountDenorm(Denorm):
 
@@ -218,7 +250,7 @@ class CountDenorm(Denorm):
         # in case we want to set the value without relying on the
         # correctness of the incremental updates we create a function that
         # calculates it from scratch.
-        self.func = lambda obj: getattr(obj,self.manager_name).count()
+        self.func = lambda obj: getattr(obj,self.manager_name).filter(**self.filter).count()
         self.manager = None
         self.skip = skip
 
@@ -236,19 +268,35 @@ class CountDenorm(Denorm):
     def get_triggers(self, using):
         fk_name = self.manager.related.field.attname
         content_type = str(ContentType.objects.get_for_model(self.model).pk)
+        inc_where = ["%s=NEW.%s" % (self.model._meta.pk.get_attname_column()[1], fk_name)]
+        dec_where = ["%s=OLD.%s" % (self.model._meta.pk.get_attname_column()[1], fk_name)]
 
+        inc_query = TriggerFilterQuery(self.manager.related.model, trigger_alias='NEW')
+        for name, value in self.filter.iteritems():
+            inc_query.add_filter((name,value))
+        inc_filter_where, _ = inc_query.where.as_sql(SQLCompiler(inc_query, connection, using).quote_name_unless_alias, connection)
+
+        dec_query = TriggerFilterQuery(self.manager.related.model, trigger_alias='OLD')
+        for name, value in self.filter.iteritems():
+            dec_query.add_filter((name,value))
+        dec_filter_where, where_params = dec_query.where.as_sql(SQLCompiler(inc_query, connection, using).quote_name_unless_alias, connection)
+
+        if inc_filter_where is not None:
+            inc_where.append(inc_filter_where)
+        if dec_filter_where is not None:
+            dec_where.append(dec_filter_where)
         # create the triggers for the incremental updates
         increment = triggers.TriggerActionUpdate(
             model = self.model,
             columns = (self.fieldname,),
             values = ("%s+1" % self.fieldname,),
-            where = "%s=NEW.%s" % (self.model._meta.pk.get_attname_column()[1], fk_name),
+            where = (' AND '.join(inc_where), where_params),
         )
         decrement = triggers.TriggerActionUpdate(
             model = self.model,
             columns = (self.fieldname,),
             values = ("%s-1" % self.fieldname,),
-            where = "%s=OLD.%s" % (self.model._meta.pk.get_attname_column()[1], fk_name),
+            where = (' AND '.join(dec_where), where_params),
         )
 
         other_model = self.manager.related.model

@@ -187,15 +187,13 @@ class CacheKeyDependOnRelated(DependOnRelated):
                 #
                 # Generic relations are excluded because they have the
                 # same m2m_table and model table.
+                sql, params = triggers.TriggerNestedSelect(self.field.m2m_db_table(), (column_name,),
+                    **{reverse_column_name: "NEW.id"}).sql()
                 action_new = triggers.TriggerActionUpdate(
                     model = self.this_model,
                     columns = (self.fieldname,),
                     values = (triggers.RandomBigInt(),),
-                    where = self.this_model._meta.pk.get_attname_column()[1]+' IN ('+triggers.TriggerNestedSelect(
-                        self.field.m2m_db_table(),
-                        (column_name,),
-                        **{reverse_column_name:"NEW.id"}
-                        ).sql()+')'
+                    where = (self.this_model._meta.pk.get_attname_column()[1]+' IN ('+ sql +')', params),
                     )
                 trigger_list.append(triggers.Trigger(self.other_model,"after","update",[action_new],content_type,using,self.skip))
 

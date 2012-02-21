@@ -445,6 +445,42 @@ class TestDenormalisation(cases.DestructiveDatabaseTestCase):
         m1 = models.Member.objects.get(id=m1.id)
         self.assertNotEqual(ck1,m1.cachekey)
         
-        
-        
-        
+
+class TestFilterCount(cases.DestructiveDatabaseTestCase):
+    """
+    Tests for the filtered count feature.
+    """
+    
+    def setUp(self):
+        denorms.drop_triggers()
+        denorms.install_triggers()
+
+    def test_filter_count(self):
+        master = models.FilterCountModel.objects.create()
+        self.assertEqual(master.active_item_count,0)
+        master.items.create(active = True)
+        master = models.FilterCountModel.objects.get(id=master.id)
+        self.assertEqual(master.active_item_count,1, 'created active item')
+        master.items.create(active = False)
+        master = models.FilterCountModel.objects.get(id=master.id)
+        self.assertEqual(master.active_item_count,1, 'created inactive item')
+        master.items.create(active = True)
+        master = models.FilterCountModel.objects.get(pk=master.pk)
+        self.assertEqual(master.active_item_count,2)
+        master.items.filter(active = False).delete()
+        master = models.FilterCountModel.objects.get(pk=master.pk)
+        self.assertEqual(master.active_item_count,2)
+        master.items.filter(active = True)[0].delete()
+        master = models.FilterCountModel.objects.get(pk=master.pk)
+        self.assertEqual(master.active_item_count,1)
+        item = master.items.filter(active = True)[0]
+        item.active = False
+        item.save()
+        master = models.FilterCountModel.objects.get(pk=master.pk)
+        self.assertEqual(master.active_item_count,0)
+        item = master.items.filter(active = False)[0]
+        item.active = True
+        item.save()
+        master = models.FilterCountModel.objects.get(pk=master.pk)
+        self.assertEqual(master.active_item_count,1)
+

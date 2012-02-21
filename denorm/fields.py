@@ -95,8 +95,10 @@ class CountField(models.PositiveIntegerField):
         PositiveIntegerField.
         """
         skip = kwargs.pop('skip', None)
+        qs_filter = kwargs.pop('filter', {})
         self.denorm = denorms.CountDenorm(skip)
         self.denorm.manager_name = manager_name
+        self.denorm.filter = qs_filter
         self.kwargs = kwargs
         kwargs['default'] = 0
         super(CountField,self).__init__(**kwargs)

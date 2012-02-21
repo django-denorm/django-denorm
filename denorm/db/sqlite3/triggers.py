@@ -1,6 +1,10 @@
 from denorm.db import base
 from django.db import transaction
 
+import logging
+
+logger = logging.getLogger('denorm-sqlite')
+
 class RandomBigInt(base.RandomBigInt):
     def sql(self):
         return 'RANDOM()'
@@ -11,7 +15,7 @@ class TriggerNestedSelect(base.TriggerNestedSelect):
         columns = self.columns
         table = self.table
         where = ",".join(["%s=%s"%(k,v) for k,v in self.kwargs.iteritems()])
-        return """ SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s """ % locals()
+        return """ SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s """ % locals(), tuple()
 
 class TriggerActionInsert(base.TriggerActionInsert):
 
@@ -19,20 +23,25 @@ class TriggerActionInsert(base.TriggerActionInsert):
         table = self.model._meta.db_table
         columns = "("+",".join(self.columns)+")"
         if isinstance(self.values,TriggerNestedSelect):
-            values = ""+self.values.sql()+""
+            sql, params = self.values.sql()
+            values = ""+ sql +""
         else:
             values = "VALUES("+",".join(self.values)+")"
+            params = []
 
-        return """ INSERT OR REPLACE INTO %(table)s %(columns)s %(values)s """ % locals()
+        return """ INSERT OR REPLACE INTO %(table)s %(columns)s %(values)s """ % locals(), tuple(params)
 
 class TriggerActionUpdate(base.TriggerActionUpdate):
 
     def sql(self):
         table = self.model._meta.db_table
         updates = ','.join(["%s=%s"%(k,v) for k,v in zip(self.columns,self.values)])
-        where = self.where
+        if isinstance(self.where, tuple):
+            where, where_params = self.where
+        else:
+            where, where_params = self.where, []
 
-        return """ UPDATE %(table)s SET %(updates)s WHERE %(where)s """ % locals()
+        return """ UPDATE %(table)s SET %(updates)s WHERE %(where)s """ % locals(), where_params
 
 class Trigger(base.Trigger):
 
@@ -44,7 +53,14 @@ class Trigger(base.Trigger):
 
     def sql(self):
         name = self.name()
-        actions = (";\n   ").join(set([a.sql() for a in self.actions if a.sql()])) + ";"
+        params = []
+        action_set = set()
+        for a in self.actions:
+            sql, action_params = a.sql()
+            if sql:
+                action_set.add(sql)
+                params.extend(action_params)
+        actions = ";\n   ".join(action_set) + ';'
         table = self.db_table
         time = self.time.upper()
         event = self.event.upper()
@@ -71,7 +87,7 @@ class Trigger(base.Trigger):
             +"""  %(time)s %(event)s ON %(table)s\n"""
             +"""  FOR EACH ROW %(when)s BEGIN\n"""
             +"""   %(actions)s\n  END;\n"""
-            ) % locals()
+            ) % locals(), tuple(params)
 
 class TriggerSet(base.TriggerSet):
     def drop(self):
@@ -86,5 +102,6 @@ class TriggerSet(base.TriggerSet):
         cursor = self.cursor()
 
         for name, trigger in self.triggers.iteritems():
-            cursor.execute(trigger.sql())
+            sql, args = trigger.sql()
+            cursor.execute(sql, args)
             transaction.commit_unless_managed(using=self.using)
