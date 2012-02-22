@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
+import abc
 
 from django.contrib.contenttypes.models import ContentType
 from denorm.db import triggers
 from django.db import connection
-from django.db.models import sql
+from django.db.models import sql, ManyToManyField
 from django.db.models.fields.related import ManyToManyField
 from django.db.models.manager import Manager
 from denorm.models import DirtyInstance
 
 # remember all denormalizations.
 # this is used to rebuild all denormalized values in the whole DB
+from django.db.models.sql import Query
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
 from django.db.models.sql.where import WhereNode
@@ -243,18 +245,10 @@ class TriggerFilterQuery(sql.Query):
     def get_initial_alias(self):
         return self.trigger_alias
 
-
-class CountDenorm(Denorm):
-    """
-    Handles the denormalization of a count field by doing incrementally
-    updates.
-    """
+class AggregateDenorm(Denorm):
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self, skip=None):
-        # in case we want to set the value without relying on the
-        # correctness of the incremental updates we create a function that
-        # calculates it from scratch.
-        self.func = lambda obj: getattr(obj, self.manager_name).filter(**self.filter).count()
         self.manager = None
         self.skip = skip
 
@@ -262,7 +256,7 @@ class CountDenorm(Denorm):
         # as we connected to the ``class_prepared`` signal for any sender
         # and we only need to setup once, check if the sender is our model.
         if sender is self.model:
-            super(CountDenorm, self).setup(sender=sender, **kwargs)
+            super(AggregateDenorm, self).setup(sender=sender, **kwargs)
 
         # related managers will only by available after both models are initialized
         # so check if its available already, and get our manager
@@ -351,13 +345,13 @@ class CountDenorm(Denorm):
         increment = triggers.TriggerActionUpdate(
             model=self.model,
             columns=(self.fieldname,),
-            values=("%s+1" % self.fieldname,),
+            values=(self.get_increment_value(),),
             where=(' AND '.join(inc_where), where_params),
         )
         decrement = triggers.TriggerActionUpdate(
             model=self.model,
             columns=(self.fieldname,),
-            values=("%s-1" % self.fieldname,),
+            values=(self.get_decrement_value(),),
             where=(' AND '.join(dec_where), where_params),
         )
 
@@ -370,6 +364,55 @@ class CountDenorm(Denorm):
         if isinstance(related_field, ManyToManyField):
             trigger_list.extend(self.m2m_triggers(content_type, fk_name, related_field, using))
         return trigger_list
+
+    @abc.abstractmethod
+    def get_increment_value(self):
+        """
+        Returns SQL for incrementing value
+        """
+
+    @abc.abstractmethod
+    def get_decrement_value(self):
+        """
+        Returns SQL for decrementing value
+        """
+
+class SumDenorm(AggregateDenorm):
+    """
+    Handles denormalization of a sum field by doing incrementally updates.
+    """
+    def __init__(self, skip=None, field = None):
+        super(SumDenorm, self).__init__(skip)
+        # in case we want to set the value without relying on the
+        # correctness of the incremental updates we create a function that
+        # calculates it from scratch.
+        self.sum_field = field
+        self.func = lambda obj: getattr(obj, self.manager_name).filter(**self.filter).aggregate('sum')
+
+    def get_increment_value(self):
+        return "%s+NEW.%s" % (self.fieldname, self.sum_field)
+
+    def get_decrement_value(self):
+        return "%s-OLD.%s" % (self.fieldname, self.sum_field)
+
+class CountDenorm(AggregateDenorm):
+    """
+    Handles the denormalization of a count field by doing incrementally
+    updates.
+    """
+
+    def __init__(self, skip=None):
+        super(CountDenorm, self).__init__(skip)
+        # in case we want to set the value without relying on the
+        # correctness of the incremental updates we create a function that
+        # calculates it from scratch.
+        self.func = lambda obj: getattr(obj, self.manager_name).filter(**self.filter).count()
+
+    def get_increment_value(self):
+        return "%s+1" % self.fieldname
+
+    def get_decrement_value(self):
+        return "%s-1" % self.fieldname
 
 
 def rebuildall(verbose=False):
