@@ -91,6 +91,12 @@ class CountField(models.PositiveIntegerField):
         manager_name:
             The name of the related manager to be counted.
 
+        filter:
+            Filter, which is applied to manager. For example:
+
+        >>> active_item_count = CountField('item_set', filter={'active__exact':True})
+        >>> adult_user_count = CountField('user_set', filter={'age__gt':18})
+
         Any additional arguments are passed on to the contructor of
         PositiveIntegerField.
         """
