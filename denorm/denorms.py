@@ -280,18 +280,18 @@ class CountDenorm(Denorm):
         related_query.add_count_column()
         related_query.clear_ordering(force_empty=True)
         related_query.default_cols = False
-        related_filter_where, _ = related_query.get_compiler(using=using,
+        related_filter_where, related_where_params = related_query.get_compiler(using=using,
             connection=connection).as_sql()
         if related_filter_where is not None:
             related_where.append('(' + related_filter_where + ') > 0')
-        return related_where
+        return related_where, related_where_params
 
     def m2m_triggers(self, content_type, fk_name, related_field, using):
         """
         Returns triggers for m2m relation
         """
-        related_inc_where = self.get_related_where(fk_name, using, 'NEW')
-        related_dec_where = self.get_related_where(fk_name, using, 'OLD')
+        related_inc_where, _ = self.get_related_where(fk_name, using, 'NEW')
+        related_dec_where, related_where_params = self.get_related_where(fk_name, using, 'OLD')
         related_increment = triggers.TriggerActionUpdate(
             model=self.model,
             columns=(self.fieldname,),
