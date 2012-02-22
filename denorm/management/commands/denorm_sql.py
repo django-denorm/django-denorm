@@ -9,5 +9,9 @@ class Command(BaseCommand):
 
     def handle(self, **kwargs):
         triggerset = denorms.build_triggerset()
-        print '\n'.join((trigger.sql() for name,trigger in triggerset.triggers.iteritems()))
+        sql_list = []
+        for name,trigger in triggerset.triggers.iteritems():
+            sql, params = trigger.sql()
+            sql_list.append(sql % tuple(params))
+        print '\n'.join(sql_list)
 
