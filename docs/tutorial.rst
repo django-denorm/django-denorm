@@ -22,7 +22,7 @@ To calculate the number of pictures in a gallery, we would normally have a Djang
     gallery = Gallery.objects.get(...)
     number_of_pictures = gallery.picture_set.count()
 
-However, this code will result in a COUNT query on the database for every tiem the page is viewed.
+However, this code will result in a COUNT query on the database for every time the page is viewed.
 
 To speed this up we can cache the number of pictures inside the gallery::
 
