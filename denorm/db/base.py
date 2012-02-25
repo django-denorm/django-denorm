@@ -1,5 +1,6 @@
 from django.db import models, connections, connection
 from django.contrib.contenttypes.generic import GenericRelation
+from django.db.models.related import RelatedObject
 
 class RandomBigInt(object):
     def sql(self):
@@ -73,6 +74,12 @@ class Trigger:
             self.db_table = subject.m2m_db_table()
             self.fields = [(k.attname, k.db_type(connection=cconnection)) for k, v in subject.rel.to._meta.get_fields_with_model() if not v]
             self.content_type_field = subject.content_type_field_name + '_id'
+        elif isinstance(subject, models.ForeignKey):
+            self.model = subject.model
+            self.db_table = self.model._meta.db_table
+            skip = skip or ()
+            self.fields = [(k.attname, k.db_type(connection=cconnection)) for k,v in self.model._meta.get_fields_with_model() if not v and k.attname not in skip]
+
         elif hasattr(subject,"_meta"):
             self.model = subject
             self.db_table = self.model._meta.db_table

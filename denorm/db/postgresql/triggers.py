@@ -11,33 +11,41 @@ class TriggerNestedSelect(base.TriggerNestedSelect):
         columns = self.columns
         table = self.table
         where = ",".join(["%s = %s"%(k,v) for k,v in self.kwargs.iteritems()])
-        return """ SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s """ % locals()
+        return """ SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s """ % locals(), tuple()
 
 class TriggerActionInsert(base.TriggerActionInsert):
 
     def sql(self):
         table = self.model._meta.db_table
         columns = "("+",".join(self.columns)+")"
+        params = []
         if isinstance(self.values,TriggerNestedSelect):
-            values = "("+self.values.sql()+")"
+            sql, nested_params = self.values.sql()
+            values = "("+ sql +")"
+            params.extend(nested_params)
         else:
             values = "VALUES("+",".join(self.values)+")"
 
-        return (
-             """ BEGIN\n"""
-            +"""     INSERT INTO %(table)s %(columns)s %(values)s;\n"""
-            +"""    EXCEPTION WHEN unique_violation THEN\n     -- do nothing\n """
-            +"""   END"""
-            ) % locals()
+        sql = (
+                  """ BEGIN\n""" +
+                  """     INSERT INTO %(table)s %(columns)s %(values)s;\n""" +
+                  """    EXCEPTION WHEN unique_violation THEN\n     -- do nothing\n """ +
+                  """   END"""             ) \
+        % locals()
+        return sql, params
 
 class TriggerActionUpdate(base.TriggerActionUpdate):
 
     def sql(self):
         table = self.model._meta.db_table
+        params = []
         updates = ','.join(["%s=%s"%(k,v) for k,v in zip(self.columns,self.values)])
-        where = self.where
-
-        return """ UPDATE %(table)s SET %(updates)s WHERE %(where)s """ % locals()
+        if isinstance(self.where, tuple):
+            where, where_params = self.where
+        else:
+            where, where_params = self.where, []
+        params.extend(where_params)
+        return "UPDATE %(table)s SET %(updates)s WHERE %(where)s" % locals(), params
 
 class Trigger(base.Trigger):
     def name(self):
@@ -48,7 +56,14 @@ class Trigger(base.Trigger):
 
     def sql(self):
         name = self.name()
-        actions = (";\n   ").join(set([a.sql() for a in self.actions if a.sql()])) + ";"
+        params = []
+        action_set = set()
+        for a in self.actions:
+            sql, action_params = a.sql()
+            if sql:
+                action_set.add(sql)
+                params.extend(action_params)
+        actions = ";\n   ".join(action_set) + ';'
         table = self.db_table
         time = self.time.upper()
         event = self.event.upper()
@@ -82,19 +97,20 @@ class Trigger(base.Trigger):
         else:
             cond = "AND".join(conditions)
 
-        return (
-             """ CREATE OR REPLACE FUNCTION func_%(name)s()\n"""
-            +"""  RETURNS TRIGGER AS $$\n"""
-            +"""  BEGIN\n"""
-            +"""   IF %(cond)s THEN\n"""
-            +"""    %(actions)s\n"""
-            +"""   END IF;\n"""
-            +"""  RETURN NULL; END;\n"""
-            +"""  $$ LANGUAGE plpgsql;\n"""
-            +"""  CREATE TRIGGER %(name)s\n"""
-            +"""  %(time)s %(event)s ON %(table)s\n"""
-            +"""  FOR EACH ROW EXECUTE PROCEDURE func_%(name)s();\n"""
-            ) % locals()
+        sql = (
+              """ CREATE OR REPLACE FUNCTION func_%(name)s()\n""" +
+              """  RETURNS TRIGGER AS $$\n""" +
+              """  BEGIN\n""" +
+              """   IF %(cond)s THEN\n""" +
+              """    %(actions)s\n""" +
+              """   END IF;\n""" +
+              """  RETURN NULL; END;\n""" +
+              """  $$ LANGUAGE plpgsql;\n""" +
+              """  CREATE TRIGGER %(name)s\n""" +
+              """  %(time)s %(event)s ON %(table)s\n""" +
+              """  FOR EACH ROW EXECUTE PROCEDURE func_%(name)s();\n"""
+        ) % locals()
+        return sql, params
 
 class TriggerSet(base.TriggerSet):
     def drop(self):
@@ -110,5 +126,6 @@ class TriggerSet(base.TriggerSet):
         if not cursor.fetchall():
             cursor.execute("CREATE LANGUAGE plpgsql")
         for name, trigger in self.triggers.iteritems():
-            cursor.execute(trigger.sql())
+            sql, args = trigger.sql()
+            cursor.execute(sql, args)
             transaction.commit_unless_managed(using=self.using)

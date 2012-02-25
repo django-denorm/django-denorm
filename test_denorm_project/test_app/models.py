@@ -1,3 +1,5 @@
+from denorm.fields import SumField
+import django
 from django.db import models
 from django.contrib.contenttypes.generic import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -156,3 +158,24 @@ class SkipCommentWithAttributeSkip(SkipComment):
         return self.post.text
 
     denorm_always_skip = ('updated_on',)
+
+
+if not hasattr(django.db.backend,'sqlite3'):
+    class FilterSumModel(models.Model):
+        # Simple count() aggregate
+        active_item_sum = SumField('counts', field='active_item_count', filter = {'age__gte':18})
+
+    class FilterSumItem(models.Model):
+        parent = models.ForeignKey(FilterSumModel, related_name='counts')
+        age = models.IntegerField(default=18)
+        active_item_count = models.PositiveIntegerField(default=False)
+
+
+    class FilterCountModel(models.Model):
+        # Simple count() aggregate
+        active_item_count = CountField('items', filter = {'active__exact':True})
+
+    class FilterCountItem(models.Model):
+        parent = models.ForeignKey(FilterCountModel, related_name='items')
+        active = models.BooleanField(default=False)
+

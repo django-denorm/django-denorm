@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 
 from denorm import flush
+from django.db import DatabaseError
+import logging
 
+logger = logging.getLogger(__name__)
 class DenormMiddleware(object):
     """
     Calls ``denorm.flush`` during the response stage of every request. If your data mostly or only changes during requests
@@ -12,6 +15,9 @@ class DenormMiddleware(object):
     after ``TransactionMiddleware`` in your ``MIDDLEWARE_CLASSES`` setting.
     """
     def process_response(self, request, response):
-        flush()
+        try:
+            flush()
+        except DatabaseError as e:
+            logger.error(e)
         return response
 

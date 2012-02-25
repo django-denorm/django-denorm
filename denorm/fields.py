@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+import denorm.denorms
 from django.db import models
 from denorm import denorms
 from django.conf import settings
+import django.db.models
 
 def denormalized(DBField,*args,**kwargs):
     """
@@ -76,14 +78,13 @@ def denormalized(DBField,*args,**kwargs):
         return dbfield
     return deco
 
-class CountField(models.PositiveIntegerField):
-    """
-    A ``PositiveIntegerField`` that stores the number of rows
-    related to this model instance through the specified manager.
-    The value will be incrementally updated when related objects
-    are added and removed.
+class AggregateField(models.PositiveIntegerField):
 
-    """
+    def get_denorm(self, *args, **kwargs):
+        """
+        Returns denorm instance
+        """
+
     def __init__(self,manager_name,**kwargs):
         """
         **Arguments:**
@@ -91,21 +92,32 @@ class CountField(models.PositiveIntegerField):
         manager_name:
             The name of the related manager to be counted.
 
+        filter:
+            Filter, which is applied to manager. For example:
+
+        >>> active_item_count = CountField('item_set', filter={'active__exact':True})
+        >>> adult_user_count = CountField('user_set', filter={'age__gt':18})
+
         Any additional arguments are passed on to the contructor of
         PositiveIntegerField.
         """
         skip = kwargs.pop('skip', None)
-        self.denorm = denorms.CountDenorm(skip)
+        qs_filter = kwargs.pop('filter', {})
+        if qs_filter and hasattr(django.db.backend,'sqlite3'):
+            raise NotImplementedError('filters for aggregate fields are currently not supported for sqlite')
+
+        self.denorm = self.get_denorm(skip)
         self.denorm.manager_name = manager_name
+        self.denorm.filter = qs_filter
         self.kwargs = kwargs
         kwargs['default'] = 0
-        super(CountField,self).__init__(**kwargs)
+        super(AggregateField,self).__init__(**kwargs)
 
-    def contribute_to_class(self,cls,name,*args,**kwargs):
+    def contribute_to_class(self,cls,name):
         self.denorm.model = cls
         self.denorm.fieldname = name
         models.signals.class_prepared.connect(self.denorm.setup)
-        super(CountField,self).contribute_to_class(cls,name,*args,**kwargs)
+        super(AggregateField,self).contribute_to_class(cls,name)
 
     def south_field_triple(self):
         return (
@@ -137,6 +149,54 @@ class CountField(models.PositiveIntegerField):
 
         setattr(model_instance, self.attname, value)
         return value
+
+
+class CountField(AggregateField):
+    """
+    A ``PositiveIntegerField`` that stores the number of rows
+    related to this model instance through the specified manager.
+    The value will be incrementally updated when related objects
+    are added and removed.
+
+    """
+
+    def __init__(self, manager_name, **kwargs):
+        """
+        **Arguments:**
+
+        manager_name:
+            The name of the related manager to be counted.
+
+        filter:
+            Filter, which is applied to manager. For example:
+
+        >>> active_item_count = CountField('item_set', filter={'active__exact':True})
+        >>> adult_user_count = CountField('user_set', filter={'age__gt':18})
+
+        Any additional arguments are passed on to the contructor of
+        PositiveIntegerField.
+        """
+
+        super(CountField, self).__init__(manager_name, **kwargs)
+
+    def get_denorm(self, skip):
+        return denorms.CountDenorm(skip)
+
+class SumField(AggregateField):
+    """
+    A ``PositiveIntegerField`` that stores sub of related field values
+    to this model instance through the specified manager.
+    The value will be incrementally updated when related objects
+    are added and removed.
+
+    """
+
+    def __init__(self, manager_name, field, **kwargs):
+        self.field = field
+        super(SumField, self).__init__(manager_name, **kwargs)
+
+    def get_denorm(self, skip):
+        return denorms.SumDenorm(skip, self.field)
 
 class CacheKeyField(models.BigIntegerField):
     """

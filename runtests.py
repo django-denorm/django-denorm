@@ -12,4 +12,4 @@ os.environ['PYTHONPATH'] = '.:..'
 for dbtype in dbtypes:
     print 'running tests on', dbtype
     os.environ['DJANGO_SETTINGS_MODULE'] = 'settings_'+dbtype
-    os.system("cd test_project; nosetests --with-django")
+    os.system("cd test_denorm_project; nosetests --with-django")
