@@ -5,7 +5,8 @@ from denorm import denorms
 from django.conf import settings
 import django.db.models
 
-def denormalized(DBField,*args,**kwargs):
+
+def denormalized(DBField, *args, **kwargs):
     """
     Turns a callable into model field, analogous to python's ``@property`` decorator.
     The callable will be used to compute the value of the field every time the model
@@ -36,7 +37,7 @@ def denormalized(DBField,*args,**kwargs):
             self.skip = kwargs.pop('skip', None)
             DBField.__init__(self, *args, **kwargs)
 
-        def contribute_to_class(self,cls,name,*args,**kwargs):
+        def contribute_to_class(self, cls, name, *args, **kwargs):
             if hasattr(settings, 'DENORM_BULK_UNSAFE_TRIGGERS') and settings.DENORM_BULK_UNSAFE_TRIGGERS:
                 self.denorm = denorms.BaseCallbackDenorm(skip=self.skip)
             else:
@@ -46,13 +47,13 @@ def denormalized(DBField,*args,**kwargs):
             self.denorm.model = cls
             self.denorm.fieldname = name
             self.field_args = (args, kwargs)
-            models.signals.class_prepared.connect(self.denorm.setup,sender=cls)
+            models.signals.class_prepared.connect(self.denorm.setup, sender=cls)
             # Add The many to many signal for this class
-            models.signals.pre_save.connect(denorms.many_to_many_pre_save,sender=cls)
-            models.signals.post_save.connect(denorms.many_to_many_post_save,sender=cls)
-            DBField.contribute_to_class(self,cls,name,*args,**kwargs)
+            models.signals.pre_save.connect(denorms.many_to_many_pre_save, sender=cls)
+            models.signals.post_save.connect(denorms.many_to_many_post_save, sender=cls)
+            DBField.contribute_to_class(self, cls, name, *args, **kwargs)
 
-        def pre_save(self,model_instance,add):
+        def pre_save(self, model_instance, add):
             """
             Updates the value of the denormalized field before it gets saved.
             """
@@ -74,7 +75,7 @@ def denormalized(DBField,*args,**kwargs):
         kwargs["blank"] = True
         if 'default' not in kwargs:
             kwargs["null"] = True
-        dbfield = DenormDBField(func,*args,**kwargs)
+        dbfield = DenormDBField(func, *args, **kwargs)
         return dbfield
     return deco
 
@@ -85,22 +86,7 @@ class AggregateField(models.PositiveIntegerField):
         Returns denorm instance
         """
 
-    def __init__(self,manager_name,**kwargs):
-        """
-        **Arguments:**
-
-        manager_name:
-            The name of the related manager to be counted.
-
-        filter:
-            Filter, which is applied to manager. For example:
-
-        >>> active_item_count = CountField('item_set', filter={'active__exact':True})
-        >>> adult_user_count = CountField('user_set', filter={'age__gt':18})
-
-        Any additional arguments are passed on to the contructor of
-        PositiveIntegerField.
-        """
+    def __init__(self, manager_name, **kwargs):
         skip = kwargs.pop('skip', None)
         qs_filter = kwargs.pop('filter', {})
         if qs_filter and hasattr(django.db.backend,'sqlite3'):
@@ -111,29 +97,28 @@ class AggregateField(models.PositiveIntegerField):
         self.denorm.filter = qs_filter
         self.kwargs = kwargs
         kwargs['default'] = 0
-        super(AggregateField,self).__init__(**kwargs)
+        super(AggregateField, self).__init__(**kwargs)
 
-    def contribute_to_class(self,cls,name):
+    def contribute_to_class(self, cls, name, *args, **kwargs):
         self.denorm.model = cls
         self.denorm.fieldname = name
         models.signals.class_prepared.connect(self.denorm.setup)
-        super(AggregateField,self).contribute_to_class(cls,name)
+        super(AggregateField,self).contribute_to_class(cls, name, *args, **kwargs)
 
     def south_field_triple(self):
         return (
-            '.'.join(('django','db','models',models.PositiveIntegerField.__name__)),
+            '.'.join(('django', 'db', 'models', models.PositiveIntegerField.__name__)),
             [],
             {
                 'default': '0',
             },
         )
 
-    def pre_save(self,model_instance,add):
+    def pre_save(self, model_instance, add):
         """
-        Makes sure we never overwrite the count with an
-        outdated value.
+        Makes sure we never overwrite the count with an outdated value.
         This is necessary because if the count was changed by
-        a trigger after this model instance was created the value
+        a trigger after this model instance was created, the value
         we would write has not been updated.
         """
         if add:
@@ -144,7 +129,7 @@ class AggregateField(models.PositiveIntegerField):
             value = self.denorm.model.objects.filter(
                 pk=model_instance.pk,
             ).values_list(
-                self.attname,flat=True,
+                self.attname, flat=True,
             )[0]
 
         setattr(model_instance, self.attname, value)
@@ -207,7 +192,7 @@ class CacheKeyField(models.BigIntegerField):
     it is declared in.
     """
 
-    def __init__(self,**kwargs):
+    def __init__(self, **kwargs):
         """
         All arguments are passed on to the contructor of
         BigIntegerField.
@@ -215,40 +200,40 @@ class CacheKeyField(models.BigIntegerField):
         self.dependencies = []
         self.kwargs = kwargs
         kwargs['default'] = 0
-        super(CacheKeyField,self).__init__(**kwargs)
+        super(CacheKeyField, self).__init__(**kwargs)
 
-    def depend_on_related(self,*args,**kwargs):
+    def depend_on_related(self, *args, **kwargs):
         """
         Add dependency information to the CacheKeyField.
         Accepts the same arguments like the *denorm.depend_on_related* decorator
         """
         from dependencies import CacheKeyDependOnRelated
-        self.dependencies.append(CacheKeyDependOnRelated(*args,**kwargs))
+        self.dependencies.append(CacheKeyDependOnRelated(*args, **kwargs))
 
-    def contribute_to_class(self,cls,name,*args,**kwargs):
+    def contribute_to_class(self, cls, name, *args, **kwargs):
         for depend in self.dependencies:
             depend.fieldname = name
         self.denorm = denorms.BaseCacheKeyDenorm(depend_on_related=self.dependencies)
         self.denorm.model = cls
         self.denorm.fieldname = name
         models.signals.class_prepared.connect(self.denorm.setup)
-        super(CacheKeyField,self).contribute_to_class(cls,name,*args,**kwargs)
+        super(CacheKeyField, self).contribute_to_class(cls, name, *args, **kwargs)
 
-    def pre_save(self,model_instance,add):
+    def pre_save(self, model_instance, add):
         if add:
             value = self.denorm.func(model_instance)
         else:
             value = self.denorm.model.objects.filter(
                 pk=model_instance.pk,
             ).values_list(
-                self.attname,flat=True,
+                self.attname, flat=True,
             )[0]
         setattr(model_instance, self.attname, value)
         return value
 
     def south_field_triple(self):
         return (
-            '.'.join(('django','db','models',models.BigIntegerField.__name__)),
+            '.'.join(('django', 'db', 'models', models.BigIntegerField.__name__)),
             [],
             {
                 'default': '0',

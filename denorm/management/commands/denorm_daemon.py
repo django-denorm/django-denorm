@@ -1,33 +1,46 @@
-"""
-Runs a daemon that checks for dirty fields and updates them in regular intervals.
-The default interval ist one second, this can be overridden by specifying the desired
-interval as a numeric argument to the command.
-"""
-from django.core.management.base import BaseCommand
-from denorm import denorms
-
-from django.db import transaction
+import os
+import sys
+from time import sleep
 from optparse import make_option
 
-class Command(BaseCommand):
-    pidfile = "/tmp/django-denorm-daemon-pid"
+from django.core.management.base import NoArgsCommand
+from django.db import transaction
 
-    option_list = BaseCommand.option_list + (
+from denorm import denorms
+
+PID_FILE = "/tmp/django-denorm-daemon-pid"
+
+
+class Command(NoArgsCommand):
+    option_list = NoArgsCommand.option_list + (
         make_option('-n',
             action='store_true',
             dest='foreground',
             default=False,
-            help='run in foreground',
+            help='Run in foreground',
         ),
+        make_option('-i',
+            action='store',
+            type='int',
+            dest='interval',
+            default=1,
+            help='The interval - in seconds - between each update',
+        ),
+        make_option('-f', '--pidfile',
+            action='store',
+            type='string',
+            dest='pidfile',
+            default=PID_FILE,
+            help='The pid file to use. Defaults to "%s".' % PID_FILE)
     )
+    help = "Runs a daemon that checks for dirty fields and updates them in regular intervals."
 
-    def pid_exists(self):
-        import os
+    def pid_exists(self, pidfile):
         try:
-            pid = int(file(self.pidfile,"r").read())
+            pid = int(file(pidfile, 'r').read())
             os.kill(pid, 0)
-            print "daemon alreay running as pid: %s" % (pid,)
-            return 1
+            self.stderr.write(self.style.ERROR("daemon already running as pid: %s\n" % (pid,)))
+            return True
         except OSError, err:
             return err.errno == os.errno.EPERM
         except IOError, err:
@@ -37,18 +50,23 @@ class Command(BaseCommand):
                 raise
 
     @transaction.commit_manually
-    def handle(self,interval=1,foreground=False,**kwargs):
-        print interval
-        if self.pid_exists():
+    def handle_noargs(self, **options):
+        foreground = options['foreground']
+        interval = options['interval']
+        pidfile = options['pidfile']
+
+        if self.pid_exists(pidfile):
             return
-        from time import sleep
 
         if not foreground:
             from denorm import daemon
-            pid = daemon.daemonize(noClose=True,pidfile=self.pidfile)
+            daemon.daemonize(noClose=True, pidfile=pidfile)
 
-        interval = int(interval)
         while True:
-            denorms.flush()
-            sleep(interval)
-            transaction.commit()
+            try:
+                denorms.flush()
+                sleep(interval)
+                transaction.commit()
+            except KeyboardInterrupt:
+                transaction.commit()
+                sys.exit()

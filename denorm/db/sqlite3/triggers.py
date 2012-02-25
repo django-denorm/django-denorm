@@ -1,5 +1,6 @@
-from denorm.db import base
 from django.db import transaction
+from denorm.db import base
+
 
 import logging
 
@@ -9,39 +10,43 @@ class RandomBigInt(base.RandomBigInt):
     def sql(self):
         return 'RANDOM()'
 
+
 class TriggerNestedSelect(base.TriggerNestedSelect):
 
     def sql(self):
         columns = self.columns
         table = self.table
-        where = ",".join(["%s=%s"%(k,v) for k,v in self.kwargs.iteritems()])
-        return """ SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s """ % locals(), tuple()
+        where = ",".join(["%s = %s" % (k, v) for k, v in self.kwargs.iteritems()])
+        return 'SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s' % locals(), tuple()
+
 
 class TriggerActionInsert(base.TriggerActionInsert):
 
     def sql(self):
         table = self.model._meta.db_table
-        columns = "("+",".join(self.columns)+")"
-        if isinstance(self.values,TriggerNestedSelect):
+        columns = "(" + ",".join(self.columns) + ")"
+        if isinstance(self.values, TriggerNestedSelect):
             sql, params = self.values.sql()
             values = ""+ sql +""
         else:
-            values = "VALUES("+",".join(self.values)+")"
+            values = "VALUES(" + ",".join(self.values) + ")"
             params = []
 
-        return """ INSERT OR REPLACE INTO %(table)s %(columns)s %(values)s """ % locals(), tuple(params)
+        return 'INSERT OR REPLACE INTO %(table)s %(columns)s %(values)s' % locals(), tuple(params)
+
 
 class TriggerActionUpdate(base.TriggerActionUpdate):
 
     def sql(self):
         table = self.model._meta.db_table
-        updates = ','.join(["%s=%s"%(k,v) for k,v in zip(self.columns,self.values)])
+        updates = ','.join(["%s=%s"%(k, v) for k, v in zip(self.columns, self.values)])
         if isinstance(self.where, tuple):
             where, where_params = self.where
         else:
             where, where_params = self.where, []
 
-        return """ UPDATE %(table)s SET %(updates)s WHERE %(where)s """ % locals(), where_params
+        return 'UPDATE %(table)s SET %(updates)s WHERE %(where)s' % locals(), where_params
+
 
 class Trigger(base.Trigger):
 
@@ -69,7 +74,7 @@ class Trigger(base.Trigger):
 
         when = []
         if event == "UPDATE":
-            when.append("("+"OR".join(["(OLD.%s IS NOT NEW.%s)"%(f,f) for f,t in self.fields])+")")
+            when.append("(" + "OR".join(["(OLD.%s IS NOT NEW.%s)" % (f, f) for f, t in self.fields]) + ")")
         if ct_field:
             if event == "DELETE":
                 when.append("(OLD.%s==%s)" % (ct_field, content_type))
@@ -82,12 +87,14 @@ class Trigger(base.Trigger):
         if when:
             when = "WHEN(%s)" % (when,)
 
-        return (
-             """ CREATE TRIGGER %(name)s\n"""
-            +"""  %(time)s %(event)s ON %(table)s\n"""
-            +"""  FOR EACH ROW %(when)s BEGIN\n"""
-            +"""   %(actions)s\n  END;\n"""
-            ) % locals(), tuple(params)
+        return """
+CREATE TRIGGER %(name)s
+    %(time)s %(event)s ON %(table)s
+    FOR EACH ROW %(when)s BEGIN
+        %(actions)s
+    END;
+""" % locals(), tuple(params)
+
 
 class TriggerSet(base.TriggerSet):
     def drop(self):

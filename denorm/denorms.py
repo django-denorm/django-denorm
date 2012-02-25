@@ -8,14 +8,13 @@ from django.db.models import sql, ManyToManyField
 from django.db.models.fields.related import ManyToManyField
 from django.db.models.manager import Manager
 from denorm.models import DirtyInstance
-
-# remember all denormalizations.
-# this is used to rebuild all denormalized values in the whole DB
 from django.db.models.sql import Query
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
 from django.db.models.sql.where import WhereNode
 
+# Remember all denormalizations.
+# This is used to rebuild all denormalized values in the whole DB.
 alldenorms = []
 
 
@@ -24,15 +23,15 @@ def many_to_many_pre_save(sender, instance, **kwargs):
     Updates denormalised many-to-many fields for the model
     """
     if instance.pk:
-        # need a primary key to do m2m stuff
+        # Need a primary key to do m2m stuff
         for m2m in sender._meta.local_many_to_many:
             # This gets us all m2m fields, so limit it to just those that are denormed
-            if hasattr(m2m, "denorm"):
+            if hasattr(m2m, 'denorm'):
                 # Does some extra jiggery-pokery for "through" m2m models.
                 # May not work under lots of conditions.
                 if hasattr(m2m.rel, 'through_model'):
                     # Clear exisiting through records (bit heavy handed?)
-                    kwargs = {m2m.related.var_name: instance, }
+                    kwargs = {m2m.related.var_name: instance}
 
                     # Can't use m2m_column_name in a filter
                     # kwargs = { m2m.m2m_column_name(): instance.pk, }
@@ -40,7 +39,7 @@ def many_to_many_pre_save(sender, instance, **kwargs):
 
                     values = m2m.denorm.func(instance)
                     for value in values:
-                        kwargs.update({m2m.m2m_reverse_name(): value.pk, })
+                        kwargs.update({m2m.m2m_reverse_name(): value.pk})
                         m2m.rel.through_model.objects.create(**kwargs)
 
                 else:
@@ -52,7 +51,7 @@ def many_to_many_post_save(sender, instance, created, **kwargs):
     if created:
         def check_resave():
             for m2m in sender._meta.local_many_to_many:
-                if hasattr(m2m, "denorm"):
+                if hasattr(m2m, 'denorm'):
                     return True
             return False
 
@@ -156,7 +155,7 @@ class CallbackDenorm(BaseCallbackDenorm):
         trigger_list = [
             triggers.Trigger(self.model, "after", "update", [action], content_type, using, self.skip),
             triggers.Trigger(self.model, "after", "insert", [action], content_type, using, self.skip),
-            ]
+        ]
 
         return trigger_list + super(CallbackDenorm, self).get_triggers(using=using)
 
@@ -166,7 +165,6 @@ class BaseCacheKeyDenorm(Denorm):
         self.depend = depend_on_related
         super(BaseCacheKeyDenorm, self).__init__(*args, **kwargs)
         import random
-
         self.func = lambda o: random.randint(-9223372036854775808, 9223372036854775807)
 
     def setup(self, **kwargs):
@@ -214,7 +212,7 @@ class CacheKeyDenorm(BaseCacheKeyDenorm):
         trigger_list = [
             triggers.Trigger(self.model, "after", "update", [action], content_type, using, self.skip),
             triggers.Trigger(self.model, "after", "insert", [action], content_type, using, self.skip),
-            ]
+        ]
 
         return trigger_list + super(CacheKeyDenorm, self).get_triggers(using=using)
 
@@ -258,7 +256,7 @@ class AggregateDenorm(Denorm):
         if sender is self.model:
             super(AggregateDenorm, self).setup(sender=sender, **kwargs)
 
-        # related managers will only by available after both models are initialized
+        # related managers will only be available after both models are initialized
         # so check if its available already, and get our manager
         if not self.manager and hasattr(self.model, self.manager_name):
             self.manager = getattr(self.model, self.manager_name)
@@ -415,6 +413,7 @@ class CountDenorm(AggregateDenorm):
         return "%s-1" % self.fieldname
 
 
+
 def rebuildall(verbose=False):
     """
     Updates all models containing denormalized fields.
@@ -465,7 +464,8 @@ def flush():
         qs = DirtyInstance.objects.all()
 
         # DirtyInstance table is empty -> all data is consistent -> we're done
-        if not qs: break
+        if not qs:
+            break
 
         # Call save() on all dirty instances, causing the self_save_handler()
         # getting called by the pre_save signal.
@@ -473,4 +473,3 @@ def flush():
             if dirty_instance.content_object:
                 dirty_instance.content_object.save()
             dirty_instance.delete()
-

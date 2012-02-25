@@ -1,8 +1,8 @@
-from django.core.management.base import BaseCommand
-from denorm import fields
+from django.core.management.base import NoArgsCommand, CommandError
 
-class Command(BaseCommand):
 
-    def handle(self, **kwargs):
-        print "This management command is deprecated."
-        print "Please consult the documentation for a command reference."
+class Command(NoArgsCommand):
+
+    def handle_noargs(self, **options):
+        raise CommandError("This management command is deprecated. "
+            "Please consult the documentation for a command reference.")

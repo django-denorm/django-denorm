@@ -29,13 +29,13 @@ See Also
 Stevens, W. Richard. I{Unix Network Programming} (Addison-Wesley, 1990).
 """
 
-__version__   = "1.0.1"
-__author__    = "Brian Clapper, bmc@clapper.org"
-__url__       = "http://www.clapper.org/software/python/daemon/"
+__version__ = "1.0.1"
+__author__ = "Brian Clapper, bmc@clapper.org"
+__url__ = "http://www.clapper.org/software/python/daemon/"
 __copyright__ = "(c) 2008 Brian M. Clapper"
-__license__   = "BSD-style license"
+__license__ = "BSD-style license"
 
-__all__ = ['daemonize', 'DaemonError']
+__all__ = ['daemonize', 'DaemonException']
 
 # ---------------------------------------------------------------------------
 # Imports
@@ -72,11 +72,12 @@ else:
 
 log = logging.getLogger('daemonize')
 
+
 # ---------------------------------------------------------------------------
 # Public classes
 # ---------------------------------------------------------------------------
 
-class DaemonError(Exception):
+class DaemonException(Exception):
     """
     Thrown by C{daemonize()} when an error occurs while attempting to create
     a daemon. A C{DaemonException} object always contains a single string
@@ -99,11 +100,12 @@ class DaemonError(Exception):
         """
         return self.errorMessage
 
+
 # ---------------------------------------------------------------------------
 # Public functions
 # ---------------------------------------------------------------------------
 
-def daemonize(noClose=False,pidfile=None):
+def daemonize(noClose=False, pidfile=None):
     """
     Convert the calling process into a daemon.
 
@@ -149,7 +151,7 @@ def daemonize(noClose=False,pidfile=None):
             # Original child. Exit.
             if pidfile:
                 print pid
-                file(pidfile,"w").write(str(pid))
+                file(pidfile, "w").write(str(pid))
             os._exit(0)
 
         # This is the second child. Set the umask.
@@ -175,7 +177,6 @@ def daemonize(noClose=False,pidfile=None):
               (e.strerror, e.errno))
 
 
-
 # ---------------------------------------------------------------------------
 # Private functions
 # ---------------------------------------------------------------------------
@@ -184,7 +185,8 @@ def _fork():
     try:
         return os.fork()
     except OSError, e:
-        raise DaemonException, 'Cannot fork: %s [%d]' % (e.strerror, e.errno)
+        raise DaemonException('Cannot fork: %s [%d]' % (e.strerror, e.errno))
+
 
 def _redirectFileDescriptors():
     import resource  # POSIX resource information

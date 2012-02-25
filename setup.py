@@ -23,5 +23,14 @@ setup(
         "Operating System :: OS Independent",
         "Topic :: Software Development"
     ],
-    packages=['denorm', 'denorm.db', 'denorm.db.mysql', 'denorm.db.postgresql', 'denorm.db.sqlite3', 'denorm.management', 'denorm.management.commands','denorm.migrations'],
+    packages=[
+        'denorm',
+        'denorm.db',
+        'denorm.db.mysql',
+        'denorm.db.postgresql',
+        'denorm.db.sqlite3',
+        'denorm.management',
+        'denorm.management.commands',
+        'denorm.migrations',
+    ],
 )
