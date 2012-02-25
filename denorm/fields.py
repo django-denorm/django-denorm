@@ -80,13 +80,13 @@ def denormalized(DBField,*args,**kwargs):
     return deco
 
 class AggregateField(models.PositiveIntegerField):
-    __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def get_denorm(self, *args, **kwargs):
         """
         Returns denorm instance
         """
+        raise NotImplemented('You need to override this method')
 
     def __init__(self,manager_name,**kwargs):
         """
@@ -197,6 +197,12 @@ class SumField(AggregateField):
 
     def get_denorm(self, skip):
         return denorms.SumDenorm(skip, self.field)
+
+class CopyField(AggregateField):
+    """
+    Field, which makes two field identical. Any change in related field will change this field
+    """
+    # TODO: JFDI
 
 class CacheKeyField(models.BigIntegerField):
     """
