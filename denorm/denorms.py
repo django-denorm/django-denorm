@@ -311,7 +311,7 @@ class AggregateDenorm(Denorm):
         related_field = self.manager.related.field
         if isinstance(related_field, ManyToManyField):
             fk_name = related_field.m2m_reverse_name()
-            inc_where = ["%(id)s=(SELECT %(reverse_related)s FROM %(m2m_table)s WHERE %(related)s=NEW.%(id)s)" % {
+            inc_where = ["%(id)s IN (SELECT %(reverse_related)s FROM %(m2m_table)s WHERE %(related)s=NEW.%(id)s)" % {
                 'id': self.model._meta.pk.get_attname_column()[0],
                 'related': related_field.m2m_column_name(),
                 'm2m_table': related_field.m2m_db_table(),
