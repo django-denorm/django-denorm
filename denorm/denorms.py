@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from denorm.db import triggers
 from django.db import connection
 from django.db.models import sql, ManyToManyField
+from django.db.models.aggregates import Sum
 from django.db.models.fields.related import ManyToManyField
 from django.db.models.manager import Manager
 from denorm.models import DirtyInstance
@@ -387,7 +388,7 @@ class SumDenorm(AggregateDenorm):
         # correctness of the incremental updates we create a function that
         # calculates it from scratch.
         self.sum_field = field
-        self.func = lambda obj: getattr(obj, self.manager_name).filter(**self.filter).aggregate('sum')
+        self.func = lambda obj: getattr(obj, self.manager_name).filter(**self.filter).aggregate(Sum(self.sum_field))
 
     def get_increment_value(self):
         return "%s+NEW.%s" % (self.fieldname, self.sum_field)
