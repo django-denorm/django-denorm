@@ -54,13 +54,13 @@ class Trigger(base.Trigger):
     def sql(self):
         name = self.name()
         params = []
-        action_set = set()
+        action_list = []
         for a in self.actions:
             sql, action_params = a.sql()
             if sql:
-                action_set.add(sql)
+                action_list.append(sql)
                 params.extend(action_params)
-        actions = ";\n   ".join(action_set) + ';'
+        actions = ";\n   ".join(action_list) + ';'
         table = self.db_table
         time = self.time.upper()
         event = self.event.upper()
