@@ -85,6 +85,7 @@ class AggregateField(models.PositiveIntegerField):
         """
         Returns denorm instance
         """
+        raise NotImplemented('You need to override this method')
 
     def __init__(self, manager_name, **kwargs):
         skip = kwargs.pop('skip', None)
@@ -182,6 +183,12 @@ class SumField(AggregateField):
 
     def get_denorm(self, skip):
         return denorms.SumDenorm(skip, self.field)
+
+class CopyField(AggregateField):
+    """
+    Field, which makes two field identical. Any change in related field will change this field
+    """
+    # TODO: JFDI
 
 class CacheKeyField(models.BigIntegerField):
     """
