@@ -388,7 +388,7 @@ class SumDenorm(AggregateDenorm):
         # correctness of the incremental updates we create a function that
         # calculates it from scratch.
         self.sum_field = field
-        self.func = lambda obj: getattr(obj, self.manager_name).filter(**self.filter).aggregate(Sum(self.sum_field)).values()[0]
+        self.func = lambda obj: (getattr(obj, self.manager_name).filter(**self.filter).aggregate(Sum(self.sum_field)).values()[0] or 0)
 
     def get_increment_value(self):
         return "%s+NEW.%s" % (self.fieldname, self.sum_field)
