@@ -12,6 +12,7 @@ from denorm.models import DirtyInstance
 
 # remember all denormalizations.
 # this is used to rebuild all denormalized values in the whole DB
+from django.db.models.query_utils import Q
 from django.db.models.sql import Query
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.constants import NULLABLE, JOIN_TYPE
@@ -329,24 +330,19 @@ class AggregateDenorm(Denorm):
         content_type = str(ContentType.objects.get_for_model(self.model).pk)
 
         inc_query = TriggerFilterQuery(self.manager.related.model, trigger_alias='NEW')
-        for name, value in self.filter.iteritems():
-            inc_query.add_filter((name, value))
-        for name, value in self.exclude.iteritems():
-            inc_query.add_filter((name, value), negate=True)
+        inc_query.add_q(Q(**self.filter))
+        inc_query.add_q(~Q(**self.exclude))
         inc_filter_where, _ = inc_query.where.as_sql(SQLCompiler(inc_query, connection, using).quote_name_unless_alias,
             connection)
-
         dec_query = TriggerFilterQuery(self.manager.related.model, trigger_alias='OLD')
-        for name, value in self.filter.iteritems():
-            dec_query.add_filter((name, value))
-        for name, value in self.exclude.iteritems():
-            dec_query.add_filter((name, value), negate=True)
+        dec_query.add_q(Q(**self.filter))
+        dec_query.add_q(~Q(**self.exclude))
         dec_filter_where, where_params = dec_query.where.as_sql(
             SQLCompiler(dec_query, connection, using).quote_name_unless_alias, connection)
 
-        if inc_filter_where is not None:
+        if inc_filter_where:
             inc_where.append(inc_filter_where)
-        if dec_filter_where is not None:
+        if dec_filter_where:
             dec_where.append(dec_filter_where)
             # create the triggers for the incremental updates
         increment = triggers.TriggerActionUpdate(

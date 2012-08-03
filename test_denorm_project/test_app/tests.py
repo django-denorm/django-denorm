@@ -465,22 +465,28 @@ class TestFilterCount(cases.DestructiveDatabaseTestCase):
         master.items.create(active = False)
         master = models.FilterCountModel.objects.get(id=master.id)
         self.assertEqual(master.active_item_count,1, 'created inactive item')
-        master.items.create(active = True)
+        master.items.create(active = True, text='true')
         master = models.FilterCountModel.objects.get(pk=master.pk)
         self.assertEqual(master.active_item_count,2)
         master.items.filter(active = False).delete()
         master = models.FilterCountModel.objects.get(pk=master.pk)
         self.assertEqual(master.active_item_count,2)
-        master.items.filter(active = True)[0].delete()
+        master.items.filter(active = True, text='true')[0].delete()
         master = models.FilterCountModel.objects.get(pk=master.pk)
         self.assertEqual(master.active_item_count,1)
-        item = master.items.filter(active = True)[0]
+        item = master.items.filter(active = True, text='text')[0]
         item.active = False
         item.save()
         master = models.FilterCountModel.objects.get(pk=master.pk)
         self.assertEqual(master.active_item_count,0)
-        item = master.items.filter(active = False)[0]
+        item = master.items.filter(active = False, text='text')[0]
         item.active = True
+        item.text = ''
+        item.save()
+        master = models.FilterCountModel.objects.get(pk=master.pk)
+        self.assertEqual(master.active_item_count,0)
+        item = master.items.filter(active = False, text='')[0]
+        item.text = '123'
         item.save()
         master = models.FilterCountModel.objects.get(pk=master.pk)
         self.assertEqual(master.active_item_count,1)
