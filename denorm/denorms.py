@@ -14,6 +14,7 @@ from denorm.models import DirtyInstance
 # this is used to rebuild all denormalized values in the whole DB
 from django.db.models.sql import Query
 from django.db.models.sql.compiler import SQLCompiler
+from django.db.models.sql.constants import NULLABLE, JOIN_TYPE
 from django.db.models.sql.query import Query
 from django.db.models.sql.where import WhereNode
 
@@ -242,6 +243,7 @@ class TriggerFilterQuery(sql.Query):
     def __init__(self, model, trigger_alias, where=TriggerWhereNode):
         super(TriggerFilterQuery, self).__init__(model, where)
         self.trigger_alias = trigger_alias
+        self.alias_map = {trigger_alias:{NULLABLE:False, JOIN_TYPE: None}}
 
     def get_initial_alias(self):
         return self.trigger_alias
@@ -329,14 +331,18 @@ class AggregateDenorm(Denorm):
         inc_query = TriggerFilterQuery(self.manager.related.model, trigger_alias='NEW')
         for name, value in self.filter.iteritems():
             inc_query.add_filter((name, value))
+        for name, value in self.exclude.iteritems():
+            inc_query.add_filter((name, value), negate=True)
         inc_filter_where, _ = inc_query.where.as_sql(SQLCompiler(inc_query, connection, using).quote_name_unless_alias,
             connection)
 
         dec_query = TriggerFilterQuery(self.manager.related.model, trigger_alias='OLD')
         for name, value in self.filter.iteritems():
             dec_query.add_filter((name, value))
+        for name, value in self.exclude.iteritems():
+            dec_query.add_filter((name, value), negate=True)
         dec_filter_where, where_params = dec_query.where.as_sql(
-            SQLCompiler(inc_query, connection, using).quote_name_unless_alias, connection)
+            SQLCompiler(dec_query, connection, using).quote_name_unless_alias, connection)
 
         if inc_filter_where is not None:
             inc_where.append(inc_filter_where)

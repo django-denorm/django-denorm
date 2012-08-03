@@ -101,14 +101,19 @@ class AggregateField(models.PositiveIntegerField):
         >>> active_item_count = CountField('item_set', filter={'active__exact':True})
         >>> adult_user_count = CountField('user_set', filter={'age__gt':18})
 
+        exclude:
+            Do not include filter in aggregation
+
         Any additional arguments are passed on to the contructor of
         PositiveIntegerField.
         """
         skip = kwargs.pop('skip', None)
         qs_filter = kwargs.pop('filter', {})
+        qs_exclude = kwargs.pop('exclude', {})
         self.denorm = self.get_denorm(skip)
         self.denorm.manager_name = manager_name
         self.denorm.filter = qs_filter
+        self.denorm.exclude = qs_exclude
         self.kwargs = kwargs
         kwargs['default'] = 0
         super(AggregateField,self).__init__(**kwargs)

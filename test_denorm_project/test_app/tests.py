@@ -458,7 +458,8 @@ class TestFilterCount(cases.DestructiveDatabaseTestCase):
     def test_filter_count(self):
         master = models.FilterCountModel.objects.create()
         self.assertEqual(master.active_item_count,0)
-        master.items.create(active = True)
+        master.items.create(active = True, text='text')
+        master.items.create(active = True, text='')
         master = models.FilterCountModel.objects.get(id=master.id)
         self.assertEqual(master.active_item_count,1, 'created active item')
         master.items.create(active = False)
