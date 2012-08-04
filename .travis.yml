@@ -7,4 +7,4 @@ install: "pip install -r requirements.txt --use-mirrors"
 before_script:
   - psql -c 'create database denorm_test;' -U postgres
 # command to run tests
-script: nosetests
+script: python runtests.py
