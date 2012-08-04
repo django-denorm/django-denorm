@@ -1,3 +1,5 @@
 django
 django-nose
 djangosanetesting
+psycopg2
+MySQLdb
