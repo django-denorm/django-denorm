@@ -293,13 +293,13 @@ class AggregateDenorm(Denorm):
         related_increment = triggers.TriggerActionUpdate(
             model=self.model,
             columns=(self.fieldname,),
-            values=("%s+1" % self.fieldname,),
+            values=(self.get_increment_value(),),
             where=(' AND '.join(related_inc_where), related_where_params),
         )
         related_decrement = triggers.TriggerActionUpdate(
             model=self.model,
             columns=(self.fieldname,),
-            values=("%s-1" % self.fieldname,),
+            values=(self.get_decrement_value(),),
             where=(' AND '.join(related_dec_where), related_where_params),
         )
         trigger_list = [
