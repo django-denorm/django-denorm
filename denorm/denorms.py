@@ -271,7 +271,9 @@ class AggregateDenorm(Denorm):
         related_where = ["%s=%s.%s" % (self.model._meta.pk.get_attname_column()[1], type, fk_name)]
         related_query = Query(self.manager.related.model)
         for name, value in self.filter.iteritems():
-            related_query.add_filter((name, value))
+            related_query.add_q(Q(**{name: value}))
+        for name, value in self.exclude.iteritems():
+            related_query.add_q(~Q(**{name: value}))
         related_query.add_extra(None, None,
             ["%s=%s.%s" % (self.model._meta.pk.get_attname_column()[1], type, self.manager.related.field.m2m_column_name())],
             None, None, None)
@@ -293,13 +295,13 @@ class AggregateDenorm(Denorm):
         related_increment = triggers.TriggerActionUpdate(
             model=self.model,
             columns=(self.fieldname,),
-            values=(self.get_increment_value(),),
+            values=(self.get_related_increment_value(),),
             where=(' AND '.join(related_inc_where), related_where_params),
         )
         related_decrement = triggers.TriggerActionUpdate(
             model=self.model,
             columns=(self.fieldname,),
-            values=(self.get_decrement_value(),),
+            values=(self.get_related_decrement_value(),),
             where=(' AND '.join(related_dec_where), related_where_params),
         )
         trigger_list = [
@@ -398,6 +400,28 @@ class SumDenorm(AggregateDenorm):
     def get_decrement_value(self):
         return "%s-OLD.%s" % (self.fieldname, self.sum_field)
 
+    def get_related_increment_value(self):
+        related_query = Query(self.manager.related.model)
+        related_query.add_extra(None, None,
+            ["%s=%s.%s" % (self.model._meta.pk.get_attname_column()[1], 'NEW', self.manager.related.field.m2m_column_name())],
+                                None, None, None)
+        related_query.add_fields([self.fieldname])
+        related_query.clear_ordering(force_empty=True)
+        related_query.default_cols = False
+        related_filter_where, related_where_params = related_query.get_compiler(connection=connection).as_sql()
+        return "%s + (%s)" % (self.fieldname, related_filter_where)
+
+    def get_related_decrement_value(self):
+        related_query = Query(self.manager.related.model)
+        related_query.add_extra(None, None,
+            ["%s=%s.%s" % (self.model._meta.pk.get_attname_column()[1], 'NEW', self.manager.related.field.m2m_column_name())],
+                                None, None, None)
+        related_query.add_fields([self.fieldname])
+        related_query.clear_ordering(force_empty=True)
+        related_query.default_cols = False
+        related_filter_where, related_where_params = related_query.get_compiler(connection=connection).as_sql()
+        return "%s - (%s)" % (self.fieldname, related_filter_where)
+
 class CountDenorm(AggregateDenorm):
     """
     Handles the denormalization of a count field by doing incrementally
@@ -416,6 +440,12 @@ class CountDenorm(AggregateDenorm):
 
     def get_decrement_value(self):
         return "%s-1" % self.fieldname
+
+    def get_related_increment_value(self):
+        return self.get_increment_value()
+
+    def get_related_decrement_value(self):
+        return self.get_decrement_value()
 
 
 def rebuildall(verbose=False):
