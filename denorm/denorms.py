@@ -414,7 +414,7 @@ class SumDenorm(AggregateDenorm):
     def get_related_decrement_value(self):
         related_query = Query(self.manager.related.model)
         related_query.add_extra(None, None,
-            ["%s=%s.%s" % (self.model._meta.pk.get_attname_column()[1], 'NEW', self.manager.related.field.m2m_column_name())],
+            ["%s=%s.%s" % (self.model._meta.pk.get_attname_column()[1], 'OLD', self.manager.related.field.m2m_column_name())],
                                 None, None, None)
         related_query.add_fields([self.fieldname])
         related_query.clear_ordering(force_empty=True)
