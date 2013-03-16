@@ -1,5 +1,5 @@
 
-from denorm.fields import denormalized, CountField, CacheKeyField
+from denorm.fields import cached, denormalized, CountField, CacheKeyField
 from denorm.denorms import flush
 from denorm.dependencies import depend_on_related
 
@@ -15,4 +15,4 @@ if hasattr(settings, 'DENORM_FLUSH_AFTER_REQUEST') and settings.DENORM_FLUSH_AFT
         flush()
     request_finished.connect(do_flush)
 
-__all__ = ["denormalized", "depend_on_related", "flush", "CountField", "CacheKeyField"]
+__all__ = ["cached","denormalized", "depend_on_related", "flush", "CountField", "CacheKeyField"]

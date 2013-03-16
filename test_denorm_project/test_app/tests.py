@@ -9,6 +9,37 @@ from denorm import denorms
 import models
 
 
+
+class TestCached(cases.DestructiveDatabaseTestCase):
+
+    def setUp(self):
+        denorms.drop_triggers()
+        denorms.install_triggers()
+
+    def tearDown(self):
+        models.CachedModelA.objects.all().delete()
+        models.CachedModelB.objects.all().delete()
+
+    def test_depends_related(self):
+        models.CachedModelB.objects.create(data='Hello')
+        b = models.CachedModelB.objects.all()[0]
+        self.assertEqual('Hello',b.data)
+
+        models.CachedModelA.objects.create(b=b)
+        a = models.CachedModelA.objects.all()[0]
+
+        self.assertEqual("HELLO",a.cached_data['upper'])
+        self.assertEqual("hello",a.cached_data['lower'])
+
+        b.data = 'World'
+        self.assertEqual("HELLO",a.cached_data['upper'])
+        self.assertEqual("hello",a.cached_data['lower'])
+
+        b.save()
+        a = models.CachedModelA.objects.all()[0]
+        self.assertEqual("WORLD",a.cached_data['upper'])
+        self.assertEqual("world",a.cached_data['lower'])
+
 class TestSkip(cases.DestructiveDatabaseTestCase):
     """
     Tests for the skip feature.

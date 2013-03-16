@@ -5,7 +5,6 @@ from denorm import denorms
 from django.conf import settings
 import django.db.models
 
-
 def denormalized(DBField, *args, **kwargs):
     """
     Turns a callable into model field, analogous to python's ``@property`` decorator.
@@ -239,3 +238,35 @@ class CacheKeyField(models.BigIntegerField):
                 'default': '0',
             },
         )
+
+class CacheWrapper(object):
+    def __init__(self,field):
+        self.field = field
+
+    def __set__(self, obj, value):
+        key = 'CachedField_{}'.format(value)
+        cached = self.field.cache.get(key)
+        if not cached:
+            cached = self.field.func(obj)
+            self.field.cache.set(key,cached,60*60*24*30)
+        obj.__dict__[self.field.name] = cached
+
+class CachedField(CacheKeyField):
+
+    def __init__(self, func, cache, *args, **kwargs):
+        self.func = func
+        self.cache = cache
+        super(CachedField, self).__init__(*args, **kwargs)
+        for c,a,kw in self.func.depend:
+            self.depend_on_related(*a,**kw)
+
+    def contribute_to_class(self, cls, name, *args, **kwargs):
+        super(CachedField, self).contribute_to_class(cls, name, *args, **kwargs)
+        setattr(cls, self.name, CacheWrapper(self))
+
+
+def cached(cache,*args,**kwargs):
+    def deco(func):
+        dbfield = CachedField(func, cache, *args, **kwargs)
+        return dbfield
+    return deco

@@ -3,7 +3,23 @@ import django
 from django.db import models
 from django.contrib.contenttypes.generic import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
-from denorm import denormalized, depend_on_related, CountField, CacheKeyField
+from denorm import denormalized, depend_on_related, CountField, CacheKeyField, cached
+from django.core.cache import cache
+
+class CachedModelA(models.Model):
+
+    b = models.ForeignKey('CachedModelB')
+
+    @cached(cache)
+    @depend_on_related('CachedModelB')
+    def cached_data(self):
+        return {
+            'upper':self.b.data.upper(),
+            'lower':self.b.data.lower(),
+        }
+
+class CachedModelB(models.Model):
+    data = models.CharField(max_length=255)
 
 
 class Tag(models.Model):
