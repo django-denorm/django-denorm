@@ -34,6 +34,7 @@ def denormalized(DBField, *args, **kwargs):
         def __init__(self, func, *args, **kwargs):
             self.func = func
             self.skip = kwargs.pop('skip', None)
+            kwargs['editable'] = False
             DBField.__init__(self, *args, **kwargs)
 
         def contribute_to_class(self, cls, name, *args, **kwargs):
@@ -96,6 +97,7 @@ class AggregateField(models.PositiveIntegerField):
         self.denorm.filter = qs_filter
         self.kwargs = kwargs
         kwargs['default'] = 0
+        kwargs['editable'] = False
         super(AggregateField, self).__init__(**kwargs)
 
     def contribute_to_class(self, cls, name, *args, **kwargs):
@@ -161,6 +163,7 @@ class CountField(AggregateField):
         PositiveIntegerField.
         """
 
+        kwargs['editable'] = False
         super(CountField, self).__init__(manager_name, **kwargs)
 
     def get_denorm(self, skip):
@@ -177,6 +180,7 @@ class SumField(AggregateField):
 
     def __init__(self, manager_name, field, **kwargs):
         self.field = field
+        kwargs['editable'] = False
         super(SumField, self).__init__(manager_name, **kwargs)
 
     def get_denorm(self, skip):
@@ -197,8 +201,9 @@ class CacheKeyField(models.BigIntegerField):
         BigIntegerField.
         """
         self.dependencies = []
-        self.kwargs = kwargs
         kwargs['default'] = 0
+        kwargs['editable'] = False
+        self.kwargs = kwargs
         super(CacheKeyField, self).__init__(**kwargs)
 
     def depend_on_related(self, *args, **kwargs):
