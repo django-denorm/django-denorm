@@ -249,7 +249,7 @@ class CacheWrapper(object):
         self.field = field
 
     def __set__(self, obj, value):
-        key = 'CachedField_{}'.format(value)
+        key = 'CachedField_%s' % value
         cached = self.field.cache.get(key)
         if not cached:
             cached = self.field.func(obj)
