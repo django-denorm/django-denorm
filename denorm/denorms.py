@@ -412,18 +412,17 @@ class CountDenorm(AggregateDenorm):
     def get_decrement_value(self):
         return "%s-1" % self.fieldname
 
-
-
-def rebuildall(verbose=False):
+def rebuildall(verbose=False, model_name=None):
     """
     Updates all models containing denormalized fields.
     Used by the 'denormalize' management command.
     """
     global alldenorms
     for i, denorm in enumerate(alldenorms):
-        if verbose:
-            print 'rebuilding', '%s/%s' % (i + 1, len(alldenorms)), denorm.fieldname, 'in', denorm.model
-        denorm.update(denorm.model.objects.all())
+        if model_name is None or denorm.model.__name__ == model_name:
+            if verbose:
+                print 'rebuilding', '%s/%s' % (i + 1, len(alldenorms)), denorm.fieldname, 'in', denorm.model
+            denorm.update(denorm.model.objects.all())
 
 
 def drop_triggers(using=None):
