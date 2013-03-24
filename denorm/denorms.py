@@ -84,11 +84,26 @@ class Denorm(object):
             # Get attribute name (required for denormalising ForeignKeys)
             attname = instance._meta.get_field(self.fieldname).attname
 
-            if isinstance(getattr(instance, attname), Manager) and getattr(instance, attname).all() != new_value:
-                # many to many field
-                for o in qs.filter(pk=instance.pk):
-                    o.attname = new_value
-                instance.save()
+            if isinstance(getattr(instance, attname), Manager):
+                # for a many to many field the decorated
+                # function should return a list of either model instances
+                # or primary keys
+                old_pks = set([x.pk for x in getattr(instance, attname).all()])
+                new_pks = set([])
+
+                for x in new_value:
+                    # we need to compare sets of objects based on pk values,
+                    # as django lacks an identity map.
+                    if hasattr(x,'pk'):
+                        new_pks.add(x.pk)
+                    else:
+                        new_pks.add(x)
+
+                if old_pks != new_pks:
+                    print old_pks
+                    for o in qs.filter(pk=instance.pk):
+                        o.attname = new_value
+                    instance.save()
 
             elif not getattr(instance, attname) == new_value:
                 setattr(instance, attname, new_value)
