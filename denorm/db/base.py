@@ -55,7 +55,7 @@ class TriggerActionUpdate(TriggerAction):
 
 class Trigger(object):
 
-    def __init__(self, subject, time, event, actions, content_type, using=None, skip=None):
+    def __init__(self, subject, time, event, actions, content_type, using=None, field_names=[]):
         self.subject = subject
         self.time = time
         self.event = event
@@ -73,27 +73,26 @@ class Trigger(object):
         if isinstance(subject, models.ManyToManyField):
             self.model = None
             self.db_table = subject.m2m_db_table()
-            self.fields = [(subject.m2m_column_name(), ''), (subject.m2m_reverse_name(), '')]
+            self.fields = {(subject.m2m_column_name(), ''), (subject.m2m_reverse_name(), '')}
         elif isinstance(subject, GenericRelation):
             self.model = None
             self.db_table = subject.m2m_db_table()
-            self.fields = [(k.attname, k.db_type(connection=cconnection)) for k, v in subject.rel.to._meta.get_fields_with_model() if not v]
+            self.fields = {(k.attname, k.db_type(connection=cconnection)) for k, v in subject.rel.to._meta.get_fields_with_model() if not v}
             self.content_type_field = subject.content_type_field_name + '_id'
         elif isinstance(subject, models.ForeignKey):
             self.model = subject.model
             self.db_table = self.model._meta.db_table
-            skip = skip or ()
-            self.fields = [(k.attname, k.db_type(connection=cconnection)) for k,v in self.model._meta.get_fields_with_model() if not v and k.attname not in skip]
-
+            self.fields = {(k.attname, k.db_type(connection=cconnection)) for k,v in self.model._meta.get_fields_with_model() if not v}
         elif hasattr(subject, "_meta"):
             self.model = subject
             self.db_table = self.model._meta.db_table
             # FIXME, need to check get_parent_list and add triggers to those
             # The below will only check the fields on *this* model, not parents
-            skip = skip or () + getattr(subject, 'denorm_always_skip', ())
-            self.fields = [(k.attname, k.db_type(connection=cconnection)) for k, v in self.model._meta.get_fields_with_model() if not v and k.attname not in skip]
+            self.fields = {(k.attname, k.db_type(connection=cconnection)) for k, v in self.model._meta.get_fields_with_model() if not v}
         else:
             raise NotImplementedError
+        if field_names:
+            self.fields = {f for f in self.fields if f[0] in field_names}
 
     def append(self, actions):
         if not isinstance(actions, list):
@@ -135,6 +134,7 @@ class TriggerSet(object):
             name = trigger.name()
             if name in self.triggers:
                 self.triggers[name].append(trigger.actions)
+                self.triggers[name].fields.update(trigger.fields)
             else:
                 self.triggers[name] = trigger
 
