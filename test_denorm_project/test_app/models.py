@@ -51,7 +51,7 @@ class Forum(TaggedModel):
     post_count = CountField('post_set')
 
     cachekey = CacheKeyField()
-    cachekey.depend_on('post__id')
+    cachekey.depend_on('post__forum_id')
 
     @denormalized(models.CharField, max_length=255)
     @depend_on('post__author_name')
@@ -114,7 +114,7 @@ class Attachment(models.Model):
     post = models.ForeignKey(Post, blank=True, null=True)
 
     cachekey = CacheKeyField()
-    cachekey.depend_on('post__id')
+    cachekey.depend_on('post__title')
 
     @denormalized(models.ForeignKey, Forum, blank=True, null=True)
     @depend_on('post__forum_id')
@@ -131,7 +131,7 @@ class Member(models.Model):
     bookmarks = models.ManyToManyField('Post', blank=True)
 
     cachekey = CacheKeyField()
-    cachekey.depend_on('bookmarks__id')
+    cachekey.depend_on('bookmarks__title')
 
     @denormalized(models.CharField, max_length=255)
     @depend_on('first_name')

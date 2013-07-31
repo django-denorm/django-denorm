@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from denorm.helpers import find_fks, find_m2ms
 from django.db import models
 from django.db.models.fields import related
 from denorm.models import DirtyInstance
@@ -73,6 +72,7 @@ class CacheKeyDependOnField(DependOnField):
         trigger_list = []
 
         content_type = str(ContentType.objects.get_for_model(self.this_model).id)
+        other_field_changed = triggers.TriggerConditionFieldChange(self.other_field)
 
         if "m2m" not in self.type and self.type != "backward":
             action = triggers.TriggerActionUpdate(
@@ -81,8 +81,9 @@ class CacheKeyDependOnField(DependOnField):
                 values=(triggers.RandomBigInt(),),
                 where="%s=NEW.%s" % ((self.this_model._meta.pk.get_attname_column()[1],) * 2),
             )
+            field_changed = triggers.TriggerConditionFieldChange(self.field.attname)
             trigger_list = [
-                triggers.Trigger(self.this_model, "after", "update", [action], content_type, using, [self.field.attname]),
+                triggers.Trigger(self.this_model, "after", "update", [action], content_type, using, field_changed),
                 triggers.Trigger(self.this_model, "after", "insert", [action], content_type, using),
             ]
 
@@ -112,7 +113,7 @@ class CacheKeyDependOnField(DependOnField):
                 triggers.Trigger(self.other_model, "after", "delete", [action_old], content_type, using),
             ]
             if self.other_field:
-                trigger_list.append(triggers.Trigger(self.other_model, "after", "update", [action_new], content_type, using, [self.other_field]))
+                trigger_list.append(triggers.Trigger(self.other_model, "after", "update", [action_new], content_type, using, other_field_changed))
 
         if self.type == "backward":
             # With backward relations a change in ``other_model`` can affect
@@ -143,7 +144,7 @@ class CacheKeyDependOnField(DependOnField):
                 triggers.Trigger(self.other_model, "after", "delete", [action_old], content_type, using),
             ]
             if self.other_field:
-                trigger_list.append(triggers.Trigger(self.other_model, "after", "update", [action_new, action_old], content_type, using, [self.other_field]))
+                trigger_list.append(triggers.Trigger(self.other_model, "after", "update", [action_new, action_old], content_type, using, other_field_changed))
 
         if "m2m" in self.type:
             # The two directions of M2M relations only differ in the column
@@ -203,7 +204,7 @@ class CacheKeyDependOnField(DependOnField):
                     values=(triggers.RandomBigInt(),),
                     where=(self.this_model._meta.pk.get_attname_column()[1] + ' IN (' + sql + ')', params),
                 )
-                trigger_list.append(triggers.Trigger(self.other_model, "after", "update", [action_new], content_type, using, [self.other_field]))
+                trigger_list.append(triggers.Trigger(self.other_model, "after", "update", [action_new], content_type, using, other_field_changed))
 
         return trigger_list
 
@@ -214,6 +215,7 @@ class CallbackDependOnField(DependOnField):
         trigger_list = []
 
         content_type = str(ContentType.objects.get_for_model(self.this_model).id)
+        other_field_changed = triggers.TriggerConditionFieldChange(self.other_field)
 
         if "m2m" not in self.type and self.type != "backward":
             # Create a trigger that marks any updated or newly created
@@ -228,8 +230,9 @@ class CallbackDependOnField(DependOnField):
                 columns=("content_type_id", "object_id"),
                 values=(content_type, "NEW.%s" % self.this_model._meta.pk.get_attname_column()[1])
             )
+            field_changed = triggers.TriggerConditionFieldChange(self.field.attname)
             trigger_list = [
-                triggers.Trigger(self.this_model, "after", "update", [action], content_type, using, [self.field.attname]),
+                triggers.Trigger(self.this_model, "after", "update", [action], content_type, using, field_changed),
                 triggers.Trigger(self.this_model, "after", "insert", [action], content_type, using),
             ]
 
@@ -264,8 +267,7 @@ class CallbackDependOnField(DependOnField):
             ))
             if self.other_field:
                 trigger_list.append(
-                    triggers.Trigger(self.other_model, "after", "update", [action_new], content_type, using,
-                                     [self.other_field]))
+                    triggers.Trigger(self.other_model, "after", "update", [action_new], content_type, using, other_field_changed))
 
         if self.type == "backward":
             # With backward relations a change in ``other_model`` can affect
@@ -295,8 +297,7 @@ class CallbackDependOnField(DependOnField):
             ))
             if self.other_field:
                 trigger_list.append(
-                    triggers.Trigger(self.other_model, "after", "update", [action_new, action_old], content_type, using,
-                                     [self.other_field]))
+                    triggers.Trigger(self.other_model, "after", "update", [action_new, action_old], content_type, using, other_field_changed))
 
         if "m2m" in self.type:
             # The two directions of M2M relations only differ in the column
@@ -353,8 +354,7 @@ class CallbackDependOnField(DependOnField):
                     )
                 )
                 trigger_list.append(
-                    triggers.Trigger(self.other_model, "after", "update", [action_new], content_type, using,
-                                     [self.other_field]))
+                    triggers.Trigger(self.other_model, "after", "update", [action_new], content_type, using, other_field_changed))
 
         return trigger_list
 
