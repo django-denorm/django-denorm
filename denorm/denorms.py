@@ -60,24 +60,31 @@ def many_to_many_post_save(sender, instance, created, **kwargs):
 
 
 class Denorm(object):
-    def __init__(self, skip=None):
+    def __init__(self):
         self.func = None
-        self.skip = skip
+        self.depend = []
 
-    def setup(self, **kwargs):
+    def register(self, **kwargs):
         """
         Adds 'self' to the global denorm list
-        and connects all needed signals.
         """
         global alldenorms
         if self not in alldenorms:
             alldenorms.append(self)
 
+    def setup(self):
+        """
+        Calls setup() on all DenormDependency resolvers
+        """
+
+        for dependency in self.depend:
+            dependency.setup(self.model)
+
     def update(self, qs):
         """
         Updates the denormalizations in all instances in the queryset 'qs'.
         """
-        for instance in qs.distinct():
+        for instance in qs.distinct().iterator():
             # only write new values to the DB if they actually changed
             new_value = self.func(instance)
 
@@ -123,15 +130,6 @@ class BaseCallbackDenorm(Denorm):
     as a callback.
     """
 
-    def setup(self, **kwargs):
-        """
-        Calls setup() on all DenormDependency resolvers
-        """
-        super(BaseCallbackDenorm, self).setup(**kwargs)
-
-        for dependency in self.depend:
-            dependency.setup(self.model)
-
     def get_triggers(self, using):
         """
         Creates a list of all triggers needed to keep track of changes
@@ -147,49 +145,12 @@ class BaseCallbackDenorm(Denorm):
         return trigger_list + super(BaseCallbackDenorm, self).get_triggers(using=using)
 
 
-class CallbackDenorm(BaseCallbackDenorm):
-    """
-    As above, but with extra triggers on self as described below
-    """
-
-    def get_triggers(self, using):
-        content_type = str(ContentType.objects.get_for_model(self.model).pk)
-
-        # Create a trigger that marks any updated or newly created
-        # instance of the model containing the denormalized field
-        # as dirty.
-        # This is only really needed if the instance was changed without
-        # using the ORM or if it was part of a bulk update.
-        # In those cases the self_save_handler won't get called by the
-        # pre_save signal, so we need to ensure flush() does this later.
-        action = triggers.TriggerActionInsert(
-            model=DirtyInstance,
-            columns=("content_type_id", "object_id"),
-            values=(content_type, "NEW.%s" % self.model._meta.pk.get_attname_column()[1])
-        )
-        trigger_list = [
-            triggers.Trigger(self.model, "after", "update", [action], content_type, using, self.skip),
-            triggers.Trigger(self.model, "after", "insert", [action], content_type, using, self.skip),
-        ]
-
-        return trigger_list + super(CallbackDenorm, self).get_triggers(using=using)
-
-
 class BaseCacheKeyDenorm(Denorm):
-    def __init__(self, depend_on_related, *args, **kwargs):
-        self.depend = depend_on_related
+    def __init__(self, depend_on, *args, **kwargs):
         super(BaseCacheKeyDenorm, self).__init__(*args, **kwargs)
+        self.depend.extend(depend_on)
         import random
         self.func = lambda o: random.randint(-9223372036854775808, 9223372036854775807)
-
-    def setup(self, **kwargs):
-        """
-        Calls setup() on all DenormDependency resolvers
-        """
-        super(BaseCacheKeyDenorm, self).setup(**kwargs)
-
-        for dependency in self.depend:
-            dependency.setup(self.model)
 
     def get_triggers(self, using):
         """
@@ -204,32 +165,6 @@ class BaseCacheKeyDenorm(Denorm):
             trigger_list += dependency.get_triggers(using=using)
 
         return trigger_list + super(BaseCacheKeyDenorm, self).get_triggers(using=using)
-
-
-class CacheKeyDenorm(BaseCacheKeyDenorm):
-    """
-    As above, but with extra triggers on self as described below
-    """
-
-    def get_triggers(self, using):
-        content_type = str(ContentType.objects.get_for_model(self.model).pk)
-
-        # This is only really needed if the instance was changed without
-        # using the ORM or if it was part of a bulk update.
-        # In those cases the self_save_handler won't get called by the
-        # pre_save signal
-        action = triggers.TriggerActionUpdate(
-            model=self.model,
-            columns=(self.fieldname,),
-            values=(triggers.RandomBigInt(),),
-            where="%s=NEW.%s" % ((self.model._meta.pk.get_attname_column()[1],) * 2),
-        )
-        trigger_list = [
-            triggers.Trigger(self.model, "after", "update", [action], content_type, using, self.skip),
-            triggers.Trigger(self.model, "after", "insert", [action], content_type, using, self.skip),
-        ]
-
-        return trigger_list + super(CacheKeyDenorm, self).get_triggers(using=using)
 
 
 class TriggerWhereNode(WhereNode):
@@ -261,20 +196,14 @@ class TriggerFilterQuery(sql.Query):
 class AggregateDenorm(Denorm):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, skip=None):
+    def __init__(self):
+        super(AggregateDenorm, self).__init__()
         self.manager = None
-        self.skip = skip
 
-    def setup(self, sender, **kwargs):
-        # as we connected to the ``class_prepared`` signal for any sender
-        # and we only need to setup once, check if the sender is our model.
-        if sender is self.model:
-            super(AggregateDenorm, self).setup(sender=sender, **kwargs)
+    def setup(self):
+        super(AggregateDenorm, self).setup()
 
-        # related managers will only be available after both models are initialized
-        # so check if its available already, and get our manager
-        if not self.manager and hasattr(self.model, self.manager_name):
-            self.manager = getattr(self.model, self.manager_name)
+        self.manager = getattr(self.model, self.manager_name)
 
     def get_related_where(self, fk_name, using, type):
         related_where = ["%s=%s.%s" % (self.model._meta.pk.get_attname_column()[1], type, fk_name)]
@@ -313,10 +242,9 @@ class AggregateDenorm(Denorm):
         )
         trigger_list = [
             triggers.Trigger(related_field, "after", "update", [related_increment, related_decrement], content_type,
-                using,
-                self.skip),
-            triggers.Trigger(related_field, "after", "insert", [related_increment], content_type, using, self.skip),
-            triggers.Trigger(related_field, "after", "delete", [related_decrement], content_type, using, self.skip),
+                using),
+            triggers.Trigger(related_field, "after", "insert", [related_increment], content_type, using),
+            triggers.Trigger(related_field, "after", "delete", [related_decrement], content_type, using),
             ]
         return trigger_list
 
@@ -370,9 +298,9 @@ class AggregateDenorm(Denorm):
 
         other_model = self.manager.related.model
         trigger_list = [
-            triggers.Trigger(other_model, "after", "update", [increment, decrement], content_type, using, self.skip),
-            triggers.Trigger(other_model, "after", "insert", [increment], content_type, using, self.skip),
-            triggers.Trigger(other_model, "after", "delete", [decrement], content_type, using, self.skip),
+            triggers.Trigger(other_model, "after", "update", [increment, decrement], content_type, using),
+            triggers.Trigger(other_model, "after", "insert", [increment], content_type, using),
+            triggers.Trigger(other_model, "after", "delete", [decrement], content_type, using),
             ]
         if isinstance(related_field, ManyToManyField):
             trigger_list.extend(self.m2m_triggers(content_type, fk_name, related_field, using))
@@ -394,8 +322,8 @@ class SumDenorm(AggregateDenorm):
     """
     Handles denormalization of a sum field by doing incrementally updates.
     """
-    def __init__(self, skip=None, field = None):
-        super(SumDenorm, self).__init__(skip)
+    def __init__(self, field = None):
+        super(SumDenorm, self).__init__()
         # in case we want to set the value without relying on the
         # correctness of the incremental updates we create a function that
         # calculates it from scratch.
@@ -414,8 +342,8 @@ class CountDenorm(AggregateDenorm):
     updates.
     """
 
-    def __init__(self, skip=None):
-        super(CountDenorm, self).__init__(skip)
+    def __init__(self):
+        super(CountDenorm, self).__init__()
         # in case we want to set the value without relying on the
         # correctness of the incremental updates we create a function that
         # calculates it from scratch.

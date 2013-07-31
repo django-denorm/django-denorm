@@ -33,21 +33,17 @@ def denormalized(DBField, *args, **kwargs):
 
         def __init__(self, func, *args, **kwargs):
             self.func = func
-            self.skip = kwargs.pop('skip', None)
             kwargs['editable'] = False
             DBField.__init__(self, *args, **kwargs)
 
         def contribute_to_class(self, cls, name, *args, **kwargs):
-            if hasattr(settings, 'DENORM_BULK_UNSAFE_TRIGGERS') and settings.DENORM_BULK_UNSAFE_TRIGGERS:
-                self.denorm = denorms.BaseCallbackDenorm(skip=self.skip)
-            else:
-                self.denorm = denorms.CallbackDenorm(skip=self.skip)
+            self.denorm = denorms.BaseCallbackDenorm()
             self.denorm.func = self.func
             self.denorm.depend = [dcls(*dargs, **dkwargs) for (dcls, dargs, dkwargs) in getattr(self.func, 'depend', [])]
             self.denorm.model = cls
             self.denorm.fieldname = name
             self.field_args = (args, kwargs)
-            models.signals.class_prepared.connect(self.denorm.setup, sender=cls)
+            models.signals.class_prepared.connect(self.denorm.register, sender=cls)
             # Add The many to many signal for this class
             models.signals.pre_save.connect(denorms.many_to_many_pre_save, sender=cls)
             models.signals.post_save.connect(denorms.many_to_many_post_save, sender=cls)
@@ -87,12 +83,11 @@ class AggregateField(models.PositiveIntegerField):
         """
 
     def __init__(self, manager_name, **kwargs):
-        skip = kwargs.pop('skip', None)
         qs_filter = kwargs.pop('filter', {})
         if qs_filter and hasattr(django.db.backend,'sqlite3'):
             raise NotImplementedError('filters for aggregate fields are currently not supported for sqlite')
 
-        self.denorm = self.get_denorm(skip)
+        self.denorm = self.get_denorm()
         self.denorm.manager_name = manager_name
         self.denorm.filter = qs_filter
         self.kwargs = kwargs
@@ -103,7 +98,7 @@ class AggregateField(models.PositiveIntegerField):
     def contribute_to_class(self, cls, name, *args, **kwargs):
         self.denorm.model = cls
         self.denorm.fieldname = name
-        models.signals.class_prepared.connect(self.denorm.setup)
+        models.signals.class_prepared.connect(self.denorm.register, sender=cls)
         super(AggregateField,self).contribute_to_class(cls, name, *args, **kwargs)
 
     def south_field_triple(self):
@@ -166,8 +161,8 @@ class CountField(AggregateField):
         kwargs['editable'] = False
         super(CountField, self).__init__(manager_name, **kwargs)
 
-    def get_denorm(self, skip):
-        return denorms.CountDenorm(skip)
+    def get_denorm(self):
+        return denorms.CountDenorm()
 
 class SumField(AggregateField):
     """
@@ -183,16 +178,14 @@ class SumField(AggregateField):
         kwargs['editable'] = False
         super(SumField, self).__init__(manager_name, **kwargs)
 
-    def get_denorm(self, skip):
-        return denorms.SumDenorm(skip, self.field)
+    def get_denorm(self):
+        return denorms.SumDenorm(self.field)
 
 class CacheKeyField(models.BigIntegerField):
     """
     A ``BigIntegerField`` that gets set to a random value anytime
     the model is saved or a dependency is triggered.
     The field gets updated immediately and does not require *denorm.flush()*.
-    It currently cannot detect a direct (bulk)update to the model
-    it is declared in.
     """
 
     def __init__(self, **kwargs):
@@ -206,21 +199,21 @@ class CacheKeyField(models.BigIntegerField):
         self.kwargs = kwargs
         super(CacheKeyField, self).__init__(**kwargs)
 
-    def depend_on_related(self, *args, **kwargs):
+    def depend_on(self, field_lookup):
         """
         Add dependency information to the CacheKeyField.
-        Accepts the same arguments like the *denorm.depend_on_related* decorator
+        Accepts the same arguments like the *denorm.depend_on* decorator
         """
-        from dependencies import CacheKeyDependOnRelated
-        self.dependencies.append(CacheKeyDependOnRelated(*args, **kwargs))
+        from dependencies import CacheKeyDependOnField
+        self.dependencies.append(CacheKeyDependOnField(field_lookup))
 
     def contribute_to_class(self, cls, name, *args, **kwargs):
         for depend in self.dependencies:
             depend.fieldname = name
-        self.denorm = denorms.BaseCacheKeyDenorm(depend_on_related=self.dependencies)
+        self.denorm = denorms.BaseCacheKeyDenorm(depend_on=self.dependencies)
         self.denorm.model = cls
         self.denorm.fieldname = name
-        models.signals.class_prepared.connect(self.denorm.setup)
+        models.signals.class_prepared.connect(self.denorm.register, sender=cls)
         super(CacheKeyField, self).contribute_to_class(cls, name, *args, **kwargs)
 
     def pre_save(self, model_instance, add):
@@ -263,7 +256,7 @@ class CachedField(CacheKeyField):
         self.cache = cache
         super(CachedField, self).__init__(*args, **kwargs)
         for c,a,kw in self.func.depend:
-            self.depend_on_related(*a,**kw)
+            self.depend_on(*a,**kw)
 
     def contribute_to_class(self, cls, name, *args, **kwargs):
         super(CachedField, self).contribute_to_class(cls, name, *args, **kwargs)
