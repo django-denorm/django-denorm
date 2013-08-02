@@ -192,12 +192,12 @@ if not hasattr(django.db.backend,'sqlite3'):
         age = models.IntegerField(default=18)
         active_item_count = models.PositiveIntegerField(default=False)
 
-
     class FilterCountModel(models.Model):
         # Simple count() aggregate
-        active_item_count = CountField('items', filter = {'active__exact':True})
+        active_item_count = CountField('items', filter = {'active__exact':True}, exclude = {'text':''})
 
     class FilterCountItem(models.Model):
         parent = models.ForeignKey(FilterCountModel, related_name='items')
         active = models.BooleanField(default=False)
+        text = models.CharField(max_length=10, default='')
 

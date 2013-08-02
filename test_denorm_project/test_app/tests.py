@@ -495,32 +495,38 @@ if not hasattr(django.db.backend,'sqlite3'):
             denorms.drop_triggers()
             denorms.install_triggers()
 
-        
         def test_filter_count(self):
             master = models.FilterCountModel.objects.create()
             self.assertEqual(master.active_item_count,0)
-            master.items.create(active = True)
+            master.items.create(active = True, text='text')
+            master.items.create(active = True, text='')
             master = models.FilterCountModel.objects.get(id=master.id)
             self.assertEqual(master.active_item_count,1, 'created active item')
             master.items.create(active = False)
             master = models.FilterCountModel.objects.get(id=master.id)
             self.assertEqual(master.active_item_count,1, 'created inactive item')
-            master.items.create(active = True)
+            master.items.create(active = True, text='true')
             master = models.FilterCountModel.objects.get(pk=master.pk)
             self.assertEqual(master.active_item_count,2)
             master.items.filter(active = False).delete()
             master = models.FilterCountModel.objects.get(pk=master.pk)
             self.assertEqual(master.active_item_count,2)
-            master.items.filter(active = True)[0].delete()
+            master.items.filter(active = True, text='true')[0].delete()
             master = models.FilterCountModel.objects.get(pk=master.pk)
             self.assertEqual(master.active_item_count,1)
-            item = master.items.filter(active = True)[0]
+            item = master.items.filter(active = True, text='text')[0]
             item.active = False
             item.save()
             master = models.FilterCountModel.objects.get(pk=master.pk)
             self.assertEqual(master.active_item_count,0)
-            item = master.items.filter(active = False)[0]
+            item = master.items.filter(active = False, text='text')[0]
             item.active = True
+            item.text = ''
+            item.save()
+            master = models.FilterCountModel.objects.get(pk=master.pk)
+            self.assertEqual(master.active_item_count,0)
+            item = master.items.filter(active = True, text='')[0]
+            item.text = '123'
             item.save()
             master = models.FilterCountModel.objects.get(pk=master.pk)
             self.assertEqual(master.active_item_count,1)
@@ -536,13 +542,13 @@ if not hasattr(django.db.backend,'sqlite3'):
         def test_filter_count(self):
             master = models.FilterCountModel.objects.create()
             self.assertEqual(master.active_item_count,0)
-            master.items.create(active = True)
+            master.items.create(active = True, text='true')
             master = models.FilterCountModel.objects.get(id=master.id)
             self.assertEqual(master.active_item_count,1, 'created active item')
-            master.items.create(active = False)
+            master.items.create(active = False, text='true')
             master = models.FilterCountModel.objects.get(id=master.id)
             self.assertEqual(master.active_item_count,1, 'created inactive item')
-            master.items.create(active = True)
+            master.items.create(active = True, text='true')
             master = models.FilterCountModel.objects.get(pk=master.pk)
             self.assertEqual(master.active_item_count,2)
             master.items.filter(active = False).delete()
