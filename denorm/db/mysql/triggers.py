@@ -55,16 +55,16 @@ class Trigger(base.Trigger):
                 for x in range(5)
             )
         params = []
-        action_set = set()
+        action_list = []
         for a in self.actions:
             sql, action_params = a.sql()
             if sql:
-                action_set.add(sql)
+                action_list.append(sql)
                 params.extend(action_params)
 
         # FIXME: actions should depend on content_type and content_type_field, if applicable
         # now we flag too many things dirty, e.g. a change for ('forum', 1) also flags ('post', 1)
-        actions = ";\n   ".join(action_set) + ';'
+        actions = ";\n   ".join(action_list) + ';'
         table = self.db_table
         time = self.time.upper()
         event = self.event.upper()

@@ -1,0 +1,6 @@
+django
+nose
+django-nose
+djangosanetesting
+psycopg2
+mysql-python

@@ -85,16 +85,36 @@ class AggregateField(models.PositiveIntegerField):
         """
         Returns denorm instance
         """
+        raise NotImplemented('You need to override this method')
 
-    def __init__(self, manager_name, **kwargs):
+    def __init__(self,manager_name,**kwargs):
+        """
+        **Arguments:**
+
+        manager_name:
+            The name of the related manager to be counted.
+
+        filter:
+            Filter, which is applied to manager. For example:
+
+        >>> active_item_count = CountField('item_set', filter={'active__exact':True})
+        >>> adult_user_count = CountField('user_set', filter={'age__gt':18})
+
+        exclude:
+            Do not include filter in aggregation
+
+        Any additional arguments are passed on to the contructor of
+        PositiveIntegerField.
+        """
         skip = kwargs.pop('skip', None)
         qs_filter = kwargs.pop('filter', {})
         if qs_filter and hasattr(django.db.backend,'sqlite3'):
             raise NotImplementedError('filters for aggregate fields are currently not supported for sqlite')
-
+        qs_exclude = kwargs.pop('exclude', {})
         self.denorm = self.get_denorm(skip)
         self.denorm.manager_name = manager_name
         self.denorm.filter = qs_filter
+        self.denorm.exclude = qs_exclude
         self.kwargs = kwargs
         kwargs['default'] = 0
         kwargs['editable'] = False
@@ -185,6 +205,12 @@ class SumField(AggregateField):
 
     def get_denorm(self, skip):
         return denorms.SumDenorm(skip, self.field)
+
+class CopyField(AggregateField):
+    """
+    Field, which makes two field identical. Any change in related field will change this field
+    """
+    # TODO: JFDI
 
 class CacheKeyField(models.BigIntegerField):
     """
