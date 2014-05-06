@@ -372,6 +372,26 @@ class TestDenormalisation(cases.DestructiveDatabaseTestCase):
         self.assertEqual(f1.post_count,  1)
         self.assertEqual(f1.authors.all()[0], m1)
 
+    def test_denorm_update(self):
+        f1 = models.Forum.objects.create(title="forumone")
+        m1 = models.Member.objects.create(name="memberone")
+        p1 = models.Post.objects.create(forum=f1, author=m1)
+        a1 = models.Attachment.objects.create(post=p1)
+
+        denorm.denorms.rebuildall()
+
+        f2 = models.Forum.objects.create(title="forumtwo")
+        p1.forum = f2
+        p1.save()
+
+        # BUG https://github.com/initcrash/django-denorm/issues/24
+        # We have to update the Attachment.forum field first to trigger this bug. Simply doing rebuildall() will
+        # trigger an a1.save() at an some earlier point during the update. By the time we get to updating the value of
+        # forum field the value is already correct and no update is done bypassing the broken code.
+        for d in denorms.alldenorms:
+            if d.model == models.Attachment and d.fieldname == 'forum':
+                d.update(models.Attachment.objects.all())
+
     def test_denorm_subclass(self):
         f1 = models.Forum.objects.create(title="forumone")
         m1 = models.Member.objects.create(name="memberone")
