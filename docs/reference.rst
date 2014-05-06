@@ -37,6 +37,9 @@ Management commands
 **denorm_init**
     .. automodule:: denorm.management.commands.denorm_init
 
+**denorm_drop**
+    .. automodule:: denorm.management.commands.denorm_drop
+
 **denorm_rebuild**
     .. automodule:: denorm.management.commands.denorm_rebuild
 
