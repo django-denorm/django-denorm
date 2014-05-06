@@ -77,7 +77,7 @@ class Denorm(object):
         """
         Updates the denormalizations in all instances in the queryset 'qs'.
         """
-        for instance in qs.distinct():
+        for instance in qs.distinct().iterator():
             # only write new values to the DB if they actually changed
             new_value = self.func(instance)
 
