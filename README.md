@@ -5,3 +5,5 @@ This app uses database-level triggers, so is *not* database independent, but sup
 Documentation is available from http://initcrash.github.com/django-denorm/
 
 Issues can be reported at http://github.com/initcrash/django-denorm/issues
+
+[![Build Status](https://travis-ci.org/initcrash/django-denorm.svg?branch=master)](https://travis-ci.org/initcrash/django-denorm)
