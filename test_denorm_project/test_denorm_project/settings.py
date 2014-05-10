@@ -2,7 +2,7 @@
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
-TEST_RUNNER = "djangosanetesting.testrunner.DstNoseTestSuiteRunner"
+# TEST_RUNNER = "djangosanetesting.testrunner.DstNoseTestSuiteRunner"
 
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),
@@ -90,7 +90,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.messages.middleware.MessageMiddleware',
 )
 
-ROOT_URLCONF = 'test_project.urls'
+ROOT_URLCONF = 'test_denorm_project.urls'
 
 TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
@@ -108,6 +108,7 @@ INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.admindocs',
 
+    # 'django_nose',
     'test_app',
     'denorm',
 )

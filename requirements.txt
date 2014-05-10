@@ -1,6 +1,1 @@
-django
-nose
-django-nose
-djangosanetesting
-psycopg2
-mysql-python
+Django==1.4

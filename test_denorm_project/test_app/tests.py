@@ -1,16 +1,13 @@
 import django
-from djangosanetesting import cases
+from django.test import TestCase
 from django.contrib.auth.models import User,  Permission
 from django.contrib.contenttypes.models import ContentType
 
 import denorm
 from denorm import denorms
-
 import models
 
-
-
-class TestCached(cases.DestructiveDatabaseTestCase):
+class TestCached(TestCase):
 
     def setUp(self):
         denorms.drop_triggers()
@@ -40,7 +37,7 @@ class TestCached(cases.DestructiveDatabaseTestCase):
         self.assertEqual("WORLD",a.cached_data['upper'])
         self.assertEqual("world",a.cached_data['lower'])
 
-class TestSkip(cases.DestructiveDatabaseTestCase):
+class TestSkip(TestCase):
     """
     Tests for the skip feature.
     """
@@ -81,7 +78,7 @@ class TestSkip(cases.DestructiveDatabaseTestCase):
         denorm.flush()
 
 
-class TestDenormalisation(cases.DestructiveDatabaseTestCase):
+class TestDenormalisation(TestCase):
     """
     Tests for the denormalisation fields.
     """
@@ -506,7 +503,7 @@ class TestDenormalisation(cases.DestructiveDatabaseTestCase):
         
 
 if not hasattr(django.db.backend,'sqlite3'):
-    class TestFilterCount(cases.DestructiveDatabaseTestCase):
+    class TestFilterCount(TestCase):
         """
         Tests for the filtered count feature.
         """
@@ -551,7 +548,7 @@ if not hasattr(django.db.backend,'sqlite3'):
             master = models.FilterCountModel.objects.get(pk=master.pk)
             self.assertEqual(master.active_item_count,1)
 
-    class TestFilterCountM2M(cases.DestructiveDatabaseTestCase):
+    class TestFilterCountM2M(TestCase):
         """
         Tests for the filtered count feature.
         """
@@ -588,7 +585,7 @@ if not hasattr(django.db.backend,'sqlite3'):
             master = models.FilterCountModel.objects.get(pk=master.pk)
             self.assertEqual(master.active_item_count,1)
 
-    class TestFilterSum(cases.DestructiveDatabaseTestCase):
+    class TestFilterSum(TestCase):
         """
         Tests for the filtered count feature.
         """
