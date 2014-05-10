@@ -5,4 +5,5 @@ python:
 install: "pip install -r test_denorm_project/test_requirements.txt --use-mirrors"
 before_script:
   - psql -c 'create database denorm_test;' -U postgres
+  - mysql -e 'create database denorm_test;'
 script: python runtests.py
