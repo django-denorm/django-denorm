@@ -15,4 +15,4 @@ class Command(BaseCommand):
     )
 
     def handle(self, **kwargs):
-        denorms.flush_cached()
+        denorms.flush_cached(**kwargs['chunk'])
