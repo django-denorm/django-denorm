@@ -519,7 +519,7 @@ def flush():
 
         # Call save() on all dirty instances, causing the self_save_handler()
         # getting called by the pre_save signal.
-        for dirty_instance in qs:
+        for dirty_instance in qs.iterator():
             if dirty_instance.content_object:
                 dirty_instance.content_object.save()
             dirty_instance.delete()
