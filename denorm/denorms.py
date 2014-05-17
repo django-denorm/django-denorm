@@ -15,7 +15,7 @@ from denorm.models import DirtyInstance
 from django.db.models.query_utils import Q
 from django.db.models.sql import Query
 from django.db.models.sql.compiler import SQLCompiler
-from django.db.models.sql.constants import NULLABLE, JOIN_TYPE
+from django.db.models.sql.constants import JoinInfo
 from django.db.models.sql.query import Query
 from django.db.models.sql.where import WhereNode
 
@@ -260,7 +260,6 @@ class TriggerFilterQuery(sql.Query):
     def __init__(self, model, trigger_alias, where=TriggerWhereNode):
         super(TriggerFilterQuery, self).__init__(model, where)
         self.trigger_alias = trigger_alias
-        self.alias_map = {trigger_alias:{NULLABLE:False, JOIN_TYPE: None}}
 
     def get_initial_alias(self):
         return self.trigger_alias
