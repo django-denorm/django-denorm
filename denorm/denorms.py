@@ -239,7 +239,7 @@ class CacheKeyDenorm(BaseCacheKeyDenorm):
 
 
 class TriggerWhereNode(WhereNode):
-    def sql_for_columns(self, data, qn, connection):
+    def sql_for_columns(self, data, qn, connection, internal_type=None):
         """
         Returns the SQL fragment used for the left-hand side of a column
         constraint (for example, the "T1.foo" portion in the clause
@@ -253,7 +253,7 @@ class TriggerWhereNode(WhereNode):
                 lhs = '%s.%s' % (qn(table_alias), qn(name))
         else:
             lhs = qn(name)
-        return connection.ops.field_cast_sql(db_type) % lhs
+        return connection.ops.field_cast_sql(db_type, internal_type) % lhs
 
 
 class TriggerFilterQuery(sql.Query):
