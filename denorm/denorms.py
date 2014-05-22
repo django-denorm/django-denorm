@@ -253,7 +253,11 @@ class TriggerWhereNode(WhereNode):
                 lhs = '%s.%s' % (qn(table_alias), qn(name))
         else:
             lhs = qn(name)
-        return connection.ops.field_cast_sql(db_type, internal_type) % lhs
+        try:
+            response = connection.ops.field_cast_sql(db_type, internal_type) % lhs
+        except TypeError:
+            response = connection.ops.field_cast_sql(db_type) % lhs
+        return response
 
 
 class TriggerFilterQuery(sql.Query):
