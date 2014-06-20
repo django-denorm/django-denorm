@@ -61,13 +61,17 @@ class Trigger(base.Trigger):
         name = self.name()
         params = []
         action_list = []
+        actions_added = set()
         for a in self.actions:
             sql, action_params = a.sql()
             if sql:
                 if not sql.endswith(';'):
                     sql += ';'
-                action_list.extend(sql.split('\n'))
-                params.extend(action_params)
+                action_params = tuple(action_params)
+                if (sql, action_params) not in actions_added:
+                    actions_added.add((sql, action_params))
+                    action_list.extend(sql.split('\n'))
+                    params.extend(action_params)
         actions = "\n        ".join(action_list)
         table = self.db_table
         time = self.time.upper()

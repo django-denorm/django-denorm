@@ -57,13 +57,17 @@ class Trigger(base.Trigger):
             )
         params = []
         action_list = []
+        actions_added = set()
         for a in self.actions:
             sql, action_params = a.sql()
             if sql:
                 if not sql.endswith(';'):
                     sql += ';'
-                action_list.extend(sql.split('\n'))
-                params.extend(action_params)
+                action_params = tuple(action_params)
+                if (sql, action_params) not in actions_added:
+                    actions_added.add((sql, action_params))
+                    action_list.extend(sql.split('\n'))
+                    params.extend(action_params)
 
         # FIXME: actions should depend on content_type and content_type_field, if applicable
         # now we flag too many things dirty, e.g. a change for ('forum', 1) also flags ('post', 1)
