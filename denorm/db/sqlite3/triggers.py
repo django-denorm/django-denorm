@@ -58,6 +58,8 @@ class Trigger(base.Trigger):
         return name
 
     def sql(self):
+        qn = self.connection.ops.quote_name
+
         name = self.name()
         params = []
         action_list = []
@@ -81,8 +83,9 @@ class Trigger(base.Trigger):
 
         when = []
         if event == "UPDATE":
-            when.append("(" + "OR".join(["(OLD.%s IS NOT NEW.%s)" % (f, f) for f, t in self.fields]) + ")")
+            when.append("(" + "OR".join(["(OLD.%s IS NOT NEW.%s)" % (qn(f), qn(f)) for f, t in self.fields]) + ")")
         if ct_field:
+            ct_field = qn(ct_field)
             if event == "DELETE":
                 when.append("(OLD.%s == %s)" % (ct_field, content_type))
             elif event == "INSERT":
@@ -105,11 +108,12 @@ CREATE TRIGGER %(name)s
 
 class TriggerSet(base.TriggerSet):
     def drop(self):
+        qn = self.connection.ops.quote_name
         cursor = self.cursor()
 
         cursor.execute("SELECT name, tbl_name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'denorm_%%';")
         for trigger_name, table_name in cursor.fetchall():
-            cursor.execute("DROP TRIGGER %s;" % (trigger_name,))
+            cursor.execute("DROP TRIGGER %s;" % (qn(trigger_name),))
             transaction.commit_unless_managed(using=self.using)
 
     def install(self):

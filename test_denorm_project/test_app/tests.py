@@ -9,6 +9,27 @@ import denorm
 from denorm import denorms
 import models
 
+# Use all but denorms in FailingTriggers models by default
+failingdenorms = denorms.alldenorms
+denorms.alldenorms = [d for d in failingdenorms if d.model not in (models.FailingTriggersModelA, models.FailingTriggersModelB)]
+
+
+class TestTriggers(TestCase):
+    def setUp(self):
+        denorms.drop_triggers()
+
+    def test_triggers(self):
+        """Test potentially failing denorms.
+        """
+        # save and restore alldenorms
+        # test will fail if it's raising an exception
+        alldenorms = denorms.alldenorms
+        denorms.alldenorms = failingdenorms
+        try:
+            denorms.install_triggers()
+        finally:
+            denorms.alldenorms = alldenorms
+
 
 class TestCached(TestCase):
     def setUp(self):

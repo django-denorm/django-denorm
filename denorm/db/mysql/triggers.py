@@ -49,6 +49,8 @@ class TriggerActionUpdate(base.TriggerActionUpdate):
 class Trigger(base.Trigger):
 
     def sql(self):
+        qn = self.connection.ops.quote_name
+
         name = self.name()
         if len(name) > 50:
             name = name[:45] + ''.join(
@@ -79,6 +81,7 @@ class Trigger(base.Trigger):
 
         if event == "UPDATE":
             for field, native_type in self.fields:
+                field = qn(field)
                 # TODO: find out if we need to compare some fields as text like in postgres
                 conditions.append("(NOT(OLD.%(f)s <=> NEW.%(f)s))" % {'f': field})
 
@@ -105,6 +108,7 @@ CREATE TRIGGER %(name)s
 
 class TriggerSet(base.TriggerSet):
     def drop(self):
+        qn = self.connection.ops.quote_name
         cursor = self.cursor()
 
         # FIXME: according to MySQL docs the LIKE statement should work
@@ -113,7 +117,7 @@ class TriggerSet(base.TriggerSet):
         cursor.execute('SHOW TRIGGERS')
         for result in cursor.fetchall():
             if result[0].startswith('denorm_'):
-                cursor.execute('DROP TRIGGER %s;' % result[0])
+                cursor.execute('DROP TRIGGER %s;' % qn(result[0]))
 
     def install(self):
         cursor = self.cursor()

@@ -8,6 +8,20 @@ from denorm.fields import SumField
 from denorm import denormalized, depend_on_related, CountField, CacheKeyField, cached
 
 
+class FailingTriggersModelA(models.Model):
+    order = models.SmallIntegerField(default=0)  # Fails for SQLite
+    SomeWeirdName = models.CharField(max_length=255)  # Fails for PostgreSQL
+
+
+class FailingTriggersModelB(models.Model):
+    a = models.ForeignKey(FailingTriggersModelA)
+
+    @denormalized(models.TextField)
+    @depend_on_related(FailingTriggersModelA)
+    def SomeWeirdName(self):
+        return self.a.SomeWeirdName
+
+
 class CachedModelA(models.Model):
     b = models.ForeignKey('CachedModelB')
 

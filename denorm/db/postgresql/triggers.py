@@ -61,6 +61,8 @@ class Trigger(base.Trigger):
         return name
 
     def sql(self):
+        qn = self.connection.ops.quote_name
+
         name = self.name()
         params = []
         action_list = []
@@ -85,6 +87,7 @@ class Trigger(base.Trigger):
 
         if event == "UPDATE":
             for field, native_type in self.fields:
+                field = qn(field)
                 if native_type is None:
                     # If Django didn't know what this field type should be
                     # then compare it as text - Fixes a problem of trying to
@@ -96,6 +99,7 @@ class Trigger(base.Trigger):
             conditions = ["(%s)" % " OR ".join(conditions)]
 
         if ct_field:
+            ct_field = qn(ct_field)
             if event == "UPDATE":
                 conditions.append("(OLD.%(ctf)s = %(ct)s) OR (NEW.%(ctf)s = %(ct)s)" % {'ctf': ct_field, 'ct': content_type})
             elif event == "INSERT":
@@ -129,10 +133,11 @@ CREATE TRIGGER %(name)s
 
 class TriggerSet(base.TriggerSet):
     def drop(self):
+        qn = self.connection.ops.quote_name
         cursor = self.cursor()
         cursor.execute("SELECT pg_class.relname, pg_trigger.tgname FROM pg_trigger LEFT JOIN pg_class ON (pg_trigger.tgrelid = pg_class.oid) WHERE pg_trigger.tgname LIKE 'denorm_%%';")
         for table_name, trigger_name in cursor.fetchall():
-            cursor.execute('DROP TRIGGER %s ON %s;' % (trigger_name, table_name))
+            cursor.execute('DROP TRIGGER %s ON %s;' % (qn(trigger_name), qn(table_name)))
             transaction.commit_unless_managed(using=self.using)
 
     def install(self):
