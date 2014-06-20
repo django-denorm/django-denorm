@@ -37,13 +37,14 @@ class TriggerActionUpdate(base.TriggerActionUpdate):
 
     def sql(self):
         table = self.model._meta.db_table
-        updates = ','.join(["%s=%s" % (k, v) for k,  v in zip(self.columns, self.values)])
+        updates = ','.join(["%s=%s" % (k, v) for k, v in zip(self.columns, self.values)])
         if isinstance(self.where, tuple):
             where, where_params = self.where
         else:
             where, where_params = self.where, []
 
         return 'UPDATE %(table)s SET %(updates)s WHERE %(where)s' % locals(), tuple(where_params)
+
 
 class Trigger(base.Trigger):
 
@@ -89,6 +90,7 @@ CREATE TRIGGER %(name)s
     END;
 """ % locals()
         return sql, tuple(params)
+
 
 class TriggerSet(base.TriggerSet):
     def drop(self):

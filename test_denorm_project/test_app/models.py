@@ -1,22 +1,24 @@
-from denorm.fields import SumField
 import django
 from django.db import models
 from django.contrib.contenttypes.generic import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
-from denorm import denormalized, depend_on_related, CountField, CacheKeyField, cached
 from django.core.cache import cache
 
-class CachedModelA(models.Model):
+from denorm.fields import SumField
+from denorm import denormalized, depend_on_related, CountField, CacheKeyField, cached
 
+
+class CachedModelA(models.Model):
     b = models.ForeignKey('CachedModelB')
 
     @cached(cache)
     @depend_on_related('CachedModelB')
     def cached_data(self):
         return {
-            'upper':self.b.data.upper(),
-            'lower':self.b.data.lower(),
+            'upper': self.b.data.upper(),
+            'lower': self.b.data.lower(),
         }
+
 
 class CachedModelB(models.Model):
     data = models.CharField(max_length=255)
@@ -43,7 +45,6 @@ class TaggedModel(models.Model):
 
 
 class Forum(TaggedModel):
-
     title = models.CharField(max_length=255)
 
     # Simple count() aggregate
@@ -76,7 +77,6 @@ class Forum(TaggedModel):
 
 
 class Post(TaggedModel):
-
     forum = models.ForeignKey(Forum, blank=True, null=True)
     author = models.ForeignKey('Member', blank=True, null=True)
     response_to = models.ForeignKey('self', blank=True, null=True, related_name='responses')
@@ -108,7 +108,6 @@ class Post(TaggedModel):
 
 
 class Attachment(models.Model):
-
     post = models.ForeignKey(Post, blank=True, null=True)
 
     cachekey = CacheKeyField()
@@ -123,7 +122,6 @@ class Attachment(models.Model):
 
 
 class Member(models.Model):
-
     first_name = models.CharField(max_length=255)
     name = models.CharField(max_length=255)
     bookmarks = models.ManyToManyField('Post', blank=True)
@@ -173,6 +171,7 @@ class SkipCommentWithSkip(SkipComment):
     def post_text(self):
         return self.post.text
 
+
 class SkipCommentWithAttributeSkip(SkipComment):
     @denormalized(models.TextField)
     @depend_on_related(SkipPost)
@@ -182,10 +181,10 @@ class SkipCommentWithAttributeSkip(SkipComment):
     denorm_always_skip = ('updated_on',)
 
 
-if not hasattr(django.db.backend,'sqlite3'):
+if not hasattr(django.db.backend, 'sqlite3'):
     class FilterSumModel(models.Model):
         # Simple count() aggregate
-        active_item_sum = SumField('counts', field='active_item_count', filter = {'age__gte':18})
+        active_item_sum = SumField('counts', field='active_item_count', filter={'age__gte': 18})
 
     class FilterSumItem(models.Model):
         parent = models.ForeignKey(FilterSumModel, related_name='counts')
@@ -194,10 +193,9 @@ if not hasattr(django.db.backend,'sqlite3'):
 
     class FilterCountModel(models.Model):
         # Simple count() aggregate
-        active_item_count = CountField('items', filter = {'active__exact':True}, exclude = {'text':''})
+        active_item_count = CountField('items', filter={'active__exact': True}, exclude={'text': ''})
 
     class FilterCountItem(models.Model):
         parent = models.ForeignKey(FilterCountModel, related_name='items')
         active = models.BooleanField(default=False)
         text = models.CharField(max_length=10, default='')
-

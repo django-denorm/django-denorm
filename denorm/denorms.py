@@ -6,14 +6,9 @@ from denorm.db import triggers
 from django.db import connection
 from django.db.models import sql, ManyToManyField
 from django.db.models.aggregates import Sum
-from django.db.models.fields.related import ManyToManyField
 from django.db.models.manager import Manager
 from denorm.models import DirtyInstance
-
-# remember all denormalizations.
-# this is used to rebuild all denormalized values in the whole DB
 from django.db.models.query_utils import Q
-from django.db.models.sql import Query
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.constants import JoinInfo
 from django.db.models.sql.query import Query
@@ -100,7 +95,7 @@ class Denorm(object):
                 for x in new_value:
                     # we need to compare sets of objects based on pk values,
                     # as django lacks an identity map.
-                    if hasattr(x,'pk'):
+                    if hasattr(x, 'pk'):
                         new_pks.add(x.pk)
                     else:
                         new_pks.add(x)
@@ -270,6 +265,7 @@ class TriggerFilterQuery(sql.Query):
     def get_initial_alias(self):
         return self.trigger_alias
 
+
 class AggregateDenorm(Denorm):
     __metaclass__ = abc.ABCMeta
 
@@ -331,7 +327,7 @@ class AggregateDenorm(Denorm):
                 self.skip),
             triggers.Trigger(related_field, "after", "insert", [related_increment], content_type, using, self.skip),
             triggers.Trigger(related_field, "after", "delete", [related_decrement], content_type, using, self.skip),
-            ]
+        ]
         return trigger_list
 
     def get_triggers(self, using):
@@ -343,7 +339,7 @@ class AggregateDenorm(Denorm):
                 'related': related_field.m2m_column_name(),
                 'm2m_table': related_field.m2m_db_table(),
                 'reverse_related': fk_name,
-                }]
+            }]
             dec_where = [action.replace('NEW.', 'OLD.') for action in inc_where]
         else:
             fk_name = related_field.attname
@@ -386,7 +382,7 @@ class AggregateDenorm(Denorm):
             triggers.Trigger(other_model, "after", "update", [increment, decrement], content_type, using, self.skip),
             triggers.Trigger(other_model, "after", "insert", [increment], content_type, using, self.skip),
             triggers.Trigger(other_model, "after", "delete", [decrement], content_type, using, self.skip),
-            ]
+        ]
         if isinstance(related_field, ManyToManyField):
             trigger_list.extend(self.m2m_triggers(content_type, fk_name, related_field, using))
         return trigger_list
@@ -403,11 +399,12 @@ class AggregateDenorm(Denorm):
         Returns SQL for decrementing value
         """
 
+
 class SumDenorm(AggregateDenorm):
     """
     Handles denormalization of a sum field by doing incrementally updates.
     """
-    def __init__(self, skip=None, field = None):
+    def __init__(self, skip=None, field=None):
         super(SumDenorm, self).__init__(skip)
         # in case we want to set the value without relying on the
         # correctness of the incremental updates we create a function that
@@ -425,7 +422,7 @@ class SumDenorm(AggregateDenorm):
         related_query = Query(self.manager.related.model)
         related_query.add_extra(None, None,
             ["%s=%s.%s" % (self.model._meta.pk.get_attname_column()[1], 'NEW', self.manager.related.field.m2m_column_name())],
-                                None, None, None)
+            None, None, None)
         related_query.add_fields([self.fieldname])
         related_query.clear_ordering(force_empty=True)
         related_query.default_cols = False
@@ -436,12 +433,13 @@ class SumDenorm(AggregateDenorm):
         related_query = Query(self.manager.related.model)
         related_query.add_extra(None, None,
             ["%s=%s.%s" % (self.model._meta.pk.get_attname_column()[1], 'OLD', self.manager.related.field.m2m_column_name())],
-                                None, None, None)
+            None, None, None)
         related_query.add_fields([self.fieldname])
         related_query.clear_ordering(force_empty=True)
         related_query.default_cols = False
         related_filter_where, related_where_params = related_query.get_compiler(connection=connection).as_sql()
         return "%s - (%s)" % (self.fieldname, related_filter_where)
+
 
 class CountDenorm(AggregateDenorm):
     """

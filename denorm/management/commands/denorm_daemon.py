@@ -13,20 +13,23 @@ PID_FILE = "/tmp/django-denorm-daemon-pid"
 
 class Command(NoArgsCommand):
     option_list = NoArgsCommand.option_list + (
-        make_option('-n',
+        make_option(
+            '-n',
             action='store_true',
             dest='foreground',
             default=False,
             help='Run in foreground',
         ),
-        make_option('-i',
+        make_option(
+            '-i',
             action='store',
             type='int',
             dest='interval',
             default=1,
             help='The interval - in seconds - between each update',
         ),
-        make_option('-f', '--pidfile',
+        make_option(
+            '-f', '--pidfile',
             action='store',
             type='string',
             dest='pidfile',

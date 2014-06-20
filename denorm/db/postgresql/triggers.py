@@ -37,6 +37,7 @@ class TriggerActionInsert(base.TriggerActionInsert):
         ) % locals()
         return sql, params
 
+
 class TriggerActionUpdate(base.TriggerActionUpdate):
 
     def sql(self):
@@ -49,6 +50,7 @@ class TriggerActionUpdate(base.TriggerActionUpdate):
             where, where_params = self.where, []
         params.extend(where_params)
         return 'UPDATE %(table)s SET %(updates)s WHERE %(where)s' % locals(), params
+
 
 class Trigger(base.Trigger):
     def name(self):

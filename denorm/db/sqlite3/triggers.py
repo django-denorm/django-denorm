@@ -1,10 +1,11 @@
 from django.db import transaction
 from denorm.db import base
 
-
 import logging
 
+
 logger = logging.getLogger('denorm-sqlite')
+
 
 class RandomBigInt(base.RandomBigInt):
     def sql(self):
@@ -27,7 +28,7 @@ class TriggerActionInsert(base.TriggerActionInsert):
         columns = "(" + ",".join(self.columns) + ")"
         if isinstance(self.values, TriggerNestedSelect):
             sql, params = self.values.sql()
-            values = ""+ sql +""
+            values = "" + sql + ""
         else:
             values = "VALUES(" + ",".join(self.values) + ")"
             params = []
@@ -39,7 +40,7 @@ class TriggerActionUpdate(base.TriggerActionUpdate):
 
     def sql(self):
         table = self.model._meta.db_table
-        updates = ','.join(["%s=%s"%(k, v) for k, v in zip(self.columns, self.values)])
+        updates = ','.join(["%s=%s" % (k, v) for k, v in zip(self.columns, self.values)])
         if isinstance(self.where, tuple):
             where, where_params = self.where
         else:

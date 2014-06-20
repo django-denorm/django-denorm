@@ -173,8 +173,7 @@ def daemonize(noClose=False, pidfile=None):
         raise
 
     except OSError, e:
-        raise DaemonException('Error during daemonizing: %s [%d]' %\
-              (e.strerror, e.errno))
+        raise DaemonException('Error during daemonizing: %s [%d]' % (e.strerror, e.errno))
 
 
 # ---------------------------------------------------------------------------
