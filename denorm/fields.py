@@ -72,9 +72,6 @@ def denormalized(DBField, *args, **kwargs):
             return (field_class, args, kwargs)
 
     def deco(func):
-        kwargs["blank"] = True
-        if 'default' not in kwargs:
-            kwargs["null"] = True
         dbfield = DenormDBField(func, *args, **kwargs)
         return dbfield
     return deco

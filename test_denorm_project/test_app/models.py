@@ -133,7 +133,7 @@ class Member(models.Model):
     def full_name(self):
         return u"%s %s" % (self.first_name, self.name)
 
-    @denormalized(models.TextField)
+    @denormalized(models.TextField, null=True, blank=True)
     @depend_on_related('Post', foreign_key="bookmarks")
     def bookmark_titles(self):
         if self.id:
