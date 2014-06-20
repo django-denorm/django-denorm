@@ -13,7 +13,7 @@ class TriggerNestedSelect(base.TriggerNestedSelect):
     def sql(self):
         columns = self.columns
         table = self.table
-        where = ",".join(["%s = %s" % (k, v) for k, v in self.kwargs.iteritems()])
+        where = ", ".join(["%s = %s" % (k, v) for k, v in self.kwargs.iteritems()])
         return 'SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s' % locals(), tuple()
 
 
@@ -21,14 +21,14 @@ class TriggerActionInsert(base.TriggerActionInsert):
 
     def sql(self):
         table = self.model._meta.db_table
-        columns = "(" + ",".join(self.columns) + ")"
+        columns = "(" + ", ".join(self.columns) + ")"
         params = []
         if isinstance(self.values, TriggerNestedSelect):
             sql, nested_params = self.values.sql()
             values = "(" + sql + ")"
             params.extend(nested_params)
         else:
-            values = "VALUES(" + ",".join(self.values) + ")"
+            values = "VALUES (" + ", ".join(self.values) + ")"
 
         return 'INSERT IGNORE INTO %(table)s %(columns)s %(values)s' % locals(), tuple()
 
@@ -37,7 +37,7 @@ class TriggerActionUpdate(base.TriggerActionUpdate):
 
     def sql(self):
         table = self.model._meta.db_table
-        updates = ','.join(["%s=%s" % (k, v) for k, v in zip(self.columns, self.values)])
+        updates = ", ".join(["%s = %s" % (k, v) for k, v in zip(self.columns, self.values)])
         if isinstance(self.where, tuple):
             where, where_params = self.where
         else:
@@ -60,33 +60,40 @@ class Trigger(base.Trigger):
         for a in self.actions:
             sql, action_params = a.sql()
             if sql:
-                action_list.append(sql)
+                if not sql.endswith(';'):
+                    sql += ';'
+                action_list.extend(sql.split('\n'))
                 params.extend(action_params)
 
         # FIXME: actions should depend on content_type and content_type_field, if applicable
         # now we flag too many things dirty, e.g. a change for ('forum', 1) also flags ('post', 1)
-        actions = ";\n   ".join(action_list) + ';'
         table = self.db_table
         time = self.time.upper()
         event = self.event.upper()
 
+        conditions = []
+
         if event == "UPDATE":
-            conditions = list()
             for field, native_type in self.fields:
                 # TODO: find out if we need to compare some fields as text like in postgres
-                conditions.append("(NOT( OLD.%(f)s <=> NEW.%(f)s ))" % {'f': field})
+                conditions.append("(NOT(OLD.%(f)s <=> NEW.%(f)s))" % {'f': field})
 
-            cond = "(%s)" % "OR".join(conditions)
+        if conditions:
+            cond = " OR ".join(conditions)
+            actions = "\n            ".join(action_list)
+            actions = """
+        IF %(cond)s THEN
+            %(actions)s
+        END IF;
+            """ % locals()
         else:
-            cond = 'TRUE'
+            actions = "\n        ".join(action_list)
 
         sql = """
 CREATE TRIGGER %(name)s
     %(time)s %(event)s ON %(table)s
     FOR EACH ROW BEGIN
-        IF %(cond)s THEN
-            %(actions)s
-        END IF;
+        %(actions)s
     END;
 """ % locals()
         return sql, tuple(params)
