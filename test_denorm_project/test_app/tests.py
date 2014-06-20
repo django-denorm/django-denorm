@@ -336,6 +336,11 @@ class TestDenormalisation(TestCase):
         denorm.flush()
         self.assertEqual(models.Attachment.objects.get(id=a1.id).forum, f2)
 
+        # test denorm function returning object, not PK
+        models.Attachment.forum_as_object = True
+        a3 = models.Attachment.objects.create(post=p1)
+        models.Attachment.forum_as_object = False
+
     def test_m2m(self):
         f1 = models.Forum.objects.create(title="forumone")
         m1 = models.Member.objects.create(name="memberone")

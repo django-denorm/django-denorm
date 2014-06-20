@@ -58,8 +58,13 @@ def denormalized(DBField, *args, **kwargs):
             Updates the value of the denormalized field before it gets saved.
             """
             value = self.denorm.func(model_instance)
-            setattr(model_instance, self.attname, value)
-            return value
+            if hasattr(self, 'related_field') and isinstance(value, self.related_field.model):
+                setattr(model_instance, self.attname, None)
+                setattr(model_instance, self.name, value)
+                return getattr(model_instance, self.attname)
+            else:
+                setattr(model_instance, self.attname, value)
+                return value
 
         def south_field_triple(self):
             """

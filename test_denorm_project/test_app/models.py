@@ -108,6 +108,8 @@ class Post(TaggedModel):
 
 
 class Attachment(models.Model):
+    forum_as_object = False
+
     post = models.ForeignKey(Post, blank=True, null=True)
 
     cachekey = CacheKeyField()
@@ -117,7 +119,12 @@ class Attachment(models.Model):
     @depend_on_related(Post)
     def forum(self):
         if self.post and self.post.forum:
-            return self.post.forum.pk
+            if self.forum_as_object:
+                # if forum_as_object is set, return forum denorm as an object
+                return self.post.forum
+            else:
+                # otherwise, return as a primary key
+                return self.post.forum.pk
         return None
 
 
