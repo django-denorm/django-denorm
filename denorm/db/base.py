@@ -1,6 +1,5 @@
 from django.db import models, connections, connection
 from django.contrib.contenttypes.generic import GenericRelation
-from django.db.models.related import RelatedObject
 
 
 class RandomBigInt(object):
@@ -66,32 +65,35 @@ class Trigger(object):
         self.using = using
 
         if self.using:
-            cconnection = connections[self.using]
+            self.connection = connections[self.using]
         else:
-            cconnection = connection
+            self.connection = connection
 
         if isinstance(subject, models.ManyToManyField):
             self.model = None
             self.db_table = subject.m2m_db_table()
             self.fields = [(subject.m2m_column_name(), ''), (subject.m2m_reverse_name(), '')]
+
         elif isinstance(subject, GenericRelation):
             self.model = None
-            self.db_table = subject.m2m_db_table()
-            self.fields = [(k.attname, k.db_type(connection=cconnection)) for k, v in subject.rel.to._meta.get_fields_with_model() if not v]
+            self.db_table = subject.rel.to._meta.db_table
+            self.fields = [(k.attname, k.db_type(connection=self.connection)) for k, v in subject.rel.to._meta.get_fields_with_model() if not v]
             self.content_type_field = subject.content_type_field_name + '_id'
+
         elif isinstance(subject, models.ForeignKey):
             self.model = subject.model
             self.db_table = self.model._meta.db_table
-            skip = skip or ()
-            self.fields = [(k.attname, k.db_type(connection=cconnection)) for k,v in self.model._meta.get_fields_with_model() if not v and k.attname not in skip]
+            skip = skip or () + getattr(self.model, 'denorm_always_skip', ())
+            self.fields = [(k.attname, k.db_type(connection=self.connection)) for k, v in self.model._meta.get_fields_with_model() if not v and k.attname not in skip]
 
         elif hasattr(subject, "_meta"):
             self.model = subject
             self.db_table = self.model._meta.db_table
-            # FIXME, need to check get_parent_list and add triggers to those
+            # FIXME: need to check get_parent_list and add triggers to those
             # The below will only check the fields on *this* model, not parents
-            skip = skip or () + getattr(subject, 'denorm_always_skip', ())
-            self.fields = [(k.attname, k.db_type(connection=cconnection)) for k, v in self.model._meta.get_fields_with_model() if not v and k.attname not in skip]
+            skip = skip or () + getattr(self.model, 'denorm_always_skip', ())
+            self.fields = [(k.attname, k.db_type(connection=self.connection)) for k, v in self.model._meta.get_fields_with_model() if not v and k.attname not in skip]
+
         else:
             raise NotImplementedError
 
@@ -120,12 +122,13 @@ class TriggerSet(object):
     def __init__(self, using=None):
         self.using = using
         self.triggers = {}
+        if self.using:
+            self.connection = connections[self.using]
+        else:
+            self.connection = connection
 
     def cursor(self):
-        if self.using:
-            return connections[self.using].cursor()
-        else:
-            return connection.cursor()
+        return self.connection.cursor()
 
     def append(self, triggers):
         if not isinstance(triggers, list):
