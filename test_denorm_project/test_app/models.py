@@ -1,4 +1,5 @@
 import django
+from django.conf import settings
 from django.db import models
 from django.contrib.contenttypes.generic import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -6,6 +7,9 @@ from django.core.cache import cache
 
 from denorm.fields import SumField
 from denorm import denormalized, depend_on_related, CountField, CacheKeyField, cached
+
+
+settings.DENORM_MODEL = 'denorm.RealDenormModel'
 
 
 class FailingTriggersModelA(models.Model):
@@ -36,6 +40,37 @@ class CachedModelA(models.Model):
 
 class CachedModelB(models.Model):
     data = models.CharField(max_length=255)
+
+
+class AbstractDenormModel(models.Model):
+    # Skip feature test main model.
+    text = models.TextField()
+
+    @denormalized(models.TextField)
+    def ham(self):
+        return u"Ham and %s" % self.text
+
+    class Meta:
+        abstract = True
+        app_label = 'denorm'
+
+
+class DenormModel(AbstractDenormModel):
+    @denormalized(models.TextField)
+    def spam(self):
+        return u"Spam and %s" % self.text
+
+    class Meta(AbstractDenormModel.Meta):
+        swappable = 'DENORM_MODEL'
+
+
+class RealDenormModel(AbstractDenormModel):
+    @denormalized(models.TextField)
+    def eggs(self):
+        return u"Eggs and %s" % self.text
+
+    class Meta(AbstractDenormModel.Meta):
+        pass
 
 
 class Tag(models.Model):

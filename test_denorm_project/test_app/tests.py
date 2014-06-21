@@ -61,6 +61,17 @@ class TestCached(TestCase):
         self.assertEqual("world", a.cached_data['lower'])
 
 
+class TestAbstract(TestCase):
+    def setUp(self):
+        denorms.drop_triggers()
+        denorms.install_triggers()
+
+    def test_abstract(self):
+        d1 = models.RealDenormModel.objects.create(text='onion')
+        self.assertEqual("Ham and onion", d1.ham)
+        self.assertEqual("Eggs and onion", d1.eggs)
+
+
 class TestSkip(TestCase):
     """
     Tests for the skip feature.

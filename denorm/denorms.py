@@ -79,7 +79,8 @@ class Denorm(object):
         """
         global alldenorms
         if self not in alldenorms:
-            alldenorms.append(self)
+            if not self.model._meta.swapped:
+                alldenorms.append(self)
 
     def update(self, qs):
         """
