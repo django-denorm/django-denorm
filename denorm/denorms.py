@@ -474,7 +474,10 @@ def rebuildall(verbose=False, model_name=None):
     """
     global alldenorms
     for i, denorm in enumerate(alldenorms):
-        if model_name is None or denorm.model.__name__ == model_name:
+        current_app_label = denorm.model._meta.app_label
+        current_model_name = denorm.model._meta.model.__name__
+        current_app_model = '%s.%s' % (current_app_label, current_model_name)
+        if model_name is None or model_name in (current_app_label, current_model_name, current_app_model):
             if verbose:
                 print 'rebuilding', '%s/%s' % (i + 1, len(alldenorms)), denorm.fieldname, 'in', denorm.model
             denorm.update(denorm.model.objects.all())
