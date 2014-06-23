@@ -532,9 +532,6 @@ def rebuildall(verbose=False, model_name=None, field_name=None):
                     fields.update(_fields)
                     save = True
             if save:
-                # an update before the save is needed to handle CountFields
-                # CountField does not update its value during pre_save
-                instance._meta.model._base_manager.filter(pk=instance.pk).update(**fields)
                 instance.save()
 
     flush()

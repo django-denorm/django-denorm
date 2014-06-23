@@ -350,6 +350,22 @@ class TestDenormalisation(TestCase):
         self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 3)
         self.assertEqual(models.Forum.objects.get(id=f2.id).post_count, 0)
 
+    def test_countfield_does_not_write_stale_value(self):
+        f1 = models.Forum.objects.create(title="forumone")
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 0)
+        models.Post.objects.create(forum=f1)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 1)
+
+        f1 = models.Forum.objects.get(title="forumone")
+        models.Post.objects.create(forum_id=f1.id)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 2)
+        f1.title = "new"
+        self.assertEqual(f1.post_count, 1)
+        f1.save()
+        self.assertEqual(f1.post_count, 2)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 2)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).title, "new")
+
     def test_foreignkey(self):
         f1 = models.Forum.objects.create(title="forumone")
         f2 = models.Forum.objects.create(title="forumtwo")
