@@ -587,3 +587,52 @@ def flush():
             if dirty_instance.content_object:
                 dirty_instance.content_object.save()
             dirty_instance.delete()
+
+
+def flush_cached(chunk=0):
+    """
+    Updates all model instances marked as dirty by the DirtyInstance
+    model.
+    After this method finishes the DirtyInstance table is empty and
+    all denormalized fields have consistent data.
+    Additionaly this flush uses cache for each content_type and object_id.
+    We calculate each content_object once - even we modified it N-times
+    before last flush.
+    Setting chunk to something greater than 0 will limit DirtyInstances
+    selected in one pass.
+    """
+
+    # Loop until break.
+    # We may need multiple passes, because an update on one instance
+    # may cause an other instance to be marked dirty (dependency chains)
+    while True:
+        # clears the cache for each pass
+        # just for curiosity
+        cache = {}
+
+        # Get all dirty markers
+        qs = DirtyInstance.objects.all()
+
+        # Select only chunk from queryset
+        if chunk > 0:
+            qs = qs[:chunk]
+
+        # DirtyInstance table is empty -> all data is consistent -> we're done
+        if not qs:
+            break
+
+        for dirty_instance in qs.iterator():
+            # create 'bucket' named content_type in cache if it doesn't exists
+            if not dirty_instance.content_type in cache:
+                cache[dirty_instance.content_type] = []
+
+            # check if current dirty_instance.object_id is in content_type cache bucket
+            if not dirty_instance.object_id in cache[dirty_instance.content_type]:
+                # Call save() on dirty instance, causing the self_save_handler()
+                # getting called by the pre_save signal.
+                if dirty_instance.content_object:
+                    dirty_instance.content_object.save()
+                # add current dirty_instance.object_id to content_type cache bucket
+                cache[dirty_instance.content_type].append(dirty_instance.object_id)
+
+            dirty_instance.delete()
