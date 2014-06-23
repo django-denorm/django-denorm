@@ -424,9 +424,7 @@ class TestDenormalisation(TestCase):
         # We have to update the Attachment.forum field first to trigger this bug. Simply doing rebuildall() will
         # trigger an a1.save() at an some earlier point during the update. By the time we get to updating the value of
         # forum field the value is already correct and no update is done bypassing the broken code.
-        for d in denorms.alldenorms:
-            if d.model == models.Attachment and d.fieldname == 'forum':
-                d.update(models.Attachment.objects.all())
+        denorm.denorms.rebuildall(model_name='Attachment', field_name='forum')
 
     def test_denorm_subclass(self):
         f1 = models.Forum.objects.create(title="forumone")

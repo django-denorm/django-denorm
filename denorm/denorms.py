@@ -82,45 +82,46 @@ class Denorm(object):
             if not self.model._meta.swapped:
                 alldenorms.append(self)
 
-    def update(self, qs):
+    def update(self, instance):
         """
         Updates the denormalizations in all instances in the queryset 'qs'.
         """
-        for instance in qs.distinct().iterator():
-            # only write new values to the DB if they actually changed
-            new_value = self.func(instance)
 
-            # Get attribute name (required for denormalising ForeignKeys)
-            attname = instance._meta.get_field(self.fieldname).attname
+        # Get attribute name (required for denormalising ForeignKeys)
+        field = instance._meta.get_field(self.fieldname)
+        attname = field.attname
 
-            if isinstance(getattr(instance, attname), Manager):
-                # for a many to many field the decorated
-                # function should return a list of either model instances
-                # or primary keys
-                old_pks = set([x.pk for x in getattr(instance, attname).all()])
-                new_pks = set([])
+        attr = getattr(instance, attname)
 
-                for x in new_value:
-                    # we need to compare sets of objects based on pk values,
-                    # as django lacks an identity map.
-                    if hasattr(x, 'pk'):
-                        new_pks.add(x.pk)
-                    else:
-                        new_pks.add(x)
+        # only write new values to the DB if they actually changed
+        new_value = self.func(instance)
 
-                if old_pks != new_pks:
-                    print old_pks
-                    for o in qs.filter(pk=instance.pk):
-                        o.attname = new_value
-                    instance.save()
+        if isinstance(attr, Manager):
+            # for a many to many field the decorated
+            # function should return a list of either model instances
+            # or primary keys
+            old_pks = set([x.pk for x in attr.all()])
+            new_pks = set([])
 
-            elif not getattr(instance, attname) == new_value:
+            for x in new_value:
+                # we need to compare sets of objects based on pk values,
+                # as django lacks an identity map.
+                if hasattr(x, 'pk'):
+                    new_pks.add(x.pk)
+                else:
+                    new_pks.add(x)
+
+            if old_pks != new_pks:
                 setattr(instance, attname, new_value)
-                # an update before the save is needed to handle CountFields
-                # CountField does not update its value during pre_save
-                qs.filter(pk=instance.pk).update(**{self.fieldname: new_value})
-                instance.save()
-        flush()
+                return {}
+
+        elif attr != new_value:
+            if hasattr(field, 'related_field') and isinstance(new_value, field.related_field.model):
+                setattr(instance, attname, None)
+                setattr(instance, field.name, new_value)
+            else:
+                setattr(instance, attname, new_value)
+            return {field.name: new_value}
 
     def get_triggers(self, using):
         return []
@@ -501,20 +502,42 @@ class CountDenorm(AggregateDenorm):
         return self.get_decrement_value(using)
 
 
-def rebuildall(verbose=False, model_name=None):
+def rebuildall(verbose=False, model_name=None, field_name=None):
     """
     Updates all models containing denormalized fields.
     Used by the 'denormalize' management command.
     """
     global alldenorms
-    for i, denorm in enumerate(alldenorms):
+    models = {}
+    for denorm in alldenorms:
         current_app_label = denorm.model._meta.app_label
         current_model_name = denorm.model._meta.model.__name__
         current_app_model = '%s.%s' % (current_app_label, current_model_name)
         if model_name is None or model_name in (current_app_label, current_model_name, current_app_model):
-            if verbose:
-                print 'rebuilding', '%s/%s' % (i + 1, len(alldenorms)), denorm.fieldname, 'in', denorm.model
-            denorm.update(denorm.model.objects.all())
+            if field_name is None or field_name == denorm.fieldname:
+                models.setdefault(denorm.model, []).append(denorm)
+
+    i = 0
+    for model, denorms in models.items():
+        if verbose:
+            for denorm in denorms:
+                print 'rebuilding', '%s/%s' % (i + 1, len(alldenorms)), denorm.fieldname, 'in', model
+                i += 1
+        for instance in model.objects.all():
+            fields = {}
+            save = False
+            for denorm in denorms:
+                _fields = denorm.update(instance)
+                if _fields is not None:
+                    fields.update(_fields)
+                    save = True
+            if save:
+                # an update before the save is needed to handle CountFields
+                # CountField does not update its value during pre_save
+                instance._meta.model._base_manager.filter(pk=instance.pk).update(**fields)
+                instance.save()
+
+    flush()
 
 
 def drop_triggers(using=None):
