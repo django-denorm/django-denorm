@@ -2,22 +2,22 @@
 import abc
 
 from django.contrib.contenttypes.models import ContentType
-from denorm.db import triggers
 from django.db import connection
-from django.db.models import sql, ManyToManyField
-from django.db.models.aggregates import Sum
+from django.db.models import sql
+from django.db.models.aggregates import Sum, Count
 from django.db.models.fields.related import ManyToManyField
 from django.db.models.manager import Manager
-from denorm.models import DirtyInstance
 
-# remember all denormalizations.
-# this is used to rebuild all denormalized values in the whole DB
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models.query_utils import Q
-from django.db.models.sql import Query
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.constants import NULLABLE, JOIN_TYPE
 from django.db.models.sql.query import Query
 from django.db.models.sql.where import WhereNode
+
+from denorm.db import triggers
+from denorm.models import DirtyInstance
+
 
 # Remember all denormalizations.
 # This is used to rebuild all denormalized values in the whole DB.
@@ -515,12 +515,12 @@ def flush():
         qs = DirtyInstance.objects.all()
 
         # DirtyInstance table is empty -> all data is consistent -> we're done
-        if not qs:
+        if qs.count() == 0:
             break
 
         # Call save() on all dirty instances, causing the self_save_handler()
         # getting called by the pre_save signal.
-        for dirty_instance in qs:
+        for dirty_instance in qs.iterator():
             if dirty_instance.content_object:
                 dirty_instance.content_object.save()
             dirty_instance.delete()
@@ -535,7 +535,7 @@ def flush_cached(chunk=0):
     Additionaly this flush uses cache for each content_type and object_id.
     We calculate each content_object once - even we modified it N-times
     before last flush.
-    Setting chunk to something greater than 0 will limit DirtyInstances
+    Setting chunk to something greater than 0 will limit dirty markers
     selected in one pass.
     """
 
@@ -543,14 +543,14 @@ def flush_cached(chunk=0):
     # We may need multiple passes, because an update on one instance
     # may cause an other instance to be marked dirty (dependency chains)
     while True:
-        # clears the cache for each pass
-        # just for curiosity
+        # Set up cache for each pass. During flush we can have
+        # new (proper) dirty markers updates.
         cache = {}
 
         # Get all dirty markers
         qs = DirtyInstance.objects.all()
 
-        # Select only chunk from queryset
+        # Select only chunk from dirty markers queryset
         if chunk > 0:
             qs = qs[:chunk]
 
@@ -561,15 +561,51 @@ def flush_cached(chunk=0):
         for dirty_instance in qs.iterator():
             # create 'bucket' named content_type in cache if it doesn't exists
             if not dirty_instance.content_type in cache:
-                cache[dirty_instance.content_type] = []
+                cache[dirty_instance.content_type] = set()
 
-            # check if current dirty_instance.object_id is in content_type cache bucket
+            # check if current dirty_instance.object_id isn't in content_type cache bucket
             if not dirty_instance.object_id in cache[dirty_instance.content_type]:
                 # Call save() on dirty instance, causing the self_save_handler()
                 # getting called by the pre_save signal.
                 if dirty_instance.content_object:
                     dirty_instance.content_object.save()
                 # add current dirty_instance.object_id to content_type cache bucket
-                cache[dirty_instance.content_type].append(dirty_instance.object_id)
+                cache[dirty_instance.content_type].add(dirty_instance.object_id)
 
             dirty_instance.delete()
+
+
+def flush_distinct():
+    """
+    Updates all model instances marked as dirty by the DirtyInstance
+    model.
+    After this method finishes the DirtyInstance table is empty and
+    all denormalized fields have consistent data.
+    """
+
+    # Loop until break.
+    # We may need multiple passes, because an update on one instance
+    # may cause an other instance to be marked dirty (dependency chains)
+    while True:
+        # Get all dirty markers
+        qs = DirtyInstance.objects.values("content_type", "object_id").distinct()
+
+        # DirtyInstance table is empty -> all data is consistent -> we're done
+        if not qs:
+            break
+
+        for dirty_instance in qs.iterator():
+            object_id, content_type = dirty_instance.values()
+            ct = ContentType.objects.get_for_id(content_type)
+            try:
+                obj = ct.get_object_for_this_type(pk=object_id)
+            except ObjectDoesNotExist:
+                obj = None
+
+            # remove all repeated dirty markers
+            for same_di in DirtyInstance.objects.filter(content_type=content_type, object_id=object_id).iterator():
+                same_di.delete()
+
+            # calulcate new object value
+            if obj:
+                obj.save()
