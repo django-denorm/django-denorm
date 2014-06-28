@@ -9,6 +9,7 @@ from django.db.models.fields.related import ManyToManyField
 from django.db.models.manager import Manager
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
 from django.db.models.query_utils import Q
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.constants import NULLABLE, JOIN_TYPE
@@ -499,6 +500,7 @@ def build_triggerset(using=None):
     return triggerset
 
 
+@transaction.commit_manually()
 def flush():
     """
     Updates all model instances marked as dirty by the DirtyInstance
@@ -512,21 +514,23 @@ def flush():
     # may cause an other instance to be marked dirty (dependency chains)
     while True:
         # Get all dirty markers
-        qs = DirtyInstance.objects.all()
+        dirty_instances = DirtyInstance.objects.all()
 
         # DirtyInstance table is empty -> all data is consistent -> we're done
-        if qs.count() == 0:
+        if not dirty_instances:
             break
 
         # Call save() on all dirty instances, causing the self_save_handler()
         # getting called by the pre_save signal.
-        for dirty_instance in qs.iterator():
+        for dirty_instance in dirty_instances.iterator():
             if dirty_instance.content_object:
                 dirty_instance.content_object.save()
             dirty_instance.delete()
+        transaction.commit()
+    transaction.commit()
 
-
-def flush_cached(chunk=0):
+@transaction.commit_manually()
+def flush_cached():
     """
     Updates all model instances marked as dirty by the DirtyInstance
     model.
@@ -548,17 +552,13 @@ def flush_cached(chunk=0):
         cache = {}
 
         # Get all dirty markers
-        qs = DirtyInstance.objects.all()
-
-        # Select only chunk from dirty markers queryset
-        if chunk > 0:
-            qs = qs[:chunk]
+        dirty_instances = DirtyInstance.objects.all()
 
         # DirtyInstance table is empty -> all data is consistent -> we're done
-        if not qs:
+        if not dirty_instances:
             break
 
-        for dirty_instance in qs.iterator():
+        for dirty_instance in dirty_instances.iterator():
             # create 'bucket' named content_type in cache if it doesn't exists
             if not dirty_instance.content_type in cache:
                 cache[dirty_instance.content_type] = set()
@@ -573,8 +573,11 @@ def flush_cached(chunk=0):
                 cache[dirty_instance.content_type].add(dirty_instance.object_id)
 
             dirty_instance.delete()
+        transaction.commit()
+    transaction.commit()
 
 
+@transaction.commit_manually()
 def flush_distinct():
     """
     Updates all model instances marked as dirty by the DirtyInstance
@@ -588,24 +591,29 @@ def flush_distinct():
     # may cause an other instance to be marked dirty (dependency chains)
     while True:
         # Get all dirty markers
-        qs = DirtyInstance.objects.values("content_type", "object_id").distinct()
+        dirty_instances = DirtyInstance.objects.values("content_type", "object_id").distinct()
 
         # DirtyInstance table is empty -> all data is consistent -> we're done
-        if not qs:
+        if not dirty_instances:
             break
 
-        for dirty_instance in qs.iterator():
+        for dirty_instance in dirty_instances.iterator():
             object_id, content_type = dirty_instance.values()
             ct = ContentType.objects.get_for_id(content_type)
+
             try:
                 obj = ct.get_object_for_this_type(pk=object_id)
             except ObjectDoesNotExist:
                 obj = None
 
             # remove all repeated dirty markers
-            for same_di in DirtyInstance.objects.filter(content_type=content_type, object_id=object_id).iterator():
+            same_dis = DirtyInstance.objects.filter(content_type=content_type, object_id=object_id).iterator()
+
+            for same_di in same_dis:
                 same_di.delete()
 
             # calulcate new object value
             if obj:
                 obj.save()
+        transaction.commit()
+    transaction.commit()
