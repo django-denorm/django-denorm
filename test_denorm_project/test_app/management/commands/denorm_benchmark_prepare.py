@@ -33,24 +33,17 @@ class Command(BaseCommand):
         )
 
         objects_db_count = CachedModelB.objects.count()
-        transaction.commit()
-
-        # create list of 100 CachedModelB
-        b_list = 100 * [CachedModelB(data='I is a string!')]
 
         # add CachedModelB
-        for it in range(0, (options['objects_count'] - objects_db_count) / 100):
-            CachedModelB.objects.bulk_create(
-                b_list
-            )
-            if it % 10 == 0:
-                transaction.commit()
+        b_list = (options['objects_count'] - objects_db_count) * [CachedModelB(data='I is a string!')]
+        CachedModelB.objects.bulk_create(
+            b_list
+        )
         transaction.commit()
         del b_list
 
         # add CachedModelA connected with CachedModelB
         objects_db_count = CachedModelA.objects.count()
-        transaction.commit()
         a_list = []
         for cmb_id in CachedModelB.objects.values_list('id', flat=True)[:options['objects_count'] - objects_db_count]:
             a_list.append(CachedModelA(b=CachedModelB(id=cmb_id)))
@@ -81,12 +74,11 @@ class Command(BaseCommand):
         del di_list
 
         # create repeated dirty instances
-        for it, modelA in enumerate(CachedModelA.objects.all().order_by('-id')
-                [:repeated_dirty_instances_count].iterator()):
-            di_list = 10 * [DirtyInstance(content_object=modelA)]
-            DirtyInstance.objects.bulk_create(
-                di_list
-            )
-            if it % 1000 == 0:
-                transaction.commit()
+        di_list = []
+        for modelA in CachedModelA.objects.all().order_by('-id')[:repeated_dirty_instances_count].iterator():
+            di_list += 10 * [DirtyInstance(content_object=modelA)]
+        DirtyInstance.objects.bulk_create(
+            di_list
+        )
         transaction.commit()
+        del di_list
