@@ -22,7 +22,7 @@ DATABASES = {
 DB_GUESS_MAPPING = {
     'postgis': 'postgresql',
     'postgresql_psycopg2': 'postgresql',
- }
+}
 
 
 def backend_for_dbname(db_name):

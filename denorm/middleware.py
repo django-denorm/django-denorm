@@ -5,6 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class DenormMiddleware(object):
     """
     Calls ``denorm.flush`` during the response stage of every request. If your data mostly or only changes during requests

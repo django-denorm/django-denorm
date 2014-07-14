@@ -1,25 +1,76 @@
-from denorm.fields import SumField
 import django
+from django.conf import settings
 from django.db import models
 from django.contrib.contenttypes.generic import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
-from denorm import denormalized, depend_on_related, CountField, CacheKeyField, cached
 from django.core.cache import cache
 
-class CachedModelA(models.Model):
+from denorm.fields import SumField
+from denorm import denormalized, depend_on_related, CountField, CacheKeyField, cached
 
+
+settings.DENORM_MODEL = 'denorm.RealDenormModel'
+
+
+class FailingTriggersModelA(models.Model):
+    order = models.SmallIntegerField(default=0)  # Fails for SQLite
+    SomeWeirdName = models.CharField(max_length=255)  # Fails for PostgreSQL
+
+
+class FailingTriggersModelB(models.Model):
+    a = models.ForeignKey(FailingTriggersModelA)
+
+    @denormalized(models.TextField)
+    @depend_on_related(FailingTriggersModelA)
+    def SomeWeirdName(self):
+        return self.a.SomeWeirdName
+
+
+class CachedModelA(models.Model):
     b = models.ForeignKey('CachedModelB')
 
     @cached(cache)
     @depend_on_related('CachedModelB')
     def cached_data(self):
         return {
-            'upper':self.b.data.upper(),
-            'lower':self.b.data.lower(),
+            'upper': self.b.data.upper(),
+            'lower': self.b.data.lower(),
         }
+
 
 class CachedModelB(models.Model):
     data = models.CharField(max_length=255)
+
+
+class AbstractDenormModel(models.Model):
+    # Skip feature test main model.
+    text = models.TextField()
+
+    @denormalized(models.TextField)
+    def ham(self):
+        return u"Ham and %s" % self.text
+
+    class Meta:
+        abstract = True
+        app_label = 'denorm'
+
+
+class DenormModel(AbstractDenormModel):
+    @denormalized(models.TextField)
+    def spam(self):
+        return u"Spam and %s" % self.text
+
+    class Meta(AbstractDenormModel.Meta):
+        swappable = 'DENORM_MODEL'
+
+
+class RealDenormModel(AbstractDenormModel):
+    @denormalized(models.TextField)
+    def eggs(self):
+        return u"Eggs and %s" % self.text
+
+    class Meta(AbstractDenormModel.Meta):
+        pass
 
 
 class Tag(models.Model):
@@ -43,7 +94,6 @@ class TaggedModel(models.Model):
 
 
 class Forum(TaggedModel):
-
     title = models.CharField(max_length=255)
 
     # Simple count() aggregate
@@ -76,7 +126,6 @@ class Forum(TaggedModel):
 
 
 class Post(TaggedModel):
-
     forum = models.ForeignKey(Forum, blank=True, null=True)
     author = models.ForeignKey('Member', blank=True, null=True)
     response_to = models.ForeignKey('self', blank=True, null=True, related_name='responses')
@@ -108,6 +157,7 @@ class Post(TaggedModel):
 
 
 class Attachment(models.Model):
+    forum_as_object = False
 
     post = models.ForeignKey(Post, blank=True, null=True)
 
@@ -118,12 +168,16 @@ class Attachment(models.Model):
     @depend_on_related(Post)
     def forum(self):
         if self.post and self.post.forum:
-            return self.post.forum.pk
+            if self.forum_as_object:
+                # if forum_as_object is set, return forum denorm as an object
+                return self.post.forum
+            else:
+                # otherwise, return as a primary key
+                return self.post.forum.pk
         return None
 
 
 class Member(models.Model):
-
     first_name = models.CharField(max_length=255)
     name = models.CharField(max_length=255)
     bookmarks = models.ManyToManyField('Post', blank=True)
@@ -135,7 +189,7 @@ class Member(models.Model):
     def full_name(self):
         return u"%s %s" % (self.first_name, self.name)
 
-    @denormalized(models.TextField)
+    @denormalized(models.TextField, null=True, blank=True)
     @depend_on_related('Post', foreign_key="bookmarks")
     def bookmark_titles(self):
         if self.id:
@@ -173,6 +227,7 @@ class SkipCommentWithSkip(SkipComment):
     def post_text(self):
         return self.post.text
 
+
 class SkipCommentWithAttributeSkip(SkipComment):
     @denormalized(models.TextField)
     @depend_on_related(SkipPost)
@@ -182,10 +237,10 @@ class SkipCommentWithAttributeSkip(SkipComment):
     denorm_always_skip = ('updated_on',)
 
 
-if not hasattr(django.db.backend,'sqlite3'):
+if not hasattr(django.db.backend, 'sqlite3'):
     class FilterSumModel(models.Model):
         # Simple count() aggregate
-        active_item_sum = SumField('counts', field='active_item_count', filter = {'age__gte':18})
+        active_item_sum = SumField('counts', field='active_item_count', filter={'age__gte': 18})
 
     class FilterSumItem(models.Model):
         parent = models.ForeignKey(FilterSumModel, related_name='counts')
@@ -194,10 +249,9 @@ if not hasattr(django.db.backend,'sqlite3'):
 
     class FilterCountModel(models.Model):
         # Simple count() aggregate
-        active_item_count = CountField('items', filter = {'active__exact':True}, exclude = {'text':''})
+        active_item_count = CountField('items', filter={'active__exact': True}, exclude={'text': ''})
 
     class FilterCountItem(models.Model):
         parent = models.ForeignKey(FilterCountModel, related_name='items')
         active = models.BooleanField(default=False)
         text = models.CharField(max_length=10, default='')
-

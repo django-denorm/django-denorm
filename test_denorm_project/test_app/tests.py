@@ -1,14 +1,37 @@
 import django
 from django.test import TestCase
-from django.contrib.auth.models import User,  Permission
 from django.contrib.contenttypes.models import ContentType
+
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 import denorm
 from denorm import denorms
 import models
 
-class TestCached(TestCase):
+# Use all but denorms in FailingTriggers models by default
+failingdenorms = denorms.alldenorms
+denorms.alldenorms = [d for d in failingdenorms if d.model not in (models.FailingTriggersModelA, models.FailingTriggersModelB)]
 
+
+class TestTriggers(TestCase):
+    def setUp(self):
+        denorms.drop_triggers()
+
+    def test_triggers(self):
+        """Test potentially failing denorms.
+        """
+        # save and restore alldenorms
+        # test will fail if it's raising an exception
+        alldenorms = denorms.alldenorms
+        denorms.alldenorms = failingdenorms
+        try:
+            denorms.install_triggers()
+        finally:
+            denorms.alldenorms = alldenorms
+
+
+class TestCached(TestCase):
     def setUp(self):
         denorms.drop_triggers()
         denorms.install_triggers()
@@ -20,22 +43,34 @@ class TestCached(TestCase):
     def test_depends_related(self):
         models.CachedModelB.objects.create(data='Hello')
         b = models.CachedModelB.objects.all()[0]
-        self.assertEqual('Hello',b.data)
+        self.assertEqual('Hello', b.data)
 
         models.CachedModelA.objects.create(b=b)
         a = models.CachedModelA.objects.all()[0]
 
-        self.assertEqual("HELLO",a.cached_data['upper'])
-        self.assertEqual("hello",a.cached_data['lower'])
+        self.assertEqual("HELLO", a.cached_data['upper'])
+        self.assertEqual("hello", a.cached_data['lower'])
 
         b.data = 'World'
-        self.assertEqual("HELLO",a.cached_data['upper'])
-        self.assertEqual("hello",a.cached_data['lower'])
+        self.assertEqual("HELLO", a.cached_data['upper'])
+        self.assertEqual("hello", a.cached_data['lower'])
 
         b.save()
         a = models.CachedModelA.objects.all()[0]
-        self.assertEqual("WORLD",a.cached_data['upper'])
-        self.assertEqual("world",a.cached_data['lower'])
+        self.assertEqual("WORLD", a.cached_data['upper'])
+        self.assertEqual("world", a.cached_data['lower'])
+
+
+class TestAbstract(TestCase):
+    def setUp(self):
+        denorms.drop_triggers()
+        denorms.install_triggers()
+
+    def test_abstract(self):
+        d1 = models.RealDenormModel.objects.create(text='onion')
+        self.assertEqual("Ham and onion", d1.ham)
+        self.assertEqual("Eggs and onion", d1.eggs)
+
 
 class TestSkip(TestCase):
     """
@@ -57,7 +92,7 @@ class TestSkip(TestCase):
     #
     #def test_without_skip(self):
     #    # This results in an infinate loop on SQLite.
-    #    comment = SkipCommentWithoutSkip(post=self.post,  text='Oh really?')
+    #    comment = SkipCommentWithoutSkip(post=self.post, text='Oh really?')
     #    comment.save()
     #
     #    denorm.flush()
@@ -65,7 +100,7 @@ class TestSkip(TestCase):
     # TODO: Check if an infinate loop happens and stop it.
     def test_with_skip(self):
         # This should not result in an endless loop.
-        comment = models.SkipCommentWithSkip(post=self.post,  text='Oh really?')
+        comment = models.SkipCommentWithSkip(post=self.post, text='Oh really?')
         comment.save()
 
         denorm.flush()
@@ -87,10 +122,9 @@ class TestDenormalisation(TestCase):
         denorms.drop_triggers()
         denorms.install_triggers()
 
-        self.testuser = User.objects.create_user("testuser", "testuser",  "testuser")
+        self.testuser = User.objects.create_user("testuser", "testuser", "testuser")
         self.testuser.is_staff = True
         ctype = ContentType.objects.get_for_model(models.Member)
-        Permission.objects.filter(content_type=ctype).get(name='Can change member').user_set.add(self.testuser)
         self.testuser.save()
 
     def tearDown(self):
@@ -104,22 +138,22 @@ class TestDenormalisation(TestCase):
         """
         Test the DependsOnRelated stuff.
         """
-        # Make a forum,  check it's got no posts
+        # Make a forum, check it's got no posts
         f1 = models.Forum.objects.create(title="forumone")
-        self.assertEqual(f1.post_count,  0)
+        self.assertEqual(f1.post_count, 0)
         # Check its database copy too
-        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count,  0)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 0)
 
         # Add a post
         p1 = models.Post.objects.create(forum=f1)
         # Has the post count updated?
-        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count,  1)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 1)
 
         denorm.flush()
 
-        # Check its title,  in p1 and the DB
-        self.assertEqual(p1.forum_title,  "forumone")
-        self.assertEqual(models.Post.objects.get(id=p1.id).forum_title,  "forumone")
+        # Check its title, in p1 and the DB
+        self.assertEqual(p1.forum_title, "forumone")
+        self.assertEqual(models.Post.objects.get(id=p1.id).forum_title, "forumone")
 
         # Update the forum title
         f1.title = "forumtwo"
@@ -128,34 +162,34 @@ class TestDenormalisation(TestCase):
         denorm.flush()
 
         # Has the post's title changed?
-        self.assertEqual(models.Post.objects.get(id=p1.id).forum_title,  "forumtwo")
+        self.assertEqual(models.Post.objects.get(id=p1.id).forum_title, "forumtwo")
 
         # Add and remove some posts and check the post count
         models.Post.objects.create(forum=f1)
-        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count,  2)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 2)
         models.Post.objects.create(forum=f1)
-        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count,  3)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 3)
         p1.delete()
-        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count,  2)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 2)
 
-        # Delete everything,  check once more.
+        # Delete everything, check once more.
         models.Post.objects.all().delete()
-        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count,  0)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 0)
 
-        # Make an orphaned post,  see what its title is.
+        # Make an orphaned post, see what its title is.
         # Doesn't work yet - no support for null FKs
         #p4 = Post.objects.create(forum=None)
-        #self.assertEqual(p4.forum_title,  None)
+        #self.assertEqual(p4.forum_title, None)
 
     def test_dependency_chains(self):
-        # create a forum,  a member and a post
+        # create a forum, a member and a post
         f1 = models.Forum.objects.create(title="forumone")
         m1 = models.Member.objects.create(name="memberone")
-        models.Post.objects.create(forum=f1,  author=m1)
+        models.Post.objects.create(forum=f1, author=m1)
         denorm.flush()
 
         # check the forums author list contains the member
-        self.assertEqual(models.Forum.objects.get(id=f1.id).author_names,  "memberone")
+        self.assertEqual(models.Forum.objects.get(id=f1.id).author_names, "memberone")
 
         # change the member's name
         m1.name = "membertwo"
@@ -163,12 +197,12 @@ class TestDenormalisation(TestCase):
         denorm.flush()
 
         # check again
-        self.assertEqual(models.Forum.objects.get(id=f1.id).author_names,  "membertwo")
+        self.assertEqual(models.Forum.objects.get(id=f1.id).author_names, "membertwo")
 
     def test_trees(self):
         f1 = models.Forum.objects.create(title="forumone")
-        f2 = models.Forum.objects.create(title="forumtwo",  parent_forum=f1)
-        f3 = models.Forum.objects.create(title="forumthree",  parent_forum=f2)
+        f2 = models.Forum.objects.create(title="forumtwo", parent_forum=f1)
+        f3 = models.Forum.objects.create(title="forumthree", parent_forum=f2)
         denorm.flush()
 
         self.assertEqual(f1.path, '/forumone/')
@@ -183,8 +217,8 @@ class TestDenormalisation(TestCase):
         f2 = models.Forum.objects.get(id=f2.id)
         f3 = models.Forum.objects.get(id=f3.id)
 
-        self.assertEqual(f1.path,  '/someothertitle/')
-        self.assertEqual(f2.path,  '/someothertitle/forumtwo/')
+        self.assertEqual(f1.path, '/someothertitle/')
+        self.assertEqual(f2.path, '/someothertitle/forumtwo/')
         self.assertEqual(f3.path, '/someothertitle/forumtwo/forumthree/')
 
     def test_reverse_fk_null(self):
@@ -204,22 +238,22 @@ class TestDenormalisation(TestCase):
         p2 = models.Post.objects.create(forum=f2)
         denorm.flush()
 
-        self.assertEqual(models.Post.objects.get(id=p1.id).forum_title,  "forumone")
-        self.assertEqual(models.Post.objects.get(id=p2.id).forum_title,  "forumtwo")
-        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count,  1)
-        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count,  1)
+        self.assertEqual(models.Post.objects.get(id=p1.id).forum_title, "forumone")
+        self.assertEqual(models.Post.objects.get(id=p2.id).forum_title, "forumtwo")
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 1)
+        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count, 1)
 
         models.Post.objects.update(forum=f1)
         denorm.flush()
-        self.assertEqual(models.Post.objects.get(id=p1.id).forum_title,  "forumone")
-        self.assertEqual(models.Post.objects.get(id=p2.id).forum_title,  "forumone")
-        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count,  2)
-        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count,  0)
+        self.assertEqual(models.Post.objects.get(id=p1.id).forum_title, "forumone")
+        self.assertEqual(models.Post.objects.get(id=p2.id).forum_title, "forumone")
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 2)
+        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count, 0)
 
         models.Forum.objects.update(title="oneforall")
         denorm.flush()
-        self.assertEqual(models.Post.objects.get(id=p1.id).forum_title,  "oneforall")
-        self.assertEqual(models.Post.objects.get(id=p2.id).forum_title,  "oneforall")
+        self.assertEqual(models.Post.objects.get(id=p1.id).forum_title, "oneforall")
+        self.assertEqual(models.Post.objects.get(id=p2.id).forum_title, "oneforall")
 
     def test_no_dependency(self):
         m1 = models.Member.objects.create(first_name="first", name="last")
@@ -240,10 +274,10 @@ class TestDenormalisation(TestCase):
         p4 = models.Post.objects.create(forum=f1, response_to=p2)
         denorm.flush()
 
-        self.assertEqual(models.Post.objects.get(id=p1.id).response_count,  3)
-        self.assertEqual(models.Post.objects.get(id=p2.id).response_count,  1)
-        self.assertEqual(models.Post.objects.get(id=p3.id).response_count,  0)
-        self.assertEqual(models.Post.objects.get(id=p4.id).response_count,  0)
+        self.assertEqual(models.Post.objects.get(id=p1.id).response_count, 3)
+        self.assertEqual(models.Post.objects.get(id=p2.id).response_count, 1)
+        self.assertEqual(models.Post.objects.get(id=p3.id).response_count, 0)
+        self.assertEqual(models.Post.objects.get(id=p4.id).response_count, 0)
 
     def test_m2m_relation(self):
         f1 = models.Forum.objects.create(title="forumone")
@@ -274,15 +308,15 @@ class TestDenormalisation(TestCase):
         self.assertTrue('thirdtitle' in models.Member.objects.get(id=m1.id).bookmark_titles)
 
     def test_middleware(self):
-        # FIXME,  this test currently does not work with a transactional
-        # database,  so it's skipped for now.
+        # FIXME, this test currently does not work with a transactional
+        # database, so it's skipped for now.
         return
-        # FIXME,  set and de-set middleware values
+        # FIXME, set and de-set middleware values
         f1 = models.Forum.objects.create(title="forumone")
         m1 = models.Member.objects.create(first_name="first1", name="last1")
         p1 = models.Post.objects.create(forum=f1, author=m1)
 
-        self.assertEqual(models.Post.objects.get(id=p1.id).author_name,  "last1")
+        self.assertEqual(models.Post.objects.get(id=p1.id).author_name, "last1")
 
         self.client.login(username="testuser", password="testuser")
         self.client.post("/admin/denorm_testapp/member/%s/" % (m1.pk), {
@@ -290,31 +324,47 @@ class TestDenormalisation(TestCase):
             'first_name': 'first2',
         })
 
-        self.assertEqual(models.Post.objects.get(id=p1.id).author_name,  "last2")
+        self.assertEqual(models.Post.objects.get(id=p1.id).author_name, "last2")
 
     def test_countfield(self):
         f1 = models.Forum.objects.create(title="forumone")
         f2 = models.Forum.objects.create(title="forumone")
-        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count,  0)
-        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count,  0)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 0)
+        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count, 0)
 
         models.Post.objects.create(forum=f1)
-        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count,  1)
-        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count,  0)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 1)
+        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count, 0)
 
         p2 = models.Post.objects.create(forum=f2)
         p3 = models.Post.objects.create(forum=f2)
-        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count,  1)
-        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count,  2)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 1)
+        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count, 2)
 
         p2.forum = f1
         p2.save()
-        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count,  2)
-        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count,  1)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 2)
+        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count, 1)
 
         models.Post.objects.filter(pk=p3.pk).update(forum=f1)
-        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count,  3)
-        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count,  0)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 3)
+        self.assertEqual(models.Forum.objects.get(id=f2.id).post_count, 0)
+
+    def test_countfield_does_not_write_stale_value(self):
+        f1 = models.Forum.objects.create(title="forumone")
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 0)
+        models.Post.objects.create(forum=f1)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 1)
+
+        f1 = models.Forum.objects.get(title="forumone")
+        models.Post.objects.create(forum_id=f1.id)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 2)
+        f1.title = "new"
+        self.assertEqual(f1.post_count, 1)
+        f1.save()
+        self.assertEqual(f1.post_count, 2)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 2)
+        self.assertEqual(models.Forum.objects.get(id=f1.id).title, "new")
 
     def test_foreignkey(self):
         f1 = models.Forum.objects.create(title="forumone")
@@ -323,16 +373,21 @@ class TestDenormalisation(TestCase):
         p1 = models.Post.objects.create(forum=f1, author=m1)
 
         a1 = models.Attachment.objects.create(post=p1)
-        self.assertEqual(models.Attachment.objects.get(id=a1.id).forum,  f1)
+        self.assertEqual(models.Attachment.objects.get(id=a1.id).forum, f1)
 
         a2 = models.Attachment.objects.create()
-        self.assertEqual(models.Attachment.objects.get(id=a2.id).forum,  None)
+        self.assertEqual(models.Attachment.objects.get(id=a2.id).forum, None)
 
         # Change forum
         p1.forum = f2
         p1.save()
         denorm.flush()
-        self.assertEqual(models.Attachment.objects.get(id=a1.id).forum,  f2)
+        self.assertEqual(models.Attachment.objects.get(id=a1.id).forum, f2)
+
+        # test denorm function returning object, not PK
+        models.Attachment.forum_as_object = True
+        a3 = models.Attachment.objects.create(post=p1)
+        models.Attachment.forum_as_object = False
 
     def test_m2m(self):
         f1 = models.Forum.objects.create(title="forumone")
@@ -366,7 +421,7 @@ class TestDenormalisation(TestCase):
         m1 = models.Member.objects.get(id=m1.id)
         p1 = models.Post.objects.get(id=p1.id)
 
-        self.assertEqual(f1.post_count,  1)
+        self.assertEqual(f1.post_count, 1)
         self.assertEqual(f1.authors.all()[0], m1)
 
     def test_denorm_update(self):
@@ -385,20 +440,18 @@ class TestDenormalisation(TestCase):
         # We have to update the Attachment.forum field first to trigger this bug. Simply doing rebuildall() will
         # trigger an a1.save() at an some earlier point during the update. By the time we get to updating the value of
         # forum field the value is already correct and no update is done bypassing the broken code.
-        for d in denorms.alldenorms:
-            if d.model == models.Attachment and d.fieldname == 'forum':
-                d.update(models.Attachment.objects.all())
+        denorm.denorms.rebuildall(model_name='Attachment', field_name='forum')
 
     def test_denorm_subclass(self):
         f1 = models.Forum.objects.create(title="forumone")
         m1 = models.Member.objects.create(name="memberone")
         p1 = models.Post.objects.create(forum=f1, author=m1)
 
-        self.assertEqual(f1.tags_string,  '')
-        self.assertEqual(p1.tags_string,  '')
+        self.assertEqual(f1.tags_string, '')
+        self.assertEqual(p1.tags_string, '')
 
-        models.Tag.objects.create(name='tagone',  content_object=f1)
-        models.Tag.objects.create(name='tagtwo',  content_object=f1)
+        models.Tag.objects.create(name='tagone', content_object=f1)
+        models.Tag.objects.create(name='tagtwo', content_object=f1)
 
         denorm.denorms.flush()
         f1 = models.Forum.objects.get(id=f1.id)
@@ -406,10 +459,10 @@ class TestDenormalisation(TestCase):
         p1 = models.Post.objects.get(id=p1.id)
 
         self.assertEqual(f1.tags_string, 'tagone, tagtwo')
-        self.assertEqual(p1.tags_string,  '')
+        self.assertEqual(p1.tags_string, '')
 
-        models.Tag.objects.create(name='tagthree',  content_object=p1)
-        t4 = models.Tag.objects.create(name='tagfour',  content_object=p1)
+        models.Tag.objects.create(name='tagthree', content_object=p1)
+        t4 = models.Tag.objects.create(name='tagfour', content_object=p1)
 
         denorm.denorms.flush()
         f1 = models.Forum.objects.get(id=f1.id)
@@ -428,7 +481,7 @@ class TestDenormalisation(TestCase):
         p1 = models.Post.objects.get(id=p1.id)
 
         self.assertEqual(f1.tags_string, 'tagfour, tagone, tagtwo')
-        self.assertEqual(p1.tags_string,  'tagthree')
+        self.assertEqual(p1.tags_string, 'tagthree')
 
     def test_cache_key_field_backward(self):
         f1 = models.Forum.objects.create(title="forumone")
@@ -500,90 +553,89 @@ class TestDenormalisation(TestCase):
 
         m1 = models.Member.objects.get(id=m1.id)
         self.assertNotEqual(ck1, m1.cachekey)
-        
 
-if not hasattr(django.db.backend,'sqlite3'):
+
+if not hasattr(django.db.backend, 'sqlite3'):
     class TestFilterCount(TestCase):
         """
         Tests for the filtered count feature.
         """
-        
         def setUp(self):
             denorms.drop_triggers()
             denorms.install_triggers()
 
         def test_filter_count(self):
             master = models.FilterCountModel.objects.create()
-            self.assertEqual(master.active_item_count,0)
-            master.items.create(active = True, text='text')
-            master.items.create(active = True, text='')
+            self.assertEqual(master.active_item_count, 0)
+            master.items.create(active=True, text='text')
+            master.items.create(active=True, text='')
             master = models.FilterCountModel.objects.get(id=master.id)
-            self.assertEqual(master.active_item_count,1, 'created active item')
-            master.items.create(active = False)
+            self.assertEqual(master.active_item_count, 1, 'created active item')
+            master.items.create(active=False)
             master = models.FilterCountModel.objects.get(id=master.id)
-            self.assertEqual(master.active_item_count,1, 'created inactive item')
-            master.items.create(active = True, text='true')
+            self.assertEqual(master.active_item_count, 1, 'created inactive item')
+            master.items.create(active=True, text='true')
             master = models.FilterCountModel.objects.get(pk=master.pk)
-            self.assertEqual(master.active_item_count,2)
-            master.items.filter(active = False).delete()
+            self.assertEqual(master.active_item_count, 2)
+            master.items.filter(active=False).delete()
             master = models.FilterCountModel.objects.get(pk=master.pk)
-            self.assertEqual(master.active_item_count,2)
-            master.items.filter(active = True, text='true')[0].delete()
+            self.assertEqual(master.active_item_count, 2)
+            master.items.filter(active=True, text='true')[0].delete()
             master = models.FilterCountModel.objects.get(pk=master.pk)
-            self.assertEqual(master.active_item_count,1)
-            item = master.items.filter(active = True, text='text')[0]
+            self.assertEqual(master.active_item_count, 1)
+            item = master.items.filter(active=True, text='text')[0]
             item.active = False
             item.save()
             master = models.FilterCountModel.objects.get(pk=master.pk)
-            self.assertEqual(master.active_item_count,0)
-            item = master.items.filter(active = False, text='text')[0]
+            self.assertEqual(master.active_item_count, 0)
+            item = master.items.filter(active=False, text='text')[0]
             item.active = True
             item.text = ''
             item.save()
             master = models.FilterCountModel.objects.get(pk=master.pk)
-            self.assertEqual(master.active_item_count,0)
-            item = master.items.filter(active = True, text='')[0]
+            self.assertEqual(master.active_item_count, 0)
+            item = master.items.filter(active=True, text='')[0]
             item.text = '123'
             item.save()
             master = models.FilterCountModel.objects.get(pk=master.pk)
-            self.assertEqual(master.active_item_count,1)
+            self.assertEqual(master.active_item_count, 1)
 
     class TestFilterCountM2M(TestCase):
         """
         Tests for the filtered count feature.
         """
-        
         def setUp(self):
             denorms.drop_triggers()
             denorms.install_triggers()
+
         def test_filter_count(self):
             master = models.FilterCountModel.objects.create()
-            self.assertEqual(master.active_item_count,0)
-            master.items.create(active = True, text='true')
+            self.assertEqual(master.active_item_count, 0)
+            master.items.create(active=True, text='true')
             master = models.FilterCountModel.objects.get(id=master.id)
-            self.assertEqual(master.active_item_count,1, 'created active item')
-            master.items.create(active = False, text='true')
+            self.assertEqual(master.active_item_count, 1, 'created active item')
+            master.items.create(active=False, text='true')
             master = models.FilterCountModel.objects.get(id=master.id)
-            self.assertEqual(master.active_item_count,1, 'created inactive item')
-            master.items.create(active = True, text='true')
+            self.assertEqual(master.active_item_count, 1, 'created inactive item')
+            master.items.create(active=True, text='true')
             master = models.FilterCountModel.objects.get(pk=master.pk)
-            self.assertEqual(master.active_item_count,2)
-            master.items.filter(active = False).delete()
+            self.assertEqual(master.active_item_count, 2)
+            master.items.filter(active=False).delete()
             master = models.FilterCountModel.objects.get(pk=master.pk)
-            self.assertEqual(master.active_item_count,2)
-            master.items.filter(active = True)[0].delete()
+            self.assertEqual(master.active_item_count, 2)
+            master.items.filter(active=True)[0].delete()
             master = models.FilterCountModel.objects.get(pk=master.pk)
-            self.assertEqual(master.active_item_count,1)
-            item = master.items.filter(active = True)[0]
+            self.assertEqual(master.active_item_count, 1)
+            item = master.items.filter(active=True)[0]
             item.active = False
             item.save()
             master = models.FilterCountModel.objects.get(pk=master.pk)
-            self.assertEqual(master.active_item_count,0)
-            item = master.items.filter(active = False)[0]
+            self.assertEqual(master.active_item_count, 0)
+            item = master.items.filter(active=False)[0]
             item.active = True
             item.save()
             master = models.FilterCountModel.objects.get(pk=master.pk)
-            self.assertEqual(master.active_item_count,1)
+            self.assertEqual(master.active_item_count, 1)
 
     class TestFilterSum(TestCase):
         """
@@ -596,29 +648,29 @@ if not hasattr(django.db.backend,'sqlite3'):
 
         def test_filter_count(self):
             master = models.FilterSumModel.objects.create()
-            self.assertEqual(master.active_item_sum,0)
-            master.counts.create(age = 18, active_item_count=8)
+            self.assertEqual(master.active_item_sum, 0)
+            master.counts.create(age=18, active_item_count=8)
             master = models.FilterSumModel.objects.get(id=master.id)
-            self.assertEqual(master.active_item_sum,8)
-            master.counts.create(age = 16, active_item_count=10)
+            self.assertEqual(master.active_item_sum, 8)
+            master.counts.create(age=16, active_item_count=10)
             master = models.FilterSumModel.objects.get(id=master.id)
-            self.assertEqual(master.active_item_sum,8, 'created inactive item')
-            master.counts.create(age = 19, active_item_count=9)
+            self.assertEqual(master.active_item_sum, 8, 'created inactive item')
+            master.counts.create(age=19, active_item_count=9)
             master = models.FilterSumModel.objects.get(pk=master.pk)
-            self.assertEqual(master.active_item_sum,17)
-            master.counts.filter(age__lt = 18).delete()
+            self.assertEqual(master.active_item_sum, 17)
+            master.counts.filter(age__lt=18).delete()
             master = models.FilterSumModel.objects.get(pk=master.pk)
-            self.assertEqual(master.active_item_sum,17)
-            master.counts.filter(age = 19)[0].delete()
+            self.assertEqual(master.active_item_sum, 17)
+            master.counts.filter(age=19)[0].delete()
             master = models.FilterSumModel.objects.get(pk=master.pk)
-            self.assertEqual(master.active_item_sum,8)
-            item = master.counts.filter(age = 18)[0]
+            self.assertEqual(master.active_item_sum, 8)
+            item = master.counts.filter(age=18)[0]
             item.age = 15
             item.save()
             master = models.FilterSumModel.objects.get(pk=master.pk)
-            self.assertEqual(master.active_item_sum,0)
-            item = master.counts.filter(age = 15)[0]
+            self.assertEqual(master.active_item_sum, 0)
+            item = master.counts.filter(age=15)[0]
             item.age = 18
             item.save()
             master = models.FilterSumModel.objects.get(pk=master.pk)
-            self.assertEqual(master.active_item_sum,8)
+            self.assertEqual(master.active_item_sum, 8)

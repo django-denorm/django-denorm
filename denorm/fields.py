@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-import denorm.denorms
 from django.db import models
 from denorm import denorms
 from django.conf import settings
 import django.db.models
+
 
 def denormalized(DBField, *args, **kwargs):
     """
@@ -58,8 +58,13 @@ def denormalized(DBField, *args, **kwargs):
             Updates the value of the denormalized field before it gets saved.
             """
             value = self.denorm.func(model_instance)
-            setattr(model_instance, self.attname, value)
-            return value
+            if hasattr(self, 'related_field') and isinstance(value, self.related_field.model):
+                setattr(model_instance, self.attname, None)
+                setattr(model_instance, self.name, value)
+                return getattr(model_instance, self.attname)
+            else:
+                setattr(model_instance, self.attname, value)
+                return value
 
         def south_field_triple(self):
             """
@@ -72,12 +77,10 @@ def denormalized(DBField, *args, **kwargs):
             return (field_class, args, kwargs)
 
     def deco(func):
-        kwargs["blank"] = True
-        if 'default' not in kwargs:
-            kwargs["null"] = True
         dbfield = DenormDBField(func, *args, **kwargs)
         return dbfield
     return deco
+
 
 class AggregateField(models.PositiveIntegerField):
 
@@ -87,7 +90,7 @@ class AggregateField(models.PositiveIntegerField):
         """
         raise NotImplemented('You need to override this method')
 
-    def __init__(self,manager_name,**kwargs):
+    def __init__(self, manager_name, **kwargs):
         """
         **Arguments:**
 
@@ -108,7 +111,7 @@ class AggregateField(models.PositiveIntegerField):
         """
         skip = kwargs.pop('skip', None)
         qs_filter = kwargs.pop('filter', {})
-        if qs_filter and hasattr(django.db.backend,'sqlite3'):
+        if qs_filter and hasattr(django.db.backend, 'sqlite3'):
             raise NotImplementedError('filters for aggregate fields are currently not supported for sqlite')
         qs_exclude = kwargs.pop('exclude', {})
         self.denorm = self.get_denorm(skip)
@@ -124,7 +127,7 @@ class AggregateField(models.PositiveIntegerField):
         self.denorm.model = cls
         self.denorm.fieldname = name
         models.signals.class_prepared.connect(self.denorm.setup)
-        super(AggregateField,self).contribute_to_class(cls, name, *args, **kwargs)
+        super(AggregateField, self).contribute_to_class(cls, name, *args, **kwargs)
 
     def south_field_triple(self):
         return (
@@ -189,6 +192,7 @@ class CountField(AggregateField):
     def get_denorm(self, skip):
         return denorms.CountDenorm(skip)
 
+
 class SumField(AggregateField):
     """
     A ``PositiveIntegerField`` that stores sub of related field values
@@ -206,11 +210,13 @@ class SumField(AggregateField):
     def get_denorm(self, skip):
         return denorms.SumDenorm(skip, self.field)
 
+
 class CopyField(AggregateField):
     """
     Field, which makes two field identical. Any change in related field will change this field
     """
     # TODO: JFDI
+
 
 class CacheKeyField(models.BigIntegerField):
     """
@@ -270,8 +276,9 @@ class CacheKeyField(models.BigIntegerField):
             },
         )
 
+
 class CacheWrapper(object):
-    def __init__(self,field):
+    def __init__(self, field):
         self.field = field
 
     def __set__(self, obj, value):
@@ -279,24 +286,24 @@ class CacheWrapper(object):
         cached = self.field.cache.get(key)
         if not cached:
             cached = self.field.func(obj)
-            self.field.cache.set(key,cached,60*60*24*30)
+            self.field.cache.set(key, cached, 60 * 60 * 24 * 30)
         obj.__dict__[self.field.name] = cached
 
-class CachedField(CacheKeyField):
 
+class CachedField(CacheKeyField):
     def __init__(self, func, cache, *args, **kwargs):
         self.func = func
         self.cache = cache
         super(CachedField, self).__init__(*args, **kwargs)
-        for c,a,kw in self.func.depend:
-            self.depend_on_related(*a,**kw)
+        for c, a, kw in self.func.depend:
+            self.depend_on_related(*a, **kw)
 
     def contribute_to_class(self, cls, name, *args, **kwargs):
         super(CachedField, self).contribute_to_class(cls, name, *args, **kwargs)
         setattr(cls, self.name, CacheWrapper(self))
 
 
-def cached(cache,*args,**kwargs):
+def cached(cache, *args, **kwargs):
     def deco(func):
         dbfield = CachedField(func, cache, *args, **kwargs)
         return dbfield
