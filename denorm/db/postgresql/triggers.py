@@ -1,4 +1,9 @@
+from django.db import transaction
 from denorm.db import base
+
+class RandomBigInt(base.RandomBigInt):
+    def sql(self):
+        return '(9223372036854775806::INT8 * ((RANDOM()-0.5)*2.0) )::INT8'
 
 class TriggerNestedSelect(base.TriggerNestedSelect):
 
@@ -35,6 +40,11 @@ class TriggerActionUpdate(base.TriggerActionUpdate):
         return """ UPDATE %(table)s SET %(updates)s WHERE %(where)s """ % locals()
 
 class Trigger(base.Trigger):
+    def name(self):
+        name = base.Trigger.name(self)
+        if self.content_type_field:
+            name += "_%s" % self.content_type
+        return name
 
     def sql(self):
         name = self.name()
@@ -42,21 +52,35 @@ class Trigger(base.Trigger):
         table = self.db_table
         time = self.time.upper()
         event = self.event.upper()
+        content_type = self.content_type
+        ct_field = self.content_type_field
+
+        conditions = []
 
         if event == "UPDATE":
-            conditions = list()
             for field, native_type in self.fields:
                 if native_type is None:
                     # If Django didn't know what this field type should be
                     # then compare it as text - Fixes a problem of trying to
                     # compare PostGIS geometry fields.
-                    conditions.append("(OLD.%(f)s::%(t)s <> NEW.%(f)s::%(t)s)" % {'f': field, 't': 'text'})
+                    conditions.append("(OLD.%(f)s::%(t)s IS DISTINCT FROM NEW.%(f)s::%(t)s)" % {'f': field, 't': 'text'})
                 else:
-                    conditions.append("( OLD.%(f)s <> NEW.%(f)s )" % {'f': field,})
+                    conditions.append("( OLD.%(f)s IS DISTINCT FROM NEW.%(f)s )" % {'f': field,})
 
-            cond = "(%s)"%"OR".join(conditions)
+            conditions = ["(%s)"%"OR".join(conditions)]
+
+        if ct_field:
+            if event == "UPDATE":
+                conditions.append("(OLD.%(ctf)s=%(ct)s)OR(NEW.%(ctf)s=%(ct)s)" % {'ctf': ct_field, 'ct': content_type})
+            elif event == "INSERT":
+                conditions.append("(NEW.%s=%s)" % (ct_field, content_type))
+            elif event == "DELETE":
+                conditions.append("(OLD.%s=%s)" % (ct_field, content_type))
+
+        if not conditions:
+            cond = "TRUE"
         else:
-            cond = 'TRUE'
+            cond = "AND".join(conditions)
 
         return (
              """ CREATE OR REPLACE FUNCTION func_%(name)s()\n"""
@@ -73,18 +97,18 @@ class Trigger(base.Trigger):
             ) % locals()
 
 class TriggerSet(base.TriggerSet):
+    def drop(self):
+        cursor = self.cursor()
+        cursor.execute("SELECT pg_class.relname, pg_trigger.tgname FROM pg_trigger LEFT JOIN pg_class ON (pg_trigger.tgrelid = pg_class.oid) WHERE pg_trigger.tgname LIKE 'denorm_%%';")
+        for table_name, trigger_name in cursor.fetchall():
+            cursor.execute("DROP TRIGGER %s ON %s;" % (trigger_name, table_name))
+            transaction.commit_unless_managed(using=self.using)
 
     def install(self):
-        from django.db import connection, transaction
-        cursor = connection.cursor()
-
-        cursor.execute("SELECT * FROM pg_trigger;")
-        for result in cursor.fetchall():
-            if result[1].startswith("denorm_"):
-                x,table = result[1].rsplit("_on_",)
-                cursor.execute("""DROP TRIGGER %s ON %s;""" % (result[1],table))
-                transaction.commit_unless_managed()
-
-        for name,trigger in self.triggers.iteritems():
+        cursor = self.cursor()
+        cursor.execute("SELECT lanname FROM pg_catalog.pg_language WHERE lanname ='plpgsql'")
+        if not cursor.fetchall():
+            cursor.execute("CREATE LANGUAGE plpgsql")
+        for name, trigger in self.triggers.iteritems():
             cursor.execute(trigger.sql())
-            transaction.commit_unless_managed()
+            transaction.commit_unless_managed(using=self.using)

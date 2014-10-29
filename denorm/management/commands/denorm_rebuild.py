@@ -7,4 +7,4 @@ from denorm import denorms
 class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
-        denorms.rebuildall()
+        denorms.rebuildall(verbose=True)

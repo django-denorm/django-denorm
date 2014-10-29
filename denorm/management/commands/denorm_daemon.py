@@ -7,9 +7,19 @@ from django.core.management.base import BaseCommand
 from denorm import denorms
 
 from django.db import transaction
+from optparse import make_option
 
 class Command(BaseCommand):
     pidfile = "/tmp/django-denorm-daemon-pid"
+
+    option_list = BaseCommand.option_list + (
+        make_option('-n',
+            action='store_true',
+            dest='foreground',
+            default=False,
+            help='run in foreground',
+        ),
+    )
 
     def pid_exists(self):
         import os
@@ -27,13 +37,15 @@ class Command(BaseCommand):
                 raise
 
     @transaction.commit_manually
-    def handle(self,interval=1,**kwargs):
+    def handle(self,interval=1,foreground=False,**kwargs):
         print interval
         if self.pid_exists():
             return
         from time import sleep
-        from denorm import daemon
-        pid = daemon.daemonize(noClose=True,pidfile=self.pidfile)
+
+        if not foreground:
+            from denorm import daemon
+            pid = daemon.daemonize(noClose=True,pidfile=self.pidfile)
 
         interval = int(interval)
         while True:

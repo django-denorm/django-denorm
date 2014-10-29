@@ -1,16 +1,19 @@
 #!/usr/bin/python
 
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(
     name='django-denorm',
-    version='0.2.0',
+    version='0.3.0',
     description='Denormalization magic for Django',
     long_description='django-denorm is a Django application to provide automatic management of denormalized database fields.',
-    author='James Turnbull & Christian Schilling',
-    author_email='james@incuna.com',
-    url='http://github.com/incuna/django-denorm/',
-    download_url='http://github.com/incuna/django-denorm/downloads',
+    author=', '.join((
+        'Christian Schilling <initcrash@gmail.com>',
+        'James Turnbull <james@incuna.com>',
+    )),
+    author_email='django-denorm@googlegroups.com',
+    url='http://initcrash.github.com/django-denorm/',
+    download_url='http://github.com/initcrash/django-denorm/downloads',
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Framework :: Django",
@@ -20,5 +23,5 @@ setup(
         "Operating System :: OS Independent",
         "Topic :: Software Development"
     ],
-    packages=['denorm', 'denorm.db', 'denorm.db.mysql', 'denorm.db.postgresql', 'denorm.db.sqlite3', 'denorm.management', 'denorm.management.commands', 'denorm.tests'],
+    packages=['denorm', 'denorm.db', 'denorm.db.mysql', 'denorm.db.postgresql', 'denorm.db.sqlite3', 'denorm.management', 'denorm.management.commands'],
 )
