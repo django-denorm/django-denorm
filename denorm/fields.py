@@ -76,6 +76,11 @@ def denormalized(DBField, *args, **kwargs):
             args, kwargs = introspector(self)
             return (field_class, args, kwargs)
 
+        def deconstruct(self):
+            name, path, args, kwargs = super(DenormDBField, self).deconstruct()
+            super_name, super_path, super_args, super_kwargs = DBField(*args, **kwargs).deconstruct()
+            return name, super_path, args, kwargs
+
     def deco(func):
         dbfield = DenormDBField(func, *args, **kwargs)
         return dbfield
