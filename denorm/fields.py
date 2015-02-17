@@ -164,6 +164,12 @@ class AggregateField(models.PositiveIntegerField):
         setattr(model_instance, self.attname, value)
         return value
 
+    def deconstruct(self):
+        name, path, args, kwargs = super(AggregateField, self).deconstruct()
+        del kwargs['editable']
+        args = [self.denorm.manager_name] + args
+        return name, path, args, kwargs
+
 
 class CountField(AggregateField):
     """
