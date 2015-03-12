@@ -13,7 +13,7 @@ from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.constants import JoinInfo
 from django.db.models.sql.query import Query
 from django.db.models.sql.where import WhereNode
-
+from django.core.paginator import Paginator
 # Remember all denormalizations.
 # This is used to rebuild all denormalized values in the whole DB.
 alldenorms = []
@@ -502,7 +502,7 @@ class CountDenorm(AggregateDenorm):
         return self.get_decrement_value(using)
 
 
-def rebuildall(verbose=False, model_name=None, field_name=None):
+def rebuildall(verbose=False, model_name=None, field_name=None, paginate_by=None):
     """
     Updates all models containing denormalized fields.
     Used by the 'denormalize' management command.
@@ -523,16 +523,22 @@ def rebuildall(verbose=False, model_name=None, field_name=None):
             for denorm in denorms:
                 print 'rebuilding', '%s/%s' % (i + 1, len(alldenorms)), denorm.fieldname, 'in', model
                 i += 1
-        for instance in model.objects.all():
-            fields = {}
-            save = False
-            for denorm in denorms:
-                _fields = denorm.update(instance)
-                if _fields is not None:
-                    fields.update(_fields)
-                    save = True
-            if save:
-                instance.save()
+
+        objects = model.objects.all()
+        paginate_by = paginate_by or objects.count()
+        paginator = Paginator(objects, paginate_by)
+        for page in paginator.page_range:
+            current_page = paginator.page(page)
+            for instance in current_page.object_list:
+                fields = {}
+                save = False
+                for denorm in denorms:
+                    _fields = denorm.update(instance)
+                    if _fields is not None:
+                        fields.update(_fields)
+                        save = True
+                if save:
+                    instance.save()
 
     flush()
 
