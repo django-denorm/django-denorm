@@ -591,6 +591,7 @@ def flush():
         for dirty_instance in qs.iterator():
             if dirty_instance.content_object:
                 dirty_instance.content_object.save()
+
             DirtyInstance.objects.filter(
                 content_type_id=dirty_instance.content_type_id,
                 object_id=dirty_instance.object_id
