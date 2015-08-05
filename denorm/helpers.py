@@ -28,7 +28,7 @@ def find_m2ms(from_model, to_model, m2m_name=None):
     If 'm2m_name' is given only ManyToManyFields matching that name are returned.
     """
     # get all ManyToManyFields
-    m2ms = from_model._meta.many_to_many + from_model._meta.virtual_fields
+    m2ms = list(from_model._meta.many_to_many) + from_model._meta.virtual_fields
 
     # filter out all M2Ms not pointing to 'to_model'
     m2ms = [x for x in m2ms if hasattr(x, 'rel') and repr(x.rel.to).lower() == repr(to_model).lower()]
