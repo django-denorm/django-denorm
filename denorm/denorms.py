@@ -10,7 +10,10 @@ from django.db.models.manager import Manager
 from denorm.models import DirtyInstance
 from django.db.models.query_utils import Q
 from django.db.models.sql.compiler import SQLCompiler
-from django.db.models.sql.datastructures import Join
+try:
+    from django.db.models.sql.datastructures import Join
+except ImportError:
+    from django.db.models.sql.constants import JoinInfo
 from django.db.models.sql.query import Query
 from django.db.models.sql.where import WhereNode
 import django
@@ -274,7 +277,10 @@ class TriggerFilterQuery(sql.Query):
     def __init__(self, model, trigger_alias, where=TriggerWhereNode):
         super(TriggerFilterQuery, self).__init__(model, where)
         self.trigger_alias = trigger_alias
-        join = Join(nullable=False)
+        try:
+            join = Join(nullable=False)
+        except:
+            join = JoinInfo(None, None, None, None, ((None, None),), False, None)
         self.alias_map = {trigger_alias: join}
 
     def get_initial_alias(self):
