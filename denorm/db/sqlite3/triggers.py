@@ -108,18 +108,18 @@ CREATE TRIGGER %(name)s
 
 class TriggerSet(base.TriggerSet):
     def drop(self):
-        qn = self.connection.ops.quote_name
-        cursor = self.cursor()
+        with transaction.atomic():
+            qn = self.connection.ops.quote_name
+            cursor = self.cursor()
 
-        cursor.execute("SELECT name, tbl_name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'denorm_%%';")
-        for trigger_name, table_name in cursor.fetchall():
-            cursor.execute("DROP TRIGGER %s;" % (qn(trigger_name),))
-            transaction.commit_unless_managed(using=self.using)
+            cursor.execute("SELECT name, tbl_name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'denorm_%%';")
+            for trigger_name, table_name in cursor.fetchall():
+                cursor.execute("DROP TRIGGER %s;" % (qn(trigger_name),))
 
     def install(self):
-        cursor = self.cursor()
+        with transaction.atomic():
+            cursor = self.cursor()
 
-        for name, trigger in self.triggers.iteritems():
-            sql, args = trigger.sql()
-            cursor.execute(sql, args)
-            transaction.commit_unless_managed(using=self.using)
+            for name, trigger in self.triggers.iteritems():
+                sql, args = trigger.sql()
+                cursor.execute(sql, args)
