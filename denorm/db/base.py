@@ -77,14 +77,28 @@ class Trigger(object):
         elif isinstance(subject, GenericRelation):
             self.model = None
             self.db_table = subject.rel.to._meta.db_table
-            self.fields = [(k.attname, k.db_type(connection=self.connection)) for k, v in subject.rel.to._meta.get_fields_with_model() if not v]
+            fields_with_model = [
+                (f, f.model if f.model != subject.rel.to else None)
+                for f in subject.rel.to._meta.get_fields()
+                if not f.is_relation
+                    or f.one_to_one
+                    or (f.many_to_one and f.related_model)
+            ]
+            self.fields = [(k.attname, k.db_type(connection=self.connection)) for k, v in fields_with_model if not v]
             self.content_type_field = subject.content_type_field_name + '_id'
 
         elif isinstance(subject, models.ForeignKey):
             self.model = subject.model
             self.db_table = self.model._meta.db_table
             skip = skip or () + getattr(self.model, 'denorm_always_skip', ())
-            self.fields = [(k.attname, k.db_type(connection=self.connection)) for k, v in self.model._meta.get_fields_with_model() if not v and k.attname not in skip]
+            fields_with_model = [
+                (f, f.model if f.model != self.model else None)
+                for f in self.model._meta.get_fields()
+                if not f.is_relation
+                    or f.one_to_one
+                    or (f.many_to_one and f.related_model)
+            ]
+            self.fields = [(k.attname, k.db_type(connection=self.connection)) for k, v in fields_with_model if not v and k.attname not in skip]
 
         elif hasattr(subject, "_meta"):
             self.model = subject
@@ -92,7 +106,14 @@ class Trigger(object):
             # FIXME: need to check get_parent_list and add triggers to those
             # The below will only check the fields on *this* model, not parents
             skip = skip or () + getattr(self.model, 'denorm_always_skip', ())
-            self.fields = [(k.attname, k.db_type(connection=self.connection)) for k, v in self.model._meta.get_fields_with_model() if not v and k.attname not in skip]
+            fields_with_model = [
+                (f, f.model if f.model != self.model else None)
+                for f in self.model._meta.get_fields()
+                if not f.is_relation
+                    or f.one_to_one
+                    or (f.many_to_one and f.related_model)
+            ]
+            self.fields = [(k.attname, k.db_type(connection=self.connection)) for k, v in fields_with_model if not v and k.attname not in skip]
 
         else:
             raise NotImplementedError
