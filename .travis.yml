@@ -10,8 +10,6 @@ script:
 env:
   - TOXENV=py26-django15
   - TOXENV=py26-django16
-  - TOXENV=py26-django17
-  - TOXENV=py26-django18
   - TOXENV=py27-django15
   - TOXENV=py27-django16
   - TOXENV=py27-django17
