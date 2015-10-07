@@ -3,6 +3,7 @@
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 # TEST_RUNNER = "djangosanetesting.testrunner.DstNoseTestSuiteRunner"
+TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),
