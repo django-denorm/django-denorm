@@ -95,7 +95,7 @@ class AggregateField(models.PositiveIntegerField):
         """
         raise NotImplemented('You need to override this method')
 
-    def __init__(self, manager_name, **kwargs):
+    def __init__(self, manager_name=None, **kwargs):
         """
         **Arguments:**
 
@@ -180,7 +180,7 @@ class CountField(AggregateField):
 
     """
 
-    def __init__(self, manager_name, **kwargs):
+    def __init__(self, manager_name=None, **kwargs):
         """
         **Arguments:**
 
@@ -213,7 +213,7 @@ class SumField(AggregateField):
 
     """
 
-    def __init__(self, manager_name, field, **kwargs):
+    def __init__(self, manager_name=None, field=None, **kwargs):
         self.field = field
         kwargs['editable'] = False
         super(SumField, self).__init__(manager_name, **kwargs)
@@ -302,12 +302,13 @@ class CacheWrapper(object):
 
 
 class CachedField(CacheKeyField):
-    def __init__(self, func, cache, *args, **kwargs):
+    def __init__(self, func=None, cache=None, *args, **kwargs):
         self.func = func
         self.cache = cache
         super(CachedField, self).__init__(*args, **kwargs)
-        for c, a, kw in self.func.depend:
-            self.depend_on_related(*a, **kw)
+        if func and cache:
+            for c, a, kw in self.func.depend:
+                self.depend_on_related(*a, **kw)
 
     def contribute_to_class(self, cls, name, *args, **kwargs):
         super(CachedField, self).contribute_to_class(cls, name, *args, **kwargs)
