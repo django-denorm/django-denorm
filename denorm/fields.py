@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from django.db import models
+from django.db import models, connection
 from denorm import denorms
 from django.conf import settings
 import django.db.models
@@ -116,7 +116,7 @@ class AggregateField(models.PositiveIntegerField):
         """
         skip = kwargs.pop('skip', None)
         qs_filter = kwargs.pop('filter', {})
-        if qs_filter and hasattr(django.db.backend, 'sqlite3'):
+        if qs_filter and connection.vendor == "sqlite":
             raise NotImplementedError('filters for aggregate fields are currently not supported for sqlite')
         qs_exclude = kwargs.pop('exclude', {})
         self.denorm = self.get_denorm(skip)

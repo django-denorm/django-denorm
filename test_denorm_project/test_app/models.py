@@ -1,4 +1,4 @@
-import django
+from django.db import connection
 from django.conf import settings
 from django.db import models
 from django.contrib.contenttypes.generic import GenericForeignKey, GenericRelation
@@ -237,7 +237,7 @@ class SkipCommentWithAttributeSkip(SkipComment):
     denorm_always_skip = ('updated_on',)
 
 
-if not hasattr(django.db.backend, 'sqlite3'):
+if connection.vendor != "sqlite":
     class FilterSumModel(models.Model):
         # Simple count() aggregate
         active_item_sum = SumField('counts', field='active_item_count', filter={'age__gte': 18})

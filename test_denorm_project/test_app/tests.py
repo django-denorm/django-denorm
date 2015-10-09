@@ -1,4 +1,4 @@
-import django
+from django.db import connection
 from django.test import TestCase
 from django.contrib.contenttypes.models import ContentType
 
@@ -555,7 +555,7 @@ class TestDenormalisation(TestCase):
         self.assertNotEqual(ck1, m1.cachekey)
 
 
-if not hasattr(django.db.backend, 'sqlite3'):
+if connection.vendor != "sqlite":
     class TestFilterCount(TestCase):
         """
         Tests for the filtered count feature.
