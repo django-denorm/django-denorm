@@ -4,6 +4,7 @@ import abc
 from django.contrib.contenttypes.models import ContentType
 from denorm.db import triggers
 from django.db import connections, connection
+from django.db import models
 from django.db.models import sql, ManyToManyField
 from django.db.models.aggregates import Sum
 from django.db.models.manager import Manager
@@ -18,11 +19,6 @@ from django.db.models.sql.query import Query
 from django.db.models.sql.where import WhereNode
 import django
 from decimal import Decimal
-
-# Remember all denormalizations.
-# This is used to rebuild all denormalized values in the whole DB.
-alldenorms = []
-
 
 def many_to_many_pre_save(sender, instance, **kwargs):
     """
@@ -65,6 +61,18 @@ def many_to_many_post_save(sender, instance, created, **kwargs):
             instance.save()
 
 
+def get_alldenorms():
+    """
+    Get all denormalizations.
+    """
+    alldenorms = []
+    for model in models.get_models(include_auto_created=True):
+        for field in model._meta.fields:
+            if hasattr(field, 'denorm'):
+                alldenorms.append(field.denorm)
+    return alldenorms
+
+
 class Denorm(object):
     def __init__(self, skip=None):
         self.func = None
@@ -82,10 +90,7 @@ class Denorm(object):
         Adds 'self' to the global denorm list
         and connects all needed signals.
         """
-        global alldenorms
-        if self not in alldenorms:
-            if not self.model._meta.swapped:
-                alldenorms.append(self)
+        pass
 
     def update(self, instance):
         """
@@ -524,7 +529,7 @@ def rebuildall(verbose=False, model_name=None, field_name=None):
     Updates all models containing denormalized fields.
     Used by the 'denormalize' management command.
     """
-    global alldenorms
+    alldenorms = get_alldenorms()
     models = {}
     for denorm in alldenorms:
         current_app_label = denorm.model._meta.app_label
@@ -567,7 +572,7 @@ def install_triggers(using=None):
 
 
 def build_triggerset(using=None):
-    global alldenorms
+    alldenorms = get_alldenorms()
 
     # Use a TriggerSet to ensure each event gets just one trigger
     triggerset = triggers.TriggerSet(using=using)
