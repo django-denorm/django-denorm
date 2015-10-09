@@ -8,9 +8,23 @@ before_script:
 script:
   - tox -e $TOXENV
 env:
-  - TOXENV=py26-django15
-  - TOXENV=py26-django16
-  - TOXENV=py27-django15
-  - TOXENV=py27-django16
-  - TOXENV=py27-django17
-  - TOXENV=py27-django18
+  - TOXENV=py26-django15-sqlite
+  - TOXENV=py26-django16-sqlite
+  - TOXENV=py27-django15-sqlite
+  - TOXENV=py27-django16-sqlite
+  - TOXENV=py27-django17-sqlite
+  - TOXENV=py27-django18-sqlite
+
+  - TOXENV=py26-django15-mysql
+  - TOXENV=py26-django16-mysql
+  - TOXENV=py27-django15-mysql
+  - TOXENV=py27-django16-mysql
+  - TOXENV=py27-django17-mysql
+  - TOXENV=py27-django18-mysql
+
+  - TOXENV=py26-django15-postgres
+  - TOXENV=py26-django16-postgres
+  - TOXENV=py27-django15-postgres
+  - TOXENV=py27-django16-postgres
+  - TOXENV=py27-django17-postgres
+  - TOXENV=py27-django18-postgres
