@@ -31,7 +31,7 @@ def find_m2ms(from_model, to_model, m2m_name=None):
     m2ms = list(from_model._meta.many_to_many) + from_model._meta.virtual_fields
 
     # filter out all M2Ms not pointing to 'to_model'
-    m2ms = [x for x in m2ms if hasattr(x, 'rel') and repr(x.rel.to).lower() == repr(to_model).lower()]
+    m2ms = [x for x in m2ms if hasattr(x, 'rel') and x.rel and repr(x.rel.to).lower() == repr(to_model).lower()]
 
     # if 'm2m_name' was given, filter out all M2Ms not matching that name, leaving
     # only one (or none)

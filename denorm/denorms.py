@@ -278,7 +278,10 @@ class TriggerFilterQuery(sql.Query):
         super(TriggerFilterQuery, self).__init__(model, where)
         self.trigger_alias = trigger_alias
         try:
-            join = Join(nullable=False)
+            class JoinField():
+                def get_joining_columns(self):
+                    return None
+            join = Join(None, None, None, None, JoinField(), False)
         except:
             join = JoinInfo(None, None, None, None, ((None, None),), False, None)
         self.alias_map = {trigger_alias: join}
