@@ -107,19 +107,33 @@ CREATE TRIGGER %(name)s
 
 
 class TriggerSet(base.TriggerSet):
-    def drop(self):
-        with transaction.atomic():
-            qn = self.connection.ops.quote_name
-            cursor = self.cursor()
+    def drop_atomic(self):
+        qn = self.connection.ops.quote_name
+        cursor = self.cursor()
 
-            cursor.execute("SELECT name, tbl_name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'denorm_%%';")
-            for trigger_name, table_name in cursor.fetchall():
-                cursor.execute("DROP TRIGGER %s;" % (qn(trigger_name),))
+        cursor.execute("SELECT name, tbl_name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'denorm_%%';")
+        for trigger_name, table_name in cursor.fetchall():
+            cursor.execute("DROP TRIGGER %s;" % (qn(trigger_name),))
+
+    def drop(self):
+        try:
+            with transaction.atomic():
+                self.drop_atomic()
+        except AttributeError:
+            self.drop_atomic()
+            transaction.commit_unless_managed(using=self.using)
+
+    def install_atomic(self):
+        cursor = self.cursor()
+
+        for name, trigger in self.triggers.iteritems():
+            sql, args = trigger.sql()
+            cursor.execute(sql, args)
 
     def install(self):
-        with transaction.atomic():
-            cursor = self.cursor()
-
-            for name, trigger in self.triggers.iteritems():
-                sql, args = trigger.sql()
-                cursor.execute(sql, args)
+        try:
+            with transaction.atomic():
+                self.install_atomic()
+        except AttributeError:
+            self.install_atomic()
+            transaction.commit_unless_managed(using=self.using)
