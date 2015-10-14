@@ -14,6 +14,12 @@ env:
   - TOXENV=py27-django16-sqlite
   - TOXENV=py27-django17-sqlite
   - TOXENV=py27-django18-sqlite
+  - TOXENV=py27-djangomaster-sqlite
+  - TOXENV=py34-django15-sqlite
+  - TOXENV=py34-django16-sqlite
+  - TOXENV=py34-django17-sqlite
+  - TOXENV=py34-django18-sqlite
+  - TOXENV=py34-djangomaster-sqlite
 
   - TOXENV=py26-django15-mysql
   - TOXENV=py26-django16-mysql
@@ -21,6 +27,12 @@ env:
   - TOXENV=py27-django16-mysql
   - TOXENV=py27-django17-mysql
   - TOXENV=py27-django18-mysql
+  - TOXENV=py27-djangomaster-mysql
+  - TOXENV=py34-django15-mysql
+  - TOXENV=py34-django16-mysql
+  - TOXENV=py34-django17-mysql
+  - TOXENV=py34-django18-mysql
+  - TOXENV=py34-djangomaster-mysql
 
   - TOXENV=py26-django15-postgres
   - TOXENV=py26-django16-postgres
@@ -28,3 +40,19 @@ env:
   - TOXENV=py27-django16-postgres
   - TOXENV=py27-django17-postgres
   - TOXENV=py27-django18-postgres
+  - TOXENV=py27-djangomaster-postgres
+  - TOXENV=py34-django15-postgres
+  - TOXENV=py34-django16-postgres
+  - TOXENV=py34-django17-postgres
+  - TOXENV=py34-django18-postgres
+  - TOXENV=py34-djangomaster-postgres
+
+matrix:
+  fast_finish: true
+  allow_failures:
+    - env: TOX_ENV=py27-djangomaster-sqlite
+    - env: TOX_ENV=py34-djangomaster-sqlite
+    - env: TOX_ENV=py27-djangomaster-mysql
+    - env: TOX_ENV=py34-djangomaster-mysql
+    - env: TOX_ENV=py27-djangomaster-postgres
+    - env: TOX_ENV=py34-djangomaster-postgres
