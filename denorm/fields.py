@@ -58,7 +58,15 @@ def denormalized(DBField, *args, **kwargs):
             Updates the value of the denormalized field before it gets saved.
             """
             value = self.denorm.func(model_instance)
-            if hasattr(self, 'related_field') and isinstance(value, self.related_field.model):
+
+            if hasattr(self, 'related_field'):
+                related_field_model = self.related_field.model
+            elif hasattr(self, "related"):
+                related_field_model = self.related.parent_model
+            else:
+                related_field_model = None
+
+            if related_field_model and isinstance(value, related_field_model):
                 setattr(model_instance, self.attname, None)
                 setattr(model_instance, self.name, value)
                 return getattr(model_instance, self.attname)
