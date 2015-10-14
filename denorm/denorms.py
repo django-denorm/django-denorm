@@ -72,7 +72,8 @@ def get_alldenorms():
     for model in gmodels.get_models(include_auto_created=True):
         for field in model._meta.fields:
             if hasattr(field, 'denorm'):
-                alldenorms.append(field.denorm)
+                if not field.denorm.model._meta.swapped:
+                    alldenorms.append(field.denorm)
     return alldenorms
 
 
