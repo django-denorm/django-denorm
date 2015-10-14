@@ -541,7 +541,10 @@ def rebuildall(verbose=False, model_name=None, field_name=None):
     models = {}
     for denorm in alldenorms:
         current_app_label = denorm.model._meta.app_label
-        current_model_name = denorm.model._meta.model.__name__
+        try:
+            current_model_name = denorm.model._meta.model.__name__
+        except AttributeError: # In Django 1.5
+            current_model_name = denorm.model.__name__
         current_app_model = '%s.%s' % (current_app_label, current_model_name)
         if model_name is None or model_name in (current_app_label, current_model_name, current_app_model):
             if field_name is None or field_name == denorm.fieldname:
