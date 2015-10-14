@@ -8,7 +8,7 @@ class Command(NoArgsCommand):
     def handle_noargs(self, **options):
         triggerset = denorms.build_triggerset()
         sql_list = []
-        for name, trigger in triggerset.triggers.iteritems():
+        for name, trigger in triggerset.triggers.items():
             sql, params = trigger.sql()
             sql_list.append(sql % tuple(params))
-        print '\n'.join(sql_list)
+        print('\n'.join(sql_list))

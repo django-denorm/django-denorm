@@ -17,7 +17,7 @@ class TriggerNestedSelect(base.TriggerNestedSelect):
     def sql(self):
         columns = self.columns
         table = self.table
-        where = ", ".join(["%s = %s" % (k, v) for k, v in self.kwargs.iteritems()])
+        where = ", ".join(["%s = %s" % (k, v) for k, v in self.kwargs.items()])
         return 'SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s' % locals(), tuple()
 
 
@@ -126,7 +126,7 @@ class TriggerSet(base.TriggerSet):
     def install_atomic(self):
         cursor = self.cursor()
 
-        for name, trigger in self.triggers.iteritems():
+        for name, trigger in self.triggers.items():
             sql, args = trigger.sql()
             cursor.execute(sql, args)
 

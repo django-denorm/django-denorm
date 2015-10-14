@@ -40,13 +40,13 @@ class Command(NoArgsCommand):
 
     def pid_exists(self, pidfile):
         try:
-            pid = int(file(pidfile, 'r').read())
+            pid = int(open(pidfile, 'r').read())
             os.kill(pid, 0)
             self.stderr.write(self.style.ERROR("daemon already running as pid: %s\n" % (pid,)))
             return True
-        except OSError, err:
+        except OSError as err:
             return err.errno == os.errno.EPERM
-        except IOError, err:
+        except IOError as err:
             if err.errno == 2:
                 return False
             else:

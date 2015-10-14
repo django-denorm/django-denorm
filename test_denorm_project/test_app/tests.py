@@ -7,7 +7,7 @@ User = get_user_model()
 
 import denorm
 from denorm import denorms
-import models
+from test_app import models
 
 # Use all but denorms in FailingTriggers models by default
 failingdenorms = denorms.get_alldenorms()

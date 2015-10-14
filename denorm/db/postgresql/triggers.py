@@ -12,7 +12,7 @@ class TriggerNestedSelect(base.TriggerNestedSelect):
     def sql(self):
         columns = self.columns
         table = self.table
-        where = ", ".join(["%s = %s" % (k, v) for k, v in self.kwargs.iteritems()])
+        where = ", ".join(["%s = %s" % (k, v) for k, v in self.kwargs.items()])
         return 'SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s' % locals(), tuple()
 
 
@@ -152,7 +152,7 @@ class TriggerSet(base.TriggerSet):
         cursor.execute("SELECT lanname FROM pg_catalog.pg_language WHERE lanname ='plpgsql'")
         if not cursor.fetchall():
             cursor.execute('CREATE LANGUAGE plpgsql')
-        for name, trigger in self.triggers.iteritems():
+        for name, trigger in self.triggers.items():
             sql, args = trigger.sql()
             cursor.execute(sql, args)
 

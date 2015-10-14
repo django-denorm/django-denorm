@@ -6,6 +6,7 @@ from django.db import connections, connection
 import denorm
 from django.contrib import contenttypes
 from denorm.db import triggers
+import six
 
 
 class DenormDependency(object):
@@ -48,7 +49,7 @@ class DependOnRelated(DenormDependency):
         if self.other_model == related.RECURSIVE_RELATIONSHIP_CONSTANT:
             self.other_model = self.this_model
 
-        if isinstance(self.other_model, (str, unicode)):
+        if isinstance(self.other_model, six.string_types):
             # if ``other_model`` is a string, it certainly is a lazy relation.
             related.add_lazy_relation(self.this_model, None, self.other_model, self.resolved_model)
         else:

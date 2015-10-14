@@ -314,7 +314,7 @@ class AggregateDenorm(Denorm):
 
         # related managers will only be available after both models are initialized
         # so check if its available already, and get our manager
-        if not self.manager and hasattr(self.model, self.manager_name):
+        if not self.manager and hasattr(self.model, str(self.manager_name)):
             self.manager = getattr(self.model, self.manager_name)
 
     def get_related_where(self, fk_name, using, type):
@@ -322,9 +322,9 @@ class AggregateDenorm(Denorm):
 
         related_where = ["%s = %s.%s" % (qn(self.model._meta.pk.get_attname_column()[1]), type, qn(fk_name))]
         related_query = Query(self.manager.related.model)
-        for name, value in self.filter.iteritems():
+        for name, value in self.filter.items():
             related_query.add_q(Q(**{name: value}))
-        for name, value in self.exclude.iteritems():
+        for name, value in self.exclude.items():
             related_query.add_q(~Q(**{name: value}))
         related_query.add_extra(None, None,
             ["%s = %s.%s" % (qn(self.model._meta.pk.get_attname_column()[1]), type, qn(self.manager.related.field.m2m_column_name()))],
@@ -554,7 +554,8 @@ def rebuildall(verbose=False, model_name=None, field_name=None):
     for model, denorms in models.items():
         if verbose:
             for denorm in denorms:
-                print 'rebuilding', '%s/%s' % (i + 1, len(alldenorms)), denorm.fieldname, 'in', model
+                msg = 'rebuilding', '%s/%s' % (i + 1, len(alldenorms)), denorm.fieldname, 'in', denorm.model
+                print(msg)
                 i += 1
         for instance in model.objects.all():
             fields = {}
