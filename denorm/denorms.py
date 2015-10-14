@@ -4,7 +4,10 @@ import abc
 from django.contrib.contenttypes.models import ContentType
 from denorm.db import triggers
 from django.db import connections, connection
-from django.db import models
+try:
+    from django.apps import apps as gmodels
+except ImportError:
+    from django.db import models as gmodels
 from django.db.models import sql, ManyToManyField
 from django.db.models.aggregates import Sum
 from django.db.models.manager import Manager
@@ -66,7 +69,7 @@ def get_alldenorms():
     Get all denormalizations.
     """
     alldenorms = []
-    for model in models.get_models(include_auto_created=True):
+    for model in gmodels.get_models(include_auto_created=True):
         for field in model._meta.fields:
             if hasattr(field, 'denorm'):
                 alldenorms.append(field.denorm)

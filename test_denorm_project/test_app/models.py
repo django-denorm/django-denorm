@@ -1,7 +1,10 @@
 from django.db import connection
 from django.conf import settings
 from django.db import models
-from django.contrib.contenttypes.generic import GenericForeignKey, GenericRelation
+try:
+    from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+except ImportError:
+    from django.contrib.contenttypes.generic import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 

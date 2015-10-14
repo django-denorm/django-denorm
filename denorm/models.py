@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 from django.db import models
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes import generic
+try:
+    from django.contrib.contenttypes.fields import GenericForeignKey
+except ImportError:
+    from django.contrib.contenttypes.generic import GenericForeignKey
 
 
 class DirtyInstance(models.Model):
@@ -13,7 +16,7 @@ class DirtyInstance(models.Model):
     """
     content_type = models.ForeignKey(ContentType)
     object_id = models.TextField(blank=True, null=True)
-    content_object = generic.GenericForeignKey()
+    content_object = GenericForeignKey()
 
     def __unicode__(self):
         return u'DirtyInstance: %s, %s' % (self.content_type, self.object_id)

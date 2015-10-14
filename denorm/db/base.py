@@ -1,5 +1,8 @@
 from django.db import models, connections, connection
-from django.contrib.contenttypes.generic import GenericRelation
+try:
+    from django.contrib.contenttypes.fields import GenericRelation
+except ImportError:
+    from django.contrib.contenttypes.generic import GenericRelation
 
 
 class RandomBigInt(object):
