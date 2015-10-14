@@ -390,7 +390,12 @@ class AggregateDenorm(Denorm):
 
         content_type = str(ContentType.objects.get_for_model(self.model).pk)
 
-        inc_query = TriggerFilterQuery(self.manager.related.model, trigger_alias='NEW')
+        if hasattr(self.manager.related, "related_model"):
+            related_model = self.manager.related.related_model
+        else:
+            related_model = self.manager.related.model
+
+        inc_query = TriggerFilterQuery(related_model, trigger_alias='NEW')
         inc_query.add_q(Q(**self.filter))
         inc_query.add_q(~Q(**self.exclude))
         if Decimal('.'.join([str(i) for i in django.VERSION[:2]])) >= Decimal('1.7'):
@@ -399,7 +404,7 @@ class AggregateDenorm(Denorm):
             qn = SQLCompiler(inc_query, cconnection, using).quote_name_unless_alias
         inc_filter_where, _ = inc_query.where.as_sql(qn, cconnection)
 
-        dec_query = TriggerFilterQuery(self.manager.related.model, trigger_alias='OLD')
+        dec_query = TriggerFilterQuery(related_model, trigger_alias='OLD')
         dec_query.add_q(Q(**self.filter))
         dec_query.add_q(~Q(**self.exclude))
         if Decimal('.'.join([str(i) for i in django.VERSION[:2]])) >= Decimal('1.7'):
@@ -426,11 +431,10 @@ class AggregateDenorm(Denorm):
             where=(' AND '.join(dec_where), where_params),
         )
 
-        other_model = self.manager.related.model
         trigger_list = [
-            triggers.Trigger(other_model, "after", "update", [increment, decrement], content_type, using, self.skip),
-            triggers.Trigger(other_model, "after", "insert", [increment], content_type, using, self.skip),
-            triggers.Trigger(other_model, "after", "delete", [decrement], content_type, using, self.skip),
+            triggers.Trigger(related_model, "after", "update", [increment, decrement], content_type, using, self.skip),
+            triggers.Trigger(related_model, "after", "insert", [increment], content_type, using, self.skip),
+            triggers.Trigger(related_model, "after", "delete", [decrement], content_type, using, self.skip),
         ]
         if isinstance(related_field, ManyToManyField):
             trigger_list.extend(self.m2m_triggers(content_type, fk_name, related_field, using))
