@@ -14,6 +14,9 @@ class DirtyInstance(models.Model):
     DirtyInstance instances are created by the insert/update/delete triggers
     when related objects change.
     """
+    class Meta:
+        app_label="denorm"
+
     content_type = models.ForeignKey(ContentType)
     object_id = models.TextField(blank=True, null=True)
     content_object = GenericForeignKey()
