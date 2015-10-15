@@ -14,11 +14,13 @@ env:
   - TOXENV=py27-django16-sqlite
   - TOXENV=py27-django17-sqlite
   - TOXENV=py27-django18-sqlite
+  - TOXENV=py27-django19-sqlite
   - TOXENV=py27-djangomaster-sqlite
   - TOXENV=py34-django15-sqlite
   - TOXENV=py34-django16-sqlite
   - TOXENV=py34-django17-sqlite
   - TOXENV=py34-django18-sqlite
+  - TOXENV=py34-django19-sqlite
   - TOXENV=py34-djangomaster-sqlite
 
   - TOXENV=py26-django15-mysql
@@ -27,11 +29,13 @@ env:
   - TOXENV=py27-django16-mysql
   - TOXENV=py27-django17-mysql
   - TOXENV=py27-django18-mysql
+  - TOXENV=py27-django19-mysql
   - TOXENV=py27-djangomaster-mysql
   - TOXENV=py34-django15-mysql
   - TOXENV=py34-django16-mysql
   - TOXENV=py34-django17-mysql
   - TOXENV=py34-django18-mysql
+  - TOXENV=py34-django19-mysql
   - TOXENV=py34-djangomaster-mysql
 
   - TOXENV=py26-django15-postgres
@@ -40,11 +44,13 @@ env:
   - TOXENV=py27-django16-postgres
   - TOXENV=py27-django17-postgres
   - TOXENV=py27-django18-postgres
+  - TOXENV=py27-django19-postgres
   - TOXENV=py27-djangomaster-postgres
   - TOXENV=py34-django15-postgres
   - TOXENV=py34-django16-postgres
   - TOXENV=py34-django17-postgres
   - TOXENV=py34-django18-postgres
+  - TOXENV=py34-django19-postgres
   - TOXENV=py34-djangomaster-postgres
 
 matrix:

@@ -7,7 +7,7 @@ try:
 except:
     dbtypes = ['sqlite', 'mysql', 'postgres']
 
-os.environ['PYTHONPATH'] = '.:..'
+os.environ['PYTHONPATH'] = '.:..:test_denorm_project:../denorm:test_app'
 
 for dbtype in dbtypes:
     print 'running tests on', dbtype
