@@ -1,8 +1,4 @@
 from django.db import models, connections, connection
-try:
-    from django.contrib.contenttypes.fields import GenericRelation
-except ImportError:
-    from django.contrib.contenttypes.generic import GenericRelation
 
 
 class RandomBigInt(object):
@@ -83,6 +79,11 @@ class Trigger(object):
             self.connection = connections[self.using]
         else:
             self.connection = connection
+
+        try:
+            from django.contrib.contenttypes.fields import GenericRelation
+        except ImportError:
+            from django.contrib.contenttypes.generic import GenericRelation
 
         if isinstance(subject, models.ManyToManyField):
             self.model = None

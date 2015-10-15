@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import abc
 
-from django.contrib.contenttypes.models import ContentType
+from django.contrib import contenttypes
 from denorm.db import triggers
 from django.db import connections, connection
 try:
@@ -11,7 +11,7 @@ except ImportError:
 from django.db.models import sql, ManyToManyField
 from django.db.models.aggregates import Sum
 from django.db.models.manager import Manager
-from denorm.models import DirtyInstance
+import denorm
 from django.db.models.query_utils import Q
 from django.db.models.sql.compiler import SQLCompiler
 try:
@@ -179,7 +179,7 @@ class CallbackDenorm(BaseCallbackDenorm):
     def get_triggers(self, using):
         qn = self.get_quote_name(using)
 
-        content_type = str(ContentType.objects.get_for_model(self.model).pk)
+        content_type = str(contenttypes.models.ContentType.objects.get_for_model(self.model).pk)
 
         # Create a trigger that marks any updated or newly created
         # instance of the model containing the denormalized field
@@ -189,7 +189,7 @@ class CallbackDenorm(BaseCallbackDenorm):
         # In those cases the self_save_handler won't get called by the
         # pre_save signal, so we need to ensure flush() does this later.
         action = triggers.TriggerActionInsert(
-            model=DirtyInstance,
+            model=denorm.models.DirtyInstance,
             columns=("content_type_id", "object_id"),
             values=(content_type, "NEW.%s" % qn(self.model._meta.pk.get_attname_column()[1]))
         )
@@ -240,7 +240,7 @@ class CacheKeyDenorm(BaseCacheKeyDenorm):
     def get_triggers(self, using):
         qn = self.get_quote_name(using)
 
-        content_type = str(ContentType.objects.get_for_model(self.model).pk)
+        content_type = str(contenttypes.models.ContentType.objects.get_for_model(self.model).pk)
 
         # This is only really needed if the instance was changed without
         # using the ORM or if it was part of a bulk update.
@@ -388,7 +388,7 @@ class AggregateDenorm(Denorm):
             inc_where = ["%s = NEW.%s" % (pk_name, fk_name)]
             dec_where = ["%s = OLD.%s" % (pk_name, fk_name)]
 
-        content_type = str(ContentType.objects.get_for_model(self.model).pk)
+        content_type = str(contenttypes.models.ContentType.objects.get_for_model(self.model).pk)
 
         if hasattr(self.manager.related, "related_model"):
             related_model = self.manager.related.related_model
@@ -605,7 +605,7 @@ def flush():
     # may cause an other instance to be marked dirty (dependency chains)
     while True:
         # Get all dirty markers
-        qs = DirtyInstance.objects.all()
+        qs = denorm.models.DirtyInstance.objects.all()
 
         # DirtyInstance table is empty -> all data is consistent -> we're done
         if not qs:
@@ -617,7 +617,7 @@ def flush():
             if dirty_instance.content_object:
                 dirty_instance.content_object.save()
 
-            DirtyInstance.objects.filter(
+            denorm.models.DirtyInstance.objects.filter(
                 content_type_id=dirty_instance.content_type_id,
                 object_id=dirty_instance.object_id
             ).delete()

@@ -5,7 +5,7 @@ try:
     from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 except ImportError:
     from django.contrib.contenttypes.generic import GenericForeignKey, GenericRelation
-from django.contrib.contenttypes.models import ContentType
+from django.contrib import contenttypes
 from django.core.cache import cache
 
 from denorm.fields import SumField
@@ -79,7 +79,7 @@ class RealDenormModel(AbstractDenormModel):
 class Tag(models.Model):
     name = models.CharField(max_length=255)
 
-    content_type = models.ForeignKey(ContentType)
+    content_type = models.ForeignKey(contenttypes.models.ContentType)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
 
