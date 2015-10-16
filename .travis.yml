@@ -1,64 +1,76 @@
 language: python
 install:
-  - "pip install -r test_denorm_project/test_requirements.txt"
   - pip install tox
 before_script:
-  - psql -c 'create database denorm_test;' -U postgres
-  - mysql -e 'create database denorm_test;'
+  - sh -c "if [ '$DB' = 'postgres' ]; then psql -c 'create database denorm_test;' -U postgres; fi;"
+  - sh -c "if [ '$DB' = 'mysql' ]; then mysql -e 'create database denorm_test;'; fi"
 script:
-  - tox -e $TOXENV
+  - tox -e py${TRAVIS_PYTHON_VERSION/./}-${DJANGO}-${DB}
+
+python:
+  - "2.6"
+  - "2.7"
+  - "3.4"
+
 env:
-  - TOXENV=py26-django15-sqlite
-  - TOXENV=py26-django16-sqlite
-  - TOXENV=py27-django15-sqlite
-  - TOXENV=py27-django16-sqlite
-  - TOXENV=py27-django17-sqlite
-  - TOXENV=py27-django18-sqlite
-  - TOXENV=py27-django19-sqlite
-  - TOXENV=py27-djangomaster-sqlite
-  - TOXENV=py34-django15-sqlite
-  - TOXENV=py34-django16-sqlite
-  - TOXENV=py34-django17-sqlite
-  - TOXENV=py34-django18-sqlite
-  - TOXENV=py34-django19-sqlite
-  - TOXENV=py34-djangomaster-sqlite
+  - DJANGO=django15 DB=sqlite
+  - DJANGO=django16 DB=sqlite
+  - DJANGO=django15 DB=sqlite
+  - DJANGO=django16 DB=sqlite
+  - DJANGO=django17 DB=sqlite
+  - DJANGO=django18 DB=sqlite
+  - DJANGO=django19 DB=sqlite
+  - DJANGO=djangomaster DB=sqlite
 
-  - TOXENV=py26-django15-mysql
-  - TOXENV=py26-django16-mysql
-  - TOXENV=py27-django15-mysql
-  - TOXENV=py27-django16-mysql
-  - TOXENV=py27-django17-mysql
-  - TOXENV=py27-django18-mysql
-  - TOXENV=py27-django19-mysql
-  - TOXENV=py27-djangomaster-mysql
-  - TOXENV=py34-django15-mysql
-  - TOXENV=py34-django16-mysql
-  - TOXENV=py34-django17-mysql
-  - TOXENV=py34-django18-mysql
-  - TOXENV=py34-django19-mysql
-  - TOXENV=py34-djangomaster-mysql
+  - DJANGO=django15 DB=mysql
+  - DJANGO=django16 DB=mysql
+  - DJANGO=django15 DB=mysql
+  - DJANGO=django16 DB=mysql
+  - DJANGO=django17 DB=mysql
+  - DJANGO=django18 DB=mysql
+  - DJANGO=django19 DB=mysql
+  - DJANGO=djangomaster DB=mysql
 
-  - TOXENV=py26-django15-postgres
-  - TOXENV=py26-django16-postgres
-  - TOXENV=py27-django15-postgres
-  - TOXENV=py27-django16-postgres
-  - TOXENV=py27-django17-postgres
-  - TOXENV=py27-django18-postgres
-  - TOXENV=py27-django19-postgres
-  - TOXENV=py27-djangomaster-postgres
-  - TOXENV=py34-django15-postgres
-  - TOXENV=py34-django16-postgres
-  - TOXENV=py34-django17-postgres
-  - TOXENV=py34-django18-postgres
-  - TOXENV=py34-django19-postgres
-  - TOXENV=py34-djangomaster-postgres
+  - DJANGO=django15 DB=postgres
+  - DJANGO=django16 DB=postgres
+  - DJANGO=django15 DB=postgres
+  - DJANGO=django16 DB=postgres
+  - DJANGO=django17 DB=postgres
+  - DJANGO=django18 DB=postgres
+  - DJANGO=django19 DB=postgres
+  - DJANGO=djangomaster DB=postgres
 
 matrix:
   fast_finish: true
+  exclude:
+    - python: "2.6"
+      env: DJANGO=django17 DB=sqlite
+    - python: "2.6"
+      env: DJANGO=django18 DB=sqlite
+    - python: "2.6"
+      env: DJANGO=django19 DB=sqlite
+    - python: "2.6"
+      env: DJANGO=djangomaster DB=sqlite
+    - python: "2.6"
+      env: DJANGO=django17 DB=mysql
+    - python: "2.6"
+      env: DJANGO=django18 DB=mysql
+    - python: "2.6"
+      env: DJANGO=django19 DB=mysql
+    - python: "2.6"
+      env: DJANGO=djangomaster DB=mysql
+    - python: "2.6"
+      env: DJANGO=django17 DB=postgres
+    - python: "2.6"
+      env: DJANGO=django18 DB=postgres
+    - python: "2.6"
+      env: DJANGO=django19 DB=postgres
+    - python: "2.6"
+      env: DJANGO=djangomaster DB=postgres
   allow_failures:
-    - env: TOX_ENV=py27-djangomaster-sqlite
-    - env: TOX_ENV=py34-djangomaster-sqlite
-    - env: TOX_ENV=py27-djangomaster-mysql
-    - env: TOX_ENV=py34-djangomaster-mysql
-    - env: TOX_ENV=py27-djangomaster-postgres
-    - env: TOX_ENV=py34-djangomaster-postgres
+    - env: DJANGO=django19 DB=sqlite
+    - env: DJANGO=django19 DB=mysql
+    - env: DJANGO=django19 DB=postgres
+    - env: DJANGO=djangomaster DB=sqlite
+    - env: DJANGO=djangomaster DB=mysql
+    - env: DJANGO=djangomaster DB=postgres
