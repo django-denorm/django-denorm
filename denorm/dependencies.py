@@ -76,8 +76,9 @@ class DependOnRelated(DenormDependency):
         candidates = [x for x in candidates if not self.type or self.type == x[0]]
 
         if len(candidates) > 1:
-            raise ValueError("%s has more than one ForeignKey or ManyToManyField to %s (or reverse); cannot auto-resolve."
-                             % (self.this_model, self.other_model))
+            raise ValueError("%s has more than one ForeignKey or ManyToManyField to %s (or reverse); cannot auto-resolve. Candidates are: %s\n"\
+                             "HINT: try to specify foreign_key on depend_on_related decorators."
+                             % (self.this_model, self.other_model, candidates))
         if not candidates:
             raise ValueError("%s has no ForeignKeys or ManyToManyFields to %s (or reverse); cannot auto-resolve."
                              % (self.this_model, self.other_model))
