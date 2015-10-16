@@ -1,5 +1,5 @@
 from django.db import connection
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from django.contrib.contenttypes.models import ContentType
 
 from django.contrib.auth import get_user_model
@@ -72,7 +72,7 @@ class TestAbstract(TestCase):
         self.assertEqual("Eggs and onion", d1.eggs)
 
 
-class TestSkip(TestCase):
+class TestSkip(TransactionTestCase):
     """
     Tests for the skip feature.
     """
@@ -113,7 +113,7 @@ class TestSkip(TestCase):
         denorm.flush()
 
 
-class TestDenormalisation(TestCase):
+class TestDenormalisation(TransactionTestCase):
     """
     Tests for the denormalisation fields.
     """
