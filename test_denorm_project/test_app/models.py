@@ -12,7 +12,7 @@ from denorm.fields import SumField
 from denorm import denormalized, depend_on_related, CountField, CacheKeyField, cached
 
 
-settings.DENORM_MODEL = 'denorm.RealDenormModel'
+settings.DENORM_MODEL = 'test_app.RealDenormModel'
 
 
 class FailingTriggersModelA(models.Model):
@@ -55,7 +55,7 @@ class AbstractDenormModel(models.Model):
 
     class Meta:
         abstract = True
-        app_label = 'denorm'
+        app_label = 'test_app'
 
 
 class DenormModel(AbstractDenormModel):
