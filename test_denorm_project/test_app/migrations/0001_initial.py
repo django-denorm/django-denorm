@@ -13,6 +13,31 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
+            name='DenormModel',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('text', models.TextField()),
+                ('ham', models.TextField(editable=False)),
+                ('spam', models.TextField(editable=False)),
+            ],
+            options={
+                'abstract': False,
+                'swappable': 'DENORM_MODEL',
+            },
+        ),
+        migrations.CreateModel(
+            name='RealDenormModel',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('text', models.TextField()),
+                ('ham', models.TextField(editable=False)),
+                ('eggs', models.TextField(editable=False)),
+            ],
+            options={
+                'abstract': False,
+            },
+        ),
+        migrations.CreateModel(
             name='Attachment',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
