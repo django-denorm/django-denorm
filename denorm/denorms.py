@@ -532,7 +532,7 @@ def rebuildall(verbose=False, model_name=None, field_name=None):
                     fields.update(_fields)
                     save = True
             if save:
-                instance.save()
+                model.objects.filter(pk=instance.pk).update(**fields)
 
     flush()
 
