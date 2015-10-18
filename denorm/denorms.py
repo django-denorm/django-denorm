@@ -13,6 +13,8 @@ from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.constants import JoinInfo
 from django.db.models.sql.query import Query
 from django.db.models.sql.where import WhereNode
+import django
+from decimal import Decimal
 
 # Remember all denormalizations.
 # This is used to rebuild all denormalized values in the whole DB.
@@ -373,14 +375,20 @@ class AggregateDenorm(Denorm):
         inc_query = TriggerFilterQuery(self.manager.related.model, trigger_alias='NEW')
         inc_query.add_q(Q(**self.filter))
         inc_query.add_q(~Q(**self.exclude))
-        inc_filter_where, _ = inc_query.where.as_sql(
-            SQLCompiler(inc_query, cconnection, using).quote_name_unless_alias, cconnection)
+        if Decimal('.'.join([str(i) for i in django.VERSION[:2]])) >= Decimal('1.7'):
+            qn = SQLCompiler(inc_query, cconnection, using)
+        else:
+            qn = SQLCompiler(inc_query, cconnection, using).quote_name_unless_alias
+        inc_filter_where, _ = inc_query.where.as_sql(qn, cconnection)
 
         dec_query = TriggerFilterQuery(self.manager.related.model, trigger_alias='OLD')
         dec_query.add_q(Q(**self.filter))
         dec_query.add_q(~Q(**self.exclude))
-        dec_filter_where, where_params = dec_query.where.as_sql(
-            SQLCompiler(dec_query, cconnection, using).quote_name_unless_alias, cconnection)
+        if Decimal('.'.join([str(i) for i in django.VERSION[:2]])) >= Decimal('1.7'):
+            qn = SQLCompiler(dec_query, cconnection, using)
+        else:
+            qn = SQLCompiler(dec_query, cconnection, using).quote_name_unless_alias
+        dec_filter_where, where_params = dec_query.where.as_sql(qn, cconnection)
 
         if inc_filter_where:
             inc_where.append(inc_filter_where)
