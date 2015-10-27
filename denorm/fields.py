@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from django.db import models
+from django.db import models, connection
 from denorm import denorms
 from django.conf import settings
 import django.db.models
@@ -58,7 +58,15 @@ def denormalized(DBField, *args, **kwargs):
             Updates the value of the denormalized field before it gets saved.
             """
             value = self.denorm.func(model_instance)
-            if hasattr(self, 'related_field') and isinstance(value, self.related_field.model):
+
+            if hasattr(self, 'related_field'):
+                related_field_model = self.related_field.model
+            elif hasattr(self, "related"):
+                related_field_model = self.related.parent_model
+            else:
+                related_field_model = None
+
+            if related_field_model and isinstance(value, related_field_model):
                 setattr(model_instance, self.attname, None)
                 setattr(model_instance, self.name, value)
                 return getattr(model_instance, self.attname)
@@ -95,7 +103,7 @@ class AggregateField(models.PositiveIntegerField):
         """
         raise NotImplemented('You need to override this method')
 
-    def __init__(self, manager_name, **kwargs):
+    def __init__(self, manager_name=None, **kwargs):
         """
         **Arguments:**
 
@@ -116,7 +124,7 @@ class AggregateField(models.PositiveIntegerField):
         """
         skip = kwargs.pop('skip', None)
         qs_filter = kwargs.pop('filter', {})
-        if qs_filter and hasattr(django.db.backend, 'sqlite3'):
+        if qs_filter and connection.vendor == "sqlite":
             raise NotImplementedError('filters for aggregate fields are currently not supported for sqlite')
         qs_exclude = kwargs.pop('exclude', {})
         self.denorm = self.get_denorm(skip)
@@ -180,7 +188,7 @@ class CountField(AggregateField):
 
     """
 
-    def __init__(self, manager_name, **kwargs):
+    def __init__(self, manager_name=None, **kwargs):
         """
         **Arguments:**
 
@@ -213,7 +221,7 @@ class SumField(AggregateField):
 
     """
 
-    def __init__(self, manager_name, field, **kwargs):
+    def __init__(self, manager_name=None, field=None, **kwargs):
         self.field = field
         kwargs['editable'] = False
         super(SumField, self).__init__(manager_name, **kwargs)
@@ -302,12 +310,13 @@ class CacheWrapper(object):
 
 
 class CachedField(CacheKeyField):
-    def __init__(self, func, cache, *args, **kwargs):
+    def __init__(self, func=None, cache=None, *args, **kwargs):
         self.func = func
         self.cache = cache
         super(CachedField, self).__init__(*args, **kwargs)
-        for c, a, kw in self.func.depend:
-            self.depend_on_related(*a, **kw)
+        if func and cache:
+            for c, a, kw in self.func.depend:
+                self.depend_on_related(*a, **kw)
 
     def contribute_to_class(self, cls, name, *args, **kwargs):
         super(CachedField, self).contribute_to_class(cls, name, *args, **kwargs)

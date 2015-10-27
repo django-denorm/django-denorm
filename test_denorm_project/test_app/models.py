@@ -1,15 +1,18 @@
-import django
+from django.db import connection
 from django.conf import settings
 from django.db import models
-from django.contrib.contenttypes.generic import GenericForeignKey, GenericRelation
-from django.contrib.contenttypes.models import ContentType
+try:
+    from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+except ImportError:
+    from django.contrib.contenttypes.generic import GenericForeignKey, GenericRelation
+from django.contrib import contenttypes
 from django.core.cache import cache
 
 from denorm.fields import SumField
 from denorm import denormalized, depend_on_related, CountField, CacheKeyField, cached
 
 
-settings.DENORM_MODEL = 'denorm.RealDenormModel'
+settings.DENORM_MODEL = 'test_app.RealDenormModel'
 
 
 class FailingTriggersModelA(models.Model):
@@ -52,7 +55,7 @@ class AbstractDenormModel(models.Model):
 
     class Meta:
         abstract = True
-        app_label = 'denorm'
+        app_label = 'test_app'
 
 
 class DenormModel(AbstractDenormModel):
@@ -76,7 +79,7 @@ class RealDenormModel(AbstractDenormModel):
 class Tag(models.Model):
     name = models.CharField(max_length=255)
 
-    content_type = models.ForeignKey(ContentType)
+    content_type = models.ForeignKey(contenttypes.models.ContentType)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
 
@@ -237,7 +240,7 @@ class SkipCommentWithAttributeSkip(SkipComment):
     denorm_always_skip = ('updated_on',)
 
 
-if not hasattr(django.db.backend, 'sqlite3'):
+if connection.vendor != "sqlite":
     class FilterSumModel(models.Model):
         # Simple count() aggregate
         active_item_sum = SumField('counts', field='active_item_count', filter={'age__gte': 18})

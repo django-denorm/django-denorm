@@ -1,25 +1,27 @@
 # -*- coding: utf-8 -*-
 import abc
 
-from django.contrib.contenttypes.models import ContentType
+from django.contrib import contenttypes
 from denorm.db import triggers
 from django.db import connections, connection
+try:
+    from django.apps import apps as gmodels
+except ImportError:
+    from django.db import models as gmodels
 from django.db.models import sql, ManyToManyField
 from django.db.models.aggregates import Sum
 from django.db.models.manager import Manager
-from denorm.models import DirtyInstance
+import denorm
 from django.db.models.query_utils import Q
 from django.db.models.sql.compiler import SQLCompiler
-from django.db.models.sql.constants import JoinInfo
+try:
+    from django.db.models.sql.datastructures import Join
+except ImportError:
+    from django.db.models.sql.constants import JoinInfo
 from django.db.models.sql.query import Query
 from django.db.models.sql.where import WhereNode
 import django
 from decimal import Decimal
-
-# Remember all denormalizations.
-# This is used to rebuild all denormalized values in the whole DB.
-alldenorms = []
-
 
 def many_to_many_pre_save(sender, instance, **kwargs):
     """
@@ -62,6 +64,19 @@ def many_to_many_post_save(sender, instance, created, **kwargs):
             instance.save()
 
 
+def get_alldenorms():
+    """
+    Get all denormalizations.
+    """
+    alldenorms = []
+    for model in gmodels.get_models(include_auto_created=True):
+        for field in model._meta.fields:
+            if hasattr(field, 'denorm'):
+                if not field.denorm.model._meta.swapped:
+                    alldenorms.append(field.denorm)
+    return alldenorms
+
+
 class Denorm(object):
     def __init__(self, skip=None):
         self.func = None
@@ -79,10 +94,7 @@ class Denorm(object):
         Adds 'self' to the global denorm list
         and connects all needed signals.
         """
-        global alldenorms
-        if self not in alldenorms:
-            if not self.model._meta.swapped:
-                alldenorms.append(self)
+        pass
 
     def update(self, instance):
         """
@@ -167,7 +179,7 @@ class CallbackDenorm(BaseCallbackDenorm):
     def get_triggers(self, using):
         qn = self.get_quote_name(using)
 
-        content_type = str(ContentType.objects.get_for_model(self.model).pk)
+        content_type = str(contenttypes.models.ContentType.objects.get_for_model(self.model).pk)
 
         # Create a trigger that marks any updated or newly created
         # instance of the model containing the denormalized field
@@ -177,7 +189,7 @@ class CallbackDenorm(BaseCallbackDenorm):
         # In those cases the self_save_handler won't get called by the
         # pre_save signal, so we need to ensure flush() does this later.
         action = triggers.TriggerActionInsert(
-            model=DirtyInstance,
+            model=denorm.models.DirtyInstance,
             columns=("content_type_id", "object_id"),
             values=(content_type, "NEW.%s" % qn(self.model._meta.pk.get_attname_column()[1]))
         )
@@ -228,7 +240,7 @@ class CacheKeyDenorm(BaseCacheKeyDenorm):
     def get_triggers(self, using):
         qn = self.get_quote_name(using)
 
-        content_type = str(ContentType.objects.get_for_model(self.model).pk)
+        content_type = str(contenttypes.models.ContentType.objects.get_for_model(self.model).pk)
 
         # This is only really needed if the instance was changed without
         # using the ORM or if it was part of a bulk update.
@@ -274,7 +286,13 @@ class TriggerFilterQuery(sql.Query):
     def __init__(self, model, trigger_alias, where=TriggerWhereNode):
         super(TriggerFilterQuery, self).__init__(model, where)
         self.trigger_alias = trigger_alias
-        join = JoinInfo(None, None, None, None, ((None, None),), False, None)
+        try:
+            class JoinField():
+                def get_joining_columns(self):
+                    return None
+            join = Join(None, None, None, None, JoinField(), False)
+        except:
+            join = JoinInfo(None, None, None, None, ((None, None),), False, None)
         self.alias_map = {trigger_alias: join}
 
     def get_initial_alias(self):
@@ -296,7 +314,7 @@ class AggregateDenorm(Denorm):
 
         # related managers will only be available after both models are initialized
         # so check if its available already, and get our manager
-        if not self.manager and hasattr(self.model, self.manager_name):
+        if not self.manager and hasattr(self.model, str(self.manager_name)):
             self.manager = getattr(self.model, self.manager_name)
 
     def get_related_where(self, fk_name, using, type):
@@ -304,9 +322,9 @@ class AggregateDenorm(Denorm):
 
         related_where = ["%s = %s.%s" % (qn(self.model._meta.pk.get_attname_column()[1]), type, qn(fk_name))]
         related_query = Query(self.manager.related.model)
-        for name, value in self.filter.iteritems():
+        for name, value in self.filter.items():
             related_query.add_q(Q(**{name: value}))
-        for name, value in self.exclude.iteritems():
+        for name, value in self.exclude.items():
             related_query.add_q(~Q(**{name: value}))
         related_query.add_extra(None, None,
             ["%s = %s.%s" % (qn(self.model._meta.pk.get_attname_column()[1]), type, qn(self.manager.related.field.m2m_column_name()))],
@@ -370,9 +388,14 @@ class AggregateDenorm(Denorm):
             inc_where = ["%s = NEW.%s" % (pk_name, fk_name)]
             dec_where = ["%s = OLD.%s" % (pk_name, fk_name)]
 
-        content_type = str(ContentType.objects.get_for_model(self.model).pk)
+        content_type = str(contenttypes.models.ContentType.objects.get_for_model(self.model).pk)
 
-        inc_query = TriggerFilterQuery(self.manager.related.model, trigger_alias='NEW')
+        if hasattr(self.manager.related, "related_model"):
+            related_model = self.manager.related.related_model
+        else:
+            related_model = self.manager.related.model
+
+        inc_query = TriggerFilterQuery(related_model, trigger_alias='NEW')
         inc_query.add_q(Q(**self.filter))
         inc_query.add_q(~Q(**self.exclude))
         if Decimal('.'.join([str(i) for i in django.VERSION[:2]])) >= Decimal('1.7'):
@@ -381,7 +404,7 @@ class AggregateDenorm(Denorm):
             qn = SQLCompiler(inc_query, cconnection, using).quote_name_unless_alias
         inc_filter_where, _ = inc_query.where.as_sql(qn, cconnection)
 
-        dec_query = TriggerFilterQuery(self.manager.related.model, trigger_alias='OLD')
+        dec_query = TriggerFilterQuery(related_model, trigger_alias='OLD')
         dec_query.add_q(Q(**self.filter))
         dec_query.add_q(~Q(**self.exclude))
         if Decimal('.'.join([str(i) for i in django.VERSION[:2]])) >= Decimal('1.7'):
@@ -408,11 +431,10 @@ class AggregateDenorm(Denorm):
             where=(' AND '.join(dec_where), where_params),
         )
 
-        other_model = self.manager.related.model
         trigger_list = [
-            triggers.Trigger(other_model, "after", "update", [increment, decrement], content_type, using, self.skip),
-            triggers.Trigger(other_model, "after", "insert", [increment], content_type, using, self.skip),
-            triggers.Trigger(other_model, "after", "delete", [decrement], content_type, using, self.skip),
+            triggers.Trigger(related_model, "after", "update", [increment, decrement], content_type, using, self.skip),
+            triggers.Trigger(related_model, "after", "insert", [increment], content_type, using, self.skip),
+            triggers.Trigger(related_model, "after", "delete", [decrement], content_type, using, self.skip),
         ]
         if isinstance(related_field, ManyToManyField):
             trigger_list.extend(self.m2m_triggers(content_type, fk_name, related_field, using))
@@ -515,11 +537,14 @@ def rebuildall(verbose=False, model_name=None, field_name=None):
     Updates all models containing denormalized fields.
     Used by the 'denormalize' management command.
     """
-    global alldenorms
+    alldenorms = get_alldenorms()
     models = {}
     for denorm in alldenorms:
         current_app_label = denorm.model._meta.app_label
-        current_model_name = denorm.model._meta.model.__name__
+        try:
+            current_model_name = denorm.model._meta.model.__name__
+        except AttributeError: # In Django 1.5
+            current_model_name = denorm.model.__name__
         current_app_model = '%s.%s' % (current_app_label, current_model_name)
         if model_name is None or model_name in (current_app_label, current_model_name, current_app_model):
             if field_name is None or field_name == denorm.fieldname:
@@ -529,7 +554,8 @@ def rebuildall(verbose=False, model_name=None, field_name=None):
     for model, denorms in models.items():
         if verbose:
             for denorm in denorms:
-                print 'rebuilding', '%s/%s' % (i + 1, len(alldenorms)), denorm.fieldname, 'in', model
+                msg = 'rebuilding', '%s/%s' % (i + 1, len(alldenorms)), denorm.fieldname, 'in', denorm.model
+                print(msg)
                 i += 1
         for instance in model.objects.all():
             fields = {}
@@ -558,7 +584,7 @@ def install_triggers(using=None):
 
 
 def build_triggerset(using=None):
-    global alldenorms
+    alldenorms = get_alldenorms()
 
     # Use a TriggerSet to ensure each event gets just one trigger
     triggerset = triggers.TriggerSet(using=using)
@@ -580,7 +606,7 @@ def flush():
     # may cause an other instance to be marked dirty (dependency chains)
     while True:
         # Get all dirty markers
-        qs = DirtyInstance.objects.all()
+        qs = denorm.models.DirtyInstance.objects.all()
 
         # DirtyInstance table is empty -> all data is consistent -> we're done
         if not qs:
@@ -591,4 +617,8 @@ def flush():
         for dirty_instance in qs.iterator():
             if dirty_instance.content_object:
                 dirty_instance.content_object.save()
-            dirty_instance.delete()
+
+            denorm.models.DirtyInstance.objects.filter(
+                content_type_id=dirty_instance.content_type_id,
+                object_id=dirty_instance.object_id
+            ).delete()

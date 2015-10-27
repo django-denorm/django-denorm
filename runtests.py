@@ -7,11 +7,12 @@ try:
 except:
     dbtypes = ['sqlite', 'mysql', 'postgres']
 
-os.environ['PYTHONPATH'] = '.:..'
+os.environ['PYTHONPATH'] = '.:..:test_denorm_project:../denorm:test_app'
 
 for dbtype in dbtypes:
-    print 'running tests on', dbtype
+    print('running tests on %s' % dbtype)
     os.environ['DJANGO_SETTINGS_MODULE'] = 'test_denorm_project.settings_%s' % dbtype
 
-    if os.system("cd test_denorm_project; python manage.py test test_app"):
+    test_label = sys.argv[2] if len(sys.argv) > 2 else "test_app"
+    if os.system("cd test_denorm_project; python -Wall manage.py test %s" % test_label):
         exit(1)

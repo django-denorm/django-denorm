@@ -14,6 +14,9 @@ setup(
     author_email='django-denorm@googlegroups.com',
     url='http://initcrash.github.com/django-denorm/',
     download_url='http://github.com/initcrash/django-denorm/downloads',
+    install_requires=[
+        'six',
+    ],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Framework :: Django",

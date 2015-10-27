@@ -150,7 +150,7 @@ def daemonize(noClose=False, pidfile=None):
         if pid != 0:
             # Original child. Exit.
             if pidfile:
-                print pid
+                print(pid)
                 file(pidfile, "w").write(str(pid))
             os._exit(0)
 
@@ -172,8 +172,9 @@ def daemonize(noClose=False, pidfile=None):
     except DaemonException:
         raise
 
-    except OSError, e:
-        raise DaemonException('Error during daemonizing: %s [%d]' % (e.strerror, e.errno))
+    except OSError as e:
+        raise DaemonException('Error during daemonizing: %s [%d]' %\
+              (e.strerror, e.errno))
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +184,7 @@ def daemonize(noClose=False, pidfile=None):
 def _fork():
     try:
         return os.fork()
-    except OSError, e:
+    except OSError as e:
         raise DaemonException('Cannot fork: %s [%d]' % (e.strerror, e.errno))
 
 
