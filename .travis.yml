@@ -68,9 +68,6 @@ matrix:
     - python: "2.6"
       env: DJANGO=djangomaster DB=postgres
   allow_failures:
-    - env: DJANGO=django19 DB=sqlite
-    - env: DJANGO=django19 DB=mysql
-    - env: DJANGO=django19 DB=postgres
     - env: DJANGO=djangomaster DB=sqlite
     - env: DJANGO=djangomaster DB=mysql
     - env: DJANGO=djangomaster DB=postgres
