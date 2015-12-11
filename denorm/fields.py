@@ -59,7 +59,9 @@ def denormalized(DBField, *args, **kwargs):
             """
             value = self.denorm.func(model_instance)
 
-            if hasattr(self, 'related_field'):
+            if hasattr(self, "remote_field") and self.remote_field:  # Django>=1.10
+                related_field_model = self.remote_field.model
+            elif hasattr(self, 'related_field'):  # Django>1.5
                 related_field_model = self.related_field.model
             elif hasattr(self, "related"):
                 try:
