@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from denorm.helpers import find_fks, find_m2ms
+from denorm.helpers import find_fks, find_m2ms, remote_field_model
 from django.db import models
 from django.db.models.fields import related
 from django.db import connections, connection
@@ -168,9 +168,9 @@ class CacheKeyDependOnRelated(DependOnRelated):
             else:
                 if "forward" in self.type:
                     column_name = self.field.object_id_field_name
-                    reverse_column_name = self.field.rel.to._meta.pk.column
+                    reverse_column_name = self.field.remote_field.model._meta.pk.column
                 if "backward" in self.type:
-                    column_name = self.field.rel.to._meta.pk.column
+                    column_name = self.field.remote_field.model._meta.pk.column
                     reverse_column_name = self.field.object_id_field_name
 
             # The first part of a M2M dependency is exactly like a backward
@@ -349,9 +349,9 @@ class CallbackDependOnRelated(DependOnRelated):
             else:
                 if "forward" in self.type:
                     column_name = qn(self.field.object_id_field_name)
-                    reverse_column_name = self.field.rel.to._meta.pk.column
+                    reverse_column_name = remote_field_model(self.field)._meta.pk.column
                 if "backward" in self.type:
-                    column_name = qn(self.field.rel.to._meta.pk.column)
+                    column_name = qn(remote_field_model(self.field)._meta.pk.column)
                     reverse_column_name = self.field.object_id_field_name
 
             # The first part of a M2M dependency is exactly like a backward

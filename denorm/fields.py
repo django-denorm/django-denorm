@@ -62,7 +62,10 @@ def denormalized(DBField, *args, **kwargs):
             if hasattr(self, 'related_field'):
                 related_field_model = self.related_field.model
             elif hasattr(self, "related"):
-                related_field_model = self.related.parent_model
+                try:
+                    related_field_model = self.related.parent_model
+                except AttributeError:
+                    related_field_model = self.related.model
             else:
                 related_field_model = None
 

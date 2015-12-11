@@ -34,18 +34,22 @@ def many_to_many_pre_save(sender, instance, **kwargs):
             if hasattr(m2m, 'denorm'):
                 # Does some extra jiggery-pokery for "through" m2m models.
                 # May not work under lots of conditions.
-                if hasattr(m2m.rel, 'through_model'):
+                try:
+                    remote = m2m.remote_field  # Django>=1.10
+                except AttributeError:
+                    remote = m2m.rel
+                if hasattr(remote, 'through_model'):
                     # Clear exisiting through records (bit heavy handed?)
                     kwargs = {m2m.related.var_name: instance}
 
                     # Can't use m2m_column_name in a filter
                     # kwargs = { m2m.m2m_column_name(): instance.pk, }
-                    m2m.rel.through_model.objects.filter(**kwargs).delete()
+                    remote.through_model.objects.filter(**kwargs).delete()
 
                     values = m2m.denorm.func(instance)
                     for value in values:
                         kwargs.update({m2m.m2m_reverse_name(): value.pk})
-                        m2m.rel.through_model.objects.create(**kwargs)
+                        remote.through_model.objects.create(**kwargs)
 
                 else:
                     values = m2m.denorm.func(instance)
@@ -372,7 +376,10 @@ class AggregateDenorm(Denorm):
 
         qn = self.get_quote_name(using)
 
-        related_field = self.manager.related.field
+        try:  # Django>=1.9
+            related_field = self.manager.field
+        except AttributeError:
+            related_field = self.manager.related.field
         if isinstance(related_field, ManyToManyField):
             fk_name = related_field.m2m_reverse_name()
             inc_where = ["%(id)s IN (SELECT %(reverse_related)s FROM %(m2m_table)s WHERE %(related)s = NEW.%(id)s)" % {
@@ -390,11 +397,12 @@ class AggregateDenorm(Denorm):
 
         content_type = str(contenttypes.models.ContentType.objects.get_for_model(self.model).pk)
 
-        if hasattr(self.manager.related, "related_model"):
+        if hasattr(self.manager, "field"):  # Django>=1.9
+             related_model = self.manager.field.model
+        elif hasattr(self.manager.related, "related_model"):  # Django>=1.8
             related_model = self.manager.related.related_model
         else:
             related_model = self.manager.related.model
-
         inc_query = TriggerFilterQuery(related_model, trigger_alias='NEW')
         inc_query.add_q(Q(**self.filter))
         inc_query.add_q(~Q(**self.exclude))
