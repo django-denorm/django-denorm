@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from django.db import models, connection
-from denorm import denorms
+from . import denorms
 from django.conf import settings
 import django.db.models
 
@@ -267,7 +267,7 @@ class CacheKeyField(models.BigIntegerField):
         Add dependency information to the CacheKeyField.
         Accepts the same arguments like the *denorm.depend_on_related* decorator
         """
-        from dependencies import CacheKeyDependOnRelated
+        from .dependencies import CacheKeyDependOnRelated
         self.dependencies.append(CacheKeyDependOnRelated(*args, **kwargs))
 
     def contribute_to_class(self, cls, name, *args, **kwargs):

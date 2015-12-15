@@ -2,7 +2,7 @@
 import abc
 
 from django.contrib import contenttypes
-from denorm.db import triggers
+from .db import triggers
 from django.db import connections, connection
 try:
     from django.apps import apps as gmodels
@@ -11,7 +11,6 @@ except ImportError:
 from django.db.models import sql, ManyToManyField
 from django.db.models.aggregates import Sum
 from django.db.models.manager import Manager
-import denorm
 from django.db.models.query_utils import Q
 from django.db.models.sql.compiler import SQLCompiler
 try:
@@ -192,8 +191,9 @@ class CallbackDenorm(BaseCallbackDenorm):
         # using the ORM or if it was part of a bulk update.
         # In those cases the self_save_handler won't get called by the
         # pre_save signal, so we need to ensure flush() does this later.
+        from .models import DirtyInstance
         action = triggers.TriggerActionInsert(
-            model=denorm.models.DirtyInstance,
+            model=DirtyInstance,
             columns=("content_type_id", "object_id"),
             values=(content_type, "NEW.%s" % qn(self.model._meta.pk.get_attname_column()[1]))
         )
@@ -614,7 +614,8 @@ def flush():
     # may cause an other instance to be marked dirty (dependency chains)
     while True:
         # Get all dirty markers
-        qs = denorm.models.DirtyInstance.objects.all()
+        from .models import DirtyInstance
+        qs = DirtyInstance.objects.all()
 
         # DirtyInstance table is empty -> all data is consistent -> we're done
         if not qs:
@@ -626,7 +627,8 @@ def flush():
             if dirty_instance.content_object:
                 dirty_instance.content_object.save()
 
-            denorm.models.DirtyInstance.objects.filter(
+            from .models import DirtyInstance
+            DirtyInstance.objects.filter(
                 content_type_id=dirty_instance.content_type_id,
                 object_id=dirty_instance.object_id
             ).delete()
