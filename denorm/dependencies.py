@@ -5,7 +5,6 @@ from django.db.models.fields import related
 from django.db import connections, connection
 import denorm
 from django.contrib import contenttypes
-from denorm.db import triggers
 import six
 
 
@@ -90,6 +89,7 @@ class DependOnRelated(DenormDependency):
 class CacheKeyDependOnRelated(DependOnRelated):
 
     def get_triggers(self, using):
+        from denorm.db import triggers
         qn = self.get_quote_name(using)
 
         if not self.type:
@@ -99,6 +99,7 @@ class CacheKeyDependOnRelated(DependOnRelated):
         content_type = str(contenttypes.models.ContentType.objects.get_for_model(self.this_model).pk)
 
         if self.type == "forward":
+            from denorm.db import triggers
             # With forward relations many instances of ``this_model``
             # may be related to one instance of ``other_model``
             action_new = triggers.TriggerActionUpdate(
@@ -265,6 +266,7 @@ class CallbackDependOnRelated(DependOnRelated):
         super(CallbackDependOnRelated, self).__init__(othermodel, foreign_key, type, skip)
 
     def get_triggers(self, using):
+        from denorm.db import triggers
         qn = self.get_quote_name(using)
 
         if not self.type:

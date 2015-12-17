@@ -5,7 +5,7 @@ import os
 try:
     dbtypes = [sys.argv[1]]
 except:
-    dbtypes = ['sqlite', 'mysql', 'postgres']
+    dbtypes = ['sqlite', 'mysql', 'postgres', 'postgis']
 
 os.environ['PYTHONPATH'] = '.:..:test_denorm_project:../denorm:test_app'
 

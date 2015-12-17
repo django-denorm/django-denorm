@@ -2,7 +2,6 @@
 import abc
 
 from django.contrib import contenttypes
-from .db import triggers
 from django.db import connections, connection
 try:
     from django.apps import apps as gmodels
@@ -192,6 +191,7 @@ class CallbackDenorm(BaseCallbackDenorm):
         # In those cases the self_save_handler won't get called by the
         # pre_save signal, so we need to ensure flush() does this later.
         from .models import DirtyInstance
+        from .db import triggers
         action = triggers.TriggerActionInsert(
             model=DirtyInstance,
             columns=("content_type_id", "object_id"),
@@ -250,6 +250,7 @@ class CacheKeyDenorm(BaseCacheKeyDenorm):
         # using the ORM or if it was part of a bulk update.
         # In those cases the self_save_handler won't get called by the
         # pre_save signal
+        from .db import triggers
         action = triggers.TriggerActionUpdate(
             model=self.model,
             columns=(self.fieldname,),
@@ -345,6 +346,7 @@ class AggregateDenorm(Denorm):
         """
         Returns triggers for m2m relation
         """
+        from .db import triggers
         related_inc_where, _ = self.get_related_where(fk_name, using, 'NEW')
         related_dec_where, related_where_params = self.get_related_where(fk_name, using, 'OLD')
         related_increment = triggers.TriggerActionUpdate(
@@ -369,6 +371,7 @@ class AggregateDenorm(Denorm):
         return trigger_list
 
     def get_triggers(self, using):
+        from .db import triggers
         if using:
             cconnection = connections[using]
         else:
@@ -580,6 +583,7 @@ def rebuildall(verbose=False, model_name=None, field_name=None):
 
 
 def drop_triggers(using=None):
+    from .db import triggers
     triggerset = triggers.TriggerSet(using=using)
     triggerset.drop()
 
@@ -592,6 +596,7 @@ def install_triggers(using=None):
 
 
 def build_triggerset(using=None):
+    from .db import triggers
     alldenorms = get_alldenorms()
 
     # Use a TriggerSet to ensure each event gets just one trigger
