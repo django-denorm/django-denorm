@@ -1,6 +1,7 @@
 from django.db import connection
 from django.test import TestCase, TransactionTestCase
 from django.contrib.contenttypes.models import ContentType
+from django.core.management import call_command
 
 from django.contrib.auth import get_user_model
 User = get_user_model()
@@ -674,3 +675,12 @@ if connection.vendor != "sqlite":
             item.save()
             master = models.FilterSumModel.objects.get(pk=master.pk)
             self.assertEqual(master.active_item_sum, 8)
+
+
+class CommandsTestCase(TransactionTestCase):
+    def test_denorm_daemon(self):
+        " Test denorm_daemon command."
+
+        args = []
+        opts = {}
+        call_command('denorm_daemon', *args, **opts)
