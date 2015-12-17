@@ -3,7 +3,10 @@ import sys
 from time import sleep
 from optparse import make_option
 
-from django.core.management.base import NoArgsCommand
+try:  # Django>=1.8
+    from django.core.management.base import BaseCommand
+except ImportError:
+    from django.core.management.base import NoArgsCommand as BaseCommand
 from django.db import transaction
 
 from denorm import denorms
@@ -23,8 +26,8 @@ else:  # Django <= 1.5
     commit_manually = transaction.commit_manually
 
 
-class Command(NoArgsCommand):
-    option_list = NoArgsCommand.option_list + (
+class Command(BaseCommand):
+    option_list = BaseCommand.option_list + (
         make_option(
             '-n',
             action='store_true',
@@ -65,7 +68,7 @@ class Command(NoArgsCommand):
                 raise
 
     @commit_manually
-    def handle_noargs(self, **options):
+    def handle(self, **options):
         foreground = options['foreground']
         interval = options['interval']
         pidfile = options['pidfile']
@@ -85,3 +88,6 @@ class Command(NoArgsCommand):
             except KeyboardInterrupt:
                 transaction.commit()
                 sys.exit()
+
+    def handle_noargs(self, **options):  # Django<=1.8
+        return self.handle(options)
