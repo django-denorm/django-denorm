@@ -1,5 +1,6 @@
 import os
 import sys
+import django
 from time import sleep
 from optparse import make_option
 
@@ -27,30 +28,54 @@ else:  # Django <= 1.5
 
 
 class Command(BaseCommand):
-    option_list = BaseCommand.option_list + (
-        make_option(
+    def add_arguments(self, parser):
+        parser.add_argument(
             '-n',
             action='store_true',
             dest='foreground',
             default=False,
             help='Run in foreground',
         ),
-        make_option(
+        parser.add_argument(
             '-i',
             action='store',
-            type='int',
+            type=int,
             dest='interval',
             default=1,
             help='The interval - in seconds - between each update',
         ),
-        make_option(
+        parser.add_argument(
             '-f', '--pidfile',
             action='store',
-            type='string',
+            type=str,
             dest='pidfile',
             default=PID_FILE,
             help='The pid file to use. Defaults to "%s".' % PID_FILE)
-    )
+    if django.VERSION < (1, 8):
+        option_list = BaseCommand.option_list + (
+            make_option(
+                '-n',
+                action='store_true',
+                dest='foreground',
+                default=False,
+                help='Run in foreground',
+            ),
+            make_option(
+                '-i',
+                action='store',
+                type='int',
+                dest='interval',
+                default=1,
+                help='The interval - in seconds - between each update',
+            ),
+            make_option(
+                '-f', '--pidfile',
+                action='store',
+                type='string',
+                dest='pidfile',
+                default=PID_FILE,
+                help='The pid file to use. Defaults to "%s".' % PID_FILE)
+        )
     help = "Runs a daemon that checks for dirty fields and updates them in regular intervals."
 
     def pid_exists(self, pidfile):
