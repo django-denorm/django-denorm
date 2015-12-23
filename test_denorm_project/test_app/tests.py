@@ -684,3 +684,10 @@ class CommandsTestCase(TransactionTestCase):
         args = []
         opts = {}
         call_command('denorm_daemon', *args, **opts)
+
+    def test_makemigrations(self):
+        " Test makemigrations command."
+
+        args = []
+        opts = {}
+        call_command('makemigrations', *args, **opts)

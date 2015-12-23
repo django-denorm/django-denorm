@@ -31,7 +31,7 @@ def denormalized(DBField, *args, **kwargs):
         Special subclass of the given DBField type, with a few extra additions.
         """
 
-        def __init__(self, func, *args, **kwargs):
+        def __init__(self, func=None, *args, **kwargs):
             self.func = func
             self.skip = kwargs.pop('skip', None)
             kwargs['editable'] = False
