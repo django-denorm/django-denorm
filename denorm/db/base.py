@@ -109,7 +109,14 @@ class Trigger(object):
             # FIXME: need to check get_parent_list and add triggers to those
             # The below will only check the fields on *this* model, not parents
             skip = skip or () + getattr(self.model, 'denorm_always_skip', ())
-            self.fields = [(k.attname, k.db_type(connection=self.connection)) for k, v in get_fields_with_model(subject, self.model._meta) if not v and k.attname not in skip]
+            self.fields = []
+            from django.db.models.fields.related import ForeignObjectRel
+            for k, v in get_fields_with_model(subject, self.model._meta):
+                if isinstance(k, ForeignObjectRel):
+                    pass
+                else:
+                    if not v and k.attname not in skip:
+                        self.fields.append((k.attname, k.db_type(connection=self.connection)))
 
         else:
             raise NotImplementedError
