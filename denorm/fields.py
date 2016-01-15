@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from django.db import models, connection
-from denorm import denorms
+from . import denorms
 from django.conf import settings
 import django.db.models
 
@@ -31,7 +31,7 @@ def denormalized(DBField, *args, **kwargs):
         Special subclass of the given DBField type, with a few extra additions.
         """
 
-        def __init__(self, func, *args, **kwargs):
+        def __init__(self, func=None, *args, **kwargs):
             self.func = func
             self.skip = kwargs.pop('skip', None)
             kwargs['editable'] = False
@@ -59,10 +59,15 @@ def denormalized(DBField, *args, **kwargs):
             """
             value = self.denorm.func(model_instance)
 
-            if hasattr(self, 'related_field'):
+            if hasattr(self, "remote_field") and self.remote_field:  # Django>=1.10
+                related_field_model = self.remote_field.model
+            elif hasattr(self, 'related_field'):  # Django>1.5
                 related_field_model = self.related_field.model
             elif hasattr(self, "related"):
-                related_field_model = self.related.parent_model
+                try:
+                    related_field_model = self.related.parent_model
+                except AttributeError:
+                    related_field_model = self.related.model
             else:
                 related_field_model = None
 
@@ -262,7 +267,7 @@ class CacheKeyField(models.BigIntegerField):
         Add dependency information to the CacheKeyField.
         Accepts the same arguments like the *denorm.depend_on_related* decorator
         """
-        from dependencies import CacheKeyDependOnRelated
+        from .dependencies import CacheKeyDependOnRelated
         self.dependencies.append(CacheKeyDependOnRelated(*args, **kwargs))
 
     def contribute_to_class(self, cls, name, *args, **kwargs):

@@ -3,6 +3,10 @@ install:
   - pip install tox
 before_script:
   - sh -c "if [ '$DB' = 'postgres' ]; then psql -c 'create database denorm_test;' -U postgres; fi;"
+
+  - sh -c "if [ '$DB' = 'postgis' ]; then psql -c 'create database denorm_test;' -U postgres; fi;"
+  - sh -c "if [ '$DB' = 'postgis' ]; then psql -c 'create extension postgis;' -U postgres; fi;"
+
   - sh -c "if [ '$DB' = 'mysql' ]; then mysql -e 'create database denorm_test;'; fi"
 script:
   - tox -e py${TRAVIS_PYTHON_VERSION/./}-${DJANGO}-${DB}
@@ -40,6 +44,10 @@ env:
   - DJANGO=django19 DB=postgres
   - DJANGO=djangomaster DB=postgres
 
+  - DJANGO=django18 DB=postgis
+  - DJANGO=django19 DB=postgis
+  - DJANGO=djangomaster DB=postgis
+
 matrix:
   fast_finish: true
   exclude:
@@ -67,10 +75,16 @@ matrix:
       env: DJANGO=django19 DB=postgres
     - python: "2.6"
       env: DJANGO=djangomaster DB=postgres
+    - python: "2.6"
+      env: DJANGO=django17 DB=postgis
+    - python: "2.6"
+      env: DJANGO=django18 DB=postgis
+    - python: "2.6"
+      env: DJANGO=django19 DB=postgis
+    - python: "2.6"
+      env: DJANGO=djangomaster DB=postgis
   allow_failures:
-    - env: DJANGO=django19 DB=sqlite
-    - env: DJANGO=django19 DB=mysql
-    - env: DJANGO=django19 DB=postgres
     - env: DJANGO=djangomaster DB=sqlite
     - env: DJANGO=djangomaster DB=mysql
     - env: DJANGO=djangomaster DB=postgres
+    - env: DJANGO=djangomaster DB=postgis

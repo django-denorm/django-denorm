@@ -110,7 +110,7 @@ class Forum(TaggedModel):
     def author_names(self):
         return ', '.join((m.author_name for m in self.post_set.all()))
 
-    @denormalized(models.ManyToManyField, 'Member', null=True, blank=True)
+    @denormalized(models.ManyToManyField, 'Member', blank=True)
     @depend_on_related('Post')
     def authors(self):
         return [m.author for m in self.post_set.all() if m.author]
