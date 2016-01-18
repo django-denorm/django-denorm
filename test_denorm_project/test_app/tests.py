@@ -427,6 +427,22 @@ class TestDenormalisation(TransactionTestCase):
         self.assertEqual(f1.post_count, 1)
         self.assertEqual(f1.authors.all()[0], m1)
 
+    def test_denorm_rebuild_called_once(self):
+        """
+        Test whether the denorm function is not called only once during rebuild.
+        The proxy model CallCounterProxy should not add extra callings to denorm function.
+        """
+        models.CallCounter.objects.create()
+        denorm.denorms.flush()
+        c = models.CallCounter.objects.get()
+        self.assertEqual(c.called_count, 2)  # TODO: we should be able to create object with hitting the denorm function just once
+        denorm.denorms.rebuildall(verbose=True)
+        c = models.CallCounter.objects.get()
+        self.assertEqual(c.called_count, 3)
+        denorm.denorms.rebuildall(verbose=True)
+        c = models.CallCounter.objects.get()
+        self.assertEqual(c.called_count, 4)
+
     def test_denorm_update(self):
         f1 = models.Forum.objects.create(title="forumone")
         m1 = models.Member.objects.create(name="memberone")
