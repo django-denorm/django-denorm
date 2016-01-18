@@ -204,6 +204,19 @@ class SkipPost(models.Model):
     text = models.TextField()
 
 
+class CallCounter(models.Model):
+    @denormalized(models.IntegerField)
+    def called_count(self):
+        if not self.called_count:
+            return 1
+        return self.called_count + 1
+
+
+class CallCounterProxy(CallCounter):
+    class Meta:
+        proxy = True
+
+
 class SkipComment(models.Model):
     post = models.ForeignKey(SkipPost)
     text = models.TextField()

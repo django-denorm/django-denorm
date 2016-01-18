@@ -72,10 +72,11 @@ def get_alldenorms():
     """
     alldenorms = []
     for model in gmodels.get_models(include_auto_created=True):
-        for field in model._meta.fields:
-            if hasattr(field, 'denorm'):
-                if not field.denorm.model._meta.swapped:
-                    alldenorms.append(field.denorm)
+        if not model._meta.proxy:
+            for field in model._meta.fields:
+                if hasattr(field, 'denorm'):
+                    if not field.denorm.model._meta.swapped:
+                        alldenorms.append(field.denorm)
     return alldenorms
 
 
@@ -548,6 +549,7 @@ def rebuildall(verbose=False, model_name=None, field_name=None):
     Updates all models containing denormalized fields.
     Used by the 'denormalize' management command.
     """
+    from .models import DirtyInstance
     alldenorms = get_alldenorms()
     models = {}
     for denorm in alldenorms:
@@ -565,21 +567,17 @@ def rebuildall(verbose=False, model_name=None, field_name=None):
     for model, denorms in models.items():
         if verbose:
             for denorm in denorms:
-                msg = 'rebuilding', '%s/%s' % (i + 1, len(alldenorms)), denorm.fieldname, 'in', denorm.model
+                msg = 'making dirty instances', '%s/%s' % (i + 1, len(alldenorms)), denorm.fieldname, 'in', denorm.model
                 print(msg)
                 i += 1
+        # create DirtyInstance for all objects, so the rebuild is done during flush
+        content_type = contenttypes.models.ContentType.objects.get_for_model(model)
         for instance in model.objects.all():
-            fields = {}
-            save = False
-            for denorm in denorms:
-                _fields = denorm.update(instance)
-                if _fields is not None:
-                    fields.update(_fields)
-                    save = True
-            if save:
-                model.objects.filter(pk=instance.pk).update(**fields)
-
-    flush()
+                DirtyInstance.objects.create(
+                    content_type=content_type,
+                    object_id=instance.pk,
+                )
+    flush(verbose)
 
 
 def drop_triggers(using=None):
@@ -606,7 +604,7 @@ def build_triggerset(using=None):
     return triggerset
 
 
-def flush():
+def flush(verbose=False):
     """
     Updates all model instances marked as dirty by the DirtyInstance
     model.
@@ -628,11 +626,16 @@ def flush():
 
         # Call save() on all dirty instances, causing the self_save_handler()
         # getting called by the pre_save signal.
+        if verbose:
+            size = qs.count()
+            i = 0
         for dirty_instance in qs.iterator():
+            if verbose:
+                i += 1
+                print("flushing %s of %s all dirty instances" % (i, size))
             if dirty_instance.content_object:
                 dirty_instance.content_object.save()
 
-            from .models import DirtyInstance
             DirtyInstance.objects.filter(
                 content_type_id=dirty_instance.content_type_id,
                 object_id=dirty_instance.object_id
