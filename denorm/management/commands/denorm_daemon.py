@@ -50,7 +50,14 @@ class Command(BaseCommand):
             type=str,
             dest='pidfile',
             default=PID_FILE,
-            help='The pid file to use. Defaults to "%s".' % PID_FILE)
+            help='The pid file to use. Defaults to "%s".' % PID_FILE),
+        parser.add_argument(
+            '-o',
+            action='store_true',
+            dest='run_once',
+            default=False,
+            help='Run only once (for testing purposes)',
+        ),
     if django.VERSION < (1, 8):
         option_list = BaseCommand.option_list + (
             make_option(
@@ -74,7 +81,14 @@ class Command(BaseCommand):
                 type='string',
                 dest='pidfile',
                 default=PID_FILE,
-                help='The pid file to use. Defaults to "%s".' % PID_FILE)
+                help='The pid file to use. Defaults to "%s".' % PID_FILE),
+            make_option(
+                '-o',
+                action='store_true',
+                dest='run_once',
+                default=False,
+                help='Run only once (for testing purposes)',
+            ),
         )
     help = "Runs a daemon that checks for dirty fields and updates them in regular intervals."
 
@@ -97,6 +111,7 @@ class Command(BaseCommand):
         foreground = options['foreground']
         interval = options['interval']
         pidfile = options['pidfile']
+        run_once = options['run_once']
 
         if self.pid_exists(pidfile):
             return
@@ -105,7 +120,7 @@ class Command(BaseCommand):
             from denorm import daemon
             daemon.daemonize(noClose=True, pidfile=pidfile)
 
-        while True:
+        while not run_once:
             try:
                 denorms.flush()
                 sleep(interval)
@@ -113,6 +128,8 @@ class Command(BaseCommand):
             except KeyboardInterrupt:
                 transaction.commit()
                 sys.exit()
+            if run_once:
+                break
 
     def handle_noargs(self, **options):  # Django<=1.8
         return self.handle(options)
