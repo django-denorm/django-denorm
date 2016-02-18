@@ -4,10 +4,7 @@ import django
 from time import sleep
 from optparse import make_option
 
-try:  # Django>=1.8
-    from django.core.management.base import BaseCommand
-except ImportError:
-    from django.core.management.base import NoArgsCommand as BaseCommand
+from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from denorm import denorms
@@ -128,6 +125,8 @@ class Command(BaseCommand):
             except KeyboardInterrupt:
                 transaction.commit()
                 sys.exit()
+            if run_once:
+                break
 
     def handle_noargs(self, **options):  # Django<=1.8
         return self.handle(options)
