@@ -159,6 +159,16 @@ class Post(TaggedModel):
         return rcount
 
 
+class PostExtend(models.Model):
+    # Test also OneToOneField
+    post = models.OneToOneField('Post')
+
+    @denormalized(models.CharField, max_length=255)
+    @depend_on_related('Post')
+    def author_name(self):
+        return post.author.name
+
+
 class Attachment(models.Model):
     forum_as_object = False
 
