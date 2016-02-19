@@ -1,6 +1,7 @@
 language: python
 install:
   - pip install tox
+  - pip install coveralls
 before_script:
   - sh -c "if [ '$DB' = 'postgres' ]; then psql -c 'create database denorm_test;' -U postgres; fi;"
 
@@ -88,3 +89,6 @@ matrix:
     - env: DJANGO=djangomaster DB=mysql
     - env: DJANGO=djangomaster DB=postgres
     - env: DJANGO=djangomaster DB=postgis
+after_script:
+  - cd test_denorm_project/
+  - coveralls --rcfile=../.coveragerc

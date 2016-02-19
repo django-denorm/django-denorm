@@ -9,6 +9,8 @@ User = get_user_model()
 import denorm
 from denorm import denorms
 from test_app import models
+import django
+from decimal import Decimal
 
 # Use all but denorms in FailingTriggers models by default
 failingdenorms = denorms.get_alldenorms()
@@ -697,13 +699,12 @@ class CommandsTestCase(TransactionTestCase):
     def test_denorm_daemon(self):
         " Test denorm_daemon command."
 
-        args = []
-        opts = {}
-        call_command('denorm_daemon', *args, **opts)
+        call_command('denorm_daemon', run_once=True, foreground=True)
 
-    def test_makemigrations(self):
-        " Test makemigrations command."
+    if Decimal('.'.join([str(i) for i in django.VERSION[:2]])) >= Decimal('1.7'):
+        def test_makemigrations(self):
+            " Test makemigrations command."
 
-        args = []
-        opts = {}
-        call_command('makemigrations', *args, **opts)
+            args = []
+            opts = {}
+            call_command('makemigrations', *args, **opts)
