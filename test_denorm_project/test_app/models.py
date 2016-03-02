@@ -110,7 +110,7 @@ class Forum(TaggedModel):
     def author_names(self):
         return ', '.join((m.author_name for m in self.post_set.all()))
 
-    @denormalized(models.ManyToManyField, 'Member', null=True, blank=True)
+    @denormalized(models.ManyToManyField, 'Member', blank=True)
     @depend_on_related('Post')
     def authors(self):
         return [m.author for m in self.post_set.all() if m.author]
@@ -159,6 +159,16 @@ class Post(TaggedModel):
         return rcount
 
 
+class PostExtend(models.Model):
+    # Test also OneToOneField
+    post = models.OneToOneField('Post')
+
+    @denormalized(models.CharField, max_length=255)
+    @depend_on_related('Post')
+    def author_name(self):
+        return post.author.name
+
+
 class Attachment(models.Model):
     forum_as_object = False
 
@@ -202,6 +212,19 @@ class Member(models.Model):
 class SkipPost(models.Model):
     # Skip feature test main model.
     text = models.TextField()
+
+
+class CallCounter(models.Model):
+    @denormalized(models.IntegerField)
+    def called_count(self):
+        if not self.called_count:
+            return 1
+        return self.called_count + 1
+
+
+class CallCounterProxy(CallCounter):
+    class Meta:
+        proxy = True
 
 
 class SkipComment(models.Model):

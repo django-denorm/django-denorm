@@ -1,4 +1,5 @@
 from django.db import models, connections, connection
+from ..helpers import remote_field_model
 
 
 class RandomBigInt(object):
@@ -92,8 +93,8 @@ class Trigger(object):
 
         elif isinstance(subject, GenericRelation):
             self.model = None
-            self.db_table = subject.rel.to._meta.db_table
-            self.fields = [(k.attname, k.db_type(connection=self.connection)) for k, v in get_fields_with_model(subject.rel.to, subject.rel.to._meta) if not v]
+            self.db_table = remote_field_model(subject)._meta.db_table
+            self.fields = [(k.attname, k.db_type(connection=self.connection)) for k, v in get_fields_with_model(remote_field_model(subject), remote_field_model(subject)._meta) if not v]
             self.content_type_field = subject.content_type_field_name + '_id'
 
         elif isinstance(subject, models.ForeignKey):
@@ -109,7 +110,10 @@ class Trigger(object):
             # The below will only check the fields on *this* model, not parents
             skip = skip or () + getattr(self.model, 'denorm_always_skip', ())
             self.fields = []
-            from django.db.models.fields.related import ForeignObjectRel
+            try:
+                from django.db.models.fields.related import ForeignObjectRel
+            except:
+                from django.db.models.related import RelatedObject as ForeignObjectRel
             for k, v in get_fields_with_model(subject, self.model._meta):
                 if isinstance(k, ForeignObjectRel):
                     pass
