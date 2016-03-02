@@ -367,7 +367,7 @@ class AggregateDenorm(Denorm):
                 using,
                 self.skip),
             triggers.Trigger(related_field, "after", "insert", [related_increment], content_type, using, self.skip),
-            triggers.Trigger(related_field, "after", "delete", [related_decrement], content_type, using, self.skip),
+            triggers.Trigger(related_field, "before", "delete", [related_decrement], content_type, using, self.skip),
         ]
         return trigger_list
 
@@ -446,7 +446,7 @@ class AggregateDenorm(Denorm):
         trigger_list = [
             triggers.Trigger(related_model, "after", "update", [increment, decrement], content_type, using, self.skip),
             triggers.Trigger(related_model, "after", "insert", [increment], content_type, using, self.skip),
-            triggers.Trigger(related_model, "after", "delete", [decrement], content_type, using, self.skip),
+            triggers.Trigger(related_model, "before", "delete", [decrement], content_type, using, self.skip),
         ]
         if isinstance(related_field, ManyToManyField):
             trigger_list.extend(self.m2m_triggers(content_type, fk_name, related_field, using))
