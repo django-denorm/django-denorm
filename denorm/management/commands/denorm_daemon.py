@@ -119,10 +119,11 @@ class Command(BaseCommand):
 
         while not run_once:
             try:
-                with transaction.atomic():
-                    denorms.flush()
+                denorms.flush()
                 sleep(interval)
+                transaction.commit()
             except KeyboardInterrupt:
+                transaction.commit()
                 sys.exit()
             if run_once:
                 break
