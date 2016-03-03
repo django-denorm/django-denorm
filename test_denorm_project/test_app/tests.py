@@ -574,6 +574,29 @@ class TestDenormalisation(TransactionTestCase):
         self.assertNotEqual(ck1, m1.cachekey)
 
 
+class DeletionTestCase(TestCase):
+    def setUp(self):
+        denorms.drop_triggers()
+        denorms.install_triggers()
+
+    def test_deletion_triggers_update(self):
+        bar = models.Bar.objects.create()
+        self.assertEqual(0, bar.value)
+        foo = models.Foo.objects.create(bar=bar)
+
+        denorm.flush()
+
+        bar = models.Bar.objects.get(pk=bar.pk)
+        self.assertEqual(1, bar.value)
+
+        foo.delete()
+
+        denorm.flush()
+
+        bar = models.Bar.objects.get(pk=bar.pk)
+        self.assertEqual(0, bar.value)
+
+
 if connection.vendor != "sqlite":
     class TestFilterCount(TestCase):
         """
