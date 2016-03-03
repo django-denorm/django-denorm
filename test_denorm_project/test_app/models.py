@@ -263,6 +263,17 @@ class SkipCommentWithAttributeSkip(SkipComment):
     denorm_always_skip = ('updated_on',)
 
 
+class Bar(models.Model):
+    @denormalized(models.IntegerField, default=0)
+    @depend_on_related('Foo')
+    def value(self):
+        return self.foo_set.count()
+
+
+class Foo(models.Model):
+    bar = models.ForeignKey(Bar)
+
+
 if connection.vendor != "sqlite":
     class FilterSumModel(models.Model):
         # Simple count() aggregate
