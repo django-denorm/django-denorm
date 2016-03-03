@@ -123,7 +123,7 @@ class CacheKeyDependOnRelated(DependOnRelated):
             return [
                 triggers.Trigger(self.other_model, "after", "update", [action_new], content_type, using, self.skip),
                 triggers.Trigger(self.other_model, "after", "insert", [action_new], content_type, using, self.skip),
-                triggers.Trigger(self.other_model, "after", "delete", [action_old], content_type, using, self.skip),
+                triggers.Trigger(self.other_model, "before", "delete", [action_old], content_type, using, self.skip),
             ]
 
         if self.type == "backward":
@@ -153,7 +153,7 @@ class CacheKeyDependOnRelated(DependOnRelated):
             return [
                 triggers.Trigger(self.other_model, "after", "update", [action_new, action_old], content_type, using, self.skip),
                 triggers.Trigger(self.other_model, "after", "insert", [action_new], content_type, using, self.skip),
-                triggers.Trigger(self.other_model, "after", "delete", [action_old], content_type, using, self.skip),
+                triggers.Trigger(self.other_model, "before", "delete", [action_old], content_type, using, self.skip),
             ]
 
         if "m2m" in self.type:
@@ -199,7 +199,7 @@ class CacheKeyDependOnRelated(DependOnRelated):
             trigger_list = [
                 triggers.Trigger(self.field, "after", "update", [action_m2m_new, action_m2m_old], content_type, using, self.skip),
                 triggers.Trigger(self.field, "after", "insert", [action_m2m_new], content_type, using, self.skip),
-                triggers.Trigger(self.field, "after", "delete", [action_m2m_old], content_type, using, self.skip),
+                triggers.Trigger(self.field, "before", "delete", [action_m2m_old], content_type, using, self.skip),
             ]
 
             if isinstance(self.field, models.ManyToManyField):
@@ -303,7 +303,7 @@ class CallbackDependOnRelated(DependOnRelated):
             return [
                 triggers.Trigger(self.other_model, "after", "update", [action_new], content_type, using, self.skip),
                 triggers.Trigger(self.other_model, "after", "insert", [action_new], content_type, using, self.skip),
-                triggers.Trigger(self.other_model, "after", "delete", [action_old], content_type, using, self.skip),
+                triggers.Trigger(self.other_model, "before", "delete", [action_old], content_type, using, self.skip),
             ]
 
         if self.type == "backward":
@@ -335,7 +335,7 @@ class CallbackDependOnRelated(DependOnRelated):
             return [
                 triggers.Trigger(self.other_model, "after", "update", [action_new, action_old], content_type, using, self.skip),
                 triggers.Trigger(self.other_model, "after", "insert", [action_new], content_type, using, self.skip),
-                triggers.Trigger(self.other_model, "after", "delete", [action_old], content_type, using, self.skip),
+                triggers.Trigger(self.other_model, "before", "delete", [action_old], content_type, using, self.skip),
             ]
 
         if "m2m" in self.type:
@@ -379,7 +379,7 @@ class CallbackDependOnRelated(DependOnRelated):
             trigger_list = [
                 triggers.Trigger(self.field, "after", "update", [action_m2m_new, action_m2m_old], content_type, using, self.skip),
                 triggers.Trigger(self.field, "after", "insert", [action_m2m_new], content_type, using, self.skip),
-                triggers.Trigger(self.field, "after", "delete", [action_m2m_old], content_type, using, self.skip),
+                triggers.Trigger(self.field, "before", "delete", [action_m2m_old], content_type, using, self.skip),
             ]
 
             if isinstance(self.field, models.ManyToManyField):
