@@ -263,6 +263,19 @@ class SkipCommentWithAttributeSkip(SkipComment):
     denorm_always_skip = ('updated_on',)
 
 
+class Team(models.Model):
+    @denormalized(models.TextField)
+    @depend_on_related('Competitor')
+    def user_string(self):
+        return ', '.join(sorted([u.name for u in self.competitor_set.all()]))
+
+
+class Competitor(models.Model):
+    name = models.TextField()
+    team = models.ForeignKey(Team)
+
+
+
 if connection.vendor != "sqlite":
     class FilterSumModel(models.Model):
         # Simple count() aggregate
