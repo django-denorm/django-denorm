@@ -483,6 +483,25 @@ class TestDenormalisation(TransactionTestCase):
         self.assertEqual(f1.tags_string, 'tagfour, tagone, tagtwo')
         self.assertEqual(p1.tags_string, 'tagthree')
 
+    def test_denorm_delete(self):
+        """ This tests bug #69 """
+        team = models.Team.objects.create()
+
+        self.assertEqual(team.user_string, '')
+
+        models.Competitor.objects.create(name='tagone', team=team)
+        models.Competitor.objects.create(name='tagtwo', team=team)
+
+        denorm.denorms.flush()
+        team = models.Team.objects.get(id=team.id)
+        self.assertEqual(team.user_string, 'tagone, tagtwo')
+
+        models.Competitor.objects.get(name='tagtwo').delete()
+
+        denorm.denorms.flush()
+        team = models.Team.objects.get(id=team.id)
+        self.assertEqual(team.user_string, 'tagone')
+
     def test_cache_key_field_backward(self):
         f1 = models.Forum.objects.create(title="forumone")
         f2 = models.Forum.objects.create(title="forumtwo")
