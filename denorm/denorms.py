@@ -410,7 +410,7 @@ class AggregateDenorm(Denorm):
         inc_query = TriggerFilterQuery(related_model, trigger_alias='NEW')
         inc_query.add_q(Q(**self.filter))
         inc_query.add_q(~Q(**self.exclude))
-        if Decimal('.'.join([str(i) for i in django.VERSION[:2]])) >= Decimal('1.7'):
+        if django.VERSION >= (1, 7):
             qn = SQLCompiler(inc_query, cconnection, using)
         else:
             qn = SQLCompiler(inc_query, cconnection, using).quote_name_unless_alias
@@ -419,7 +419,7 @@ class AggregateDenorm(Denorm):
         dec_query = TriggerFilterQuery(related_model, trigger_alias='OLD')
         dec_query.add_q(Q(**self.filter))
         dec_query.add_q(~Q(**self.exclude))
-        if Decimal('.'.join([str(i) for i in django.VERSION[:2]])) >= Decimal('1.7'):
+        if django.VERSION >= (1, 7):
             qn = SQLCompiler(dec_query, cconnection, using)
         else:
             qn = SQLCompiler(dec_query, cconnection, using).quote_name_unless_alias
