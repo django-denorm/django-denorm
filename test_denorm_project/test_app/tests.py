@@ -708,3 +708,27 @@ class CommandsTestCase(TransactionTestCase):
             args = []
             opts = {}
             call_command('makemigrations', *args, **opts)
+
+    def test_denorm_init(self):
+        " Test denorm_init command."
+        call_command('denorm_init')
+
+    def test_denorm_drop(self):
+        " Test denorm_init command."
+        call_command('denorm_drop')
+
+    def test_denorm_flush(self):
+        " Test denorm_init command."
+        call_command('denorm_flush')
+
+    def test_denorm_rebuild(self):
+        " Test denorm_init command."
+        call_command('denorm_rebuild')
+
+    def test_denorm_sql(self):
+        " Test denorm_init command."
+        call_command('denorm_sql')
+
+    def test_denormalize(self):
+        " Test denorm_init command."
+        self.assertRaises(django.core.management.base.CommandError, call_command, 'denormalize')
