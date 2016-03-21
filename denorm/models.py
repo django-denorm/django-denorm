@@ -20,6 +20,7 @@ class DirtyInstance(models.Model):
     content_type = models.ForeignKey(ContentType)
     object_id = models.TextField(blank=True, null=True)
     content_object = GenericForeignKey()
+    identifier = models.CharField(null=True, max_length=200)
 
     def __str__(self):
         return u'DirtyInstance: %s,%s' % (self.content_type, self.object_id)
