@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from denorm import flush
 from django.db import DatabaseError
+from django.db import connection
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,3 +22,12 @@ class DenormMiddleware(object):
         except DatabaseError as e:
             logger.error(e)
         return response
+
+
+class DenormMysqlConnectionIdentifierMiddleware(object):
+    """
+    Sets a MySQL user defined variable to control DirtyInstance.identifier
+    """
+    def process_request(self, request):
+        cursor = connection.cursor()
+        cursor.execute('SET @denorm_identifier = uuid();')
