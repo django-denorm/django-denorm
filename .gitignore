@@ -8,3 +8,4 @@ example/photos
 dist
 django_denorm.egg-info
 .tox/
+venv1.7/
