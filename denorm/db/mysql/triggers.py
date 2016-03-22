@@ -1,6 +1,7 @@
 import random
 import string
 from denorm.db import base
+from . import identifier
 
 
 class RandomBigInt(base.RandomBigInt):
@@ -9,26 +10,38 @@ class RandomBigInt(base.RandomBigInt):
 
 
 class TriggerNestedSelect(base.TriggerNestedSelect):
+    def get_columns_with_identifier(self):
+        columns = self.columns.split(",")
+        columns.append("(SELECT {})".format(identifier.get_name()))
+        columns = ", ".join(columns)
+        return columns
 
     def sql(self):
-        columns = self.columns
+        columns = self.get_columns_with_identifier()
         table = self.table
         where = ", ".join(["%s = %s" % (k, v) for k, v in self.kwargs.items()])
         return 'SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s' % locals(), tuple()
 
 
 class TriggerActionInsert(base.TriggerActionInsert):
+    def get_columns_with_identifier(self):
+        return self.columns + ("identifier",)
+
+    def get_values_with_identifier(self):
+        return self.values + ("(SELECT {})".format(identifier.get_name()),)
 
     def sql(self):
         table = self.model._meta.db_table
-        columns = "(" + ", ".join(self.columns) + ")"
+        columns = self.get_columns_with_identifier()
+        columns = "(" + ", ".join(columns) + ")"
         params = []
         if isinstance(self.values, TriggerNestedSelect):
             sql, nested_params = self.values.sql()
             values = "(" + sql + ")"
             params.extend(nested_params)
         else:
-            values = "VALUES (" + ", ".join(self.values) + ")"
+            values = self.get_values_with_identifier()
+            values = "VALUES (" + ", ".join(values) + ")"
 
         return 'INSERT IGNORE INTO %(table)s %(columns)s %(values)s' % locals(), tuple()
 

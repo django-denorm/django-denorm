@@ -21,6 +21,9 @@ from django.db.models.sql.where import WhereNode
 import django
 from decimal import Decimal
 
+from denorm.db import identifier
+
+
 def many_to_many_pre_save(sender, instance, **kwargs):
     """
     Updates denormalised many-to-many fields for the model
@@ -639,4 +642,40 @@ def flush(verbose=False):
             DirtyInstance.objects.filter(
                 content_type_id=dirty_instance.content_type_id,
                 object_id=dirty_instance.object_id
+            ).delete()
+
+
+def flush_by_identifier(verbose=False):
+    """
+    Like flush(), but scopes on identifier
+    """
+
+    # Loop until break.
+    # We may need multiple passes, because an update on one instance
+    # may cause an other instance to be marked dirty (dependency chains)
+    while True:
+        # Get all dirty markers
+        from denorm.models import DirtyInstance
+        qs = DirtyInstance.objects.filter(identifier=identifier.get())
+
+        # DirtyInstance table is empty -> all data is consistent -> we're done
+        if not qs:
+            break
+
+        # Call save() on all dirty instances, causing the self_save_handler()
+        # getting called by the pre_save signal.
+        if verbose:
+            size = qs.count()
+            i = 0
+        for dirty_instance in qs.iterator():
+            if verbose:
+                i += 1
+                print("flushing %s of %s all dirty instances" % (i, size))
+            if dirty_instance.content_object:
+                dirty_instance.content_object.save()
+
+            DirtyInstance.objects.filter(
+                content_type_id=dirty_instance.content_type_id,
+                object_id=dirty_instance.object_id,
+                identifier=identifier.get()
             ).delete()
