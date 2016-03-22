@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-from denorm.helpers import find_fks, find_m2ms
+from denorm.helpers import find_fks, find_m2ms, remote_field_model
 from django.db import models
 from django.db.models.fields import related
 from django.db import connections, connection
 import denorm
 from django.contrib import contenttypes
-from denorm.db import triggers
 import six
 
 
@@ -90,6 +89,7 @@ class DependOnRelated(DenormDependency):
 class CacheKeyDependOnRelated(DependOnRelated):
 
     def get_triggers(self, using):
+        from denorm.db import triggers
         qn = self.get_quote_name(using)
 
         if not self.type:
@@ -99,6 +99,7 @@ class CacheKeyDependOnRelated(DependOnRelated):
         content_type = str(contenttypes.models.ContentType.objects.get_for_model(self.this_model).pk)
 
         if self.type == "forward":
+            from denorm.db import triggers
             # With forward relations many instances of ``this_model``
             # may be related to one instance of ``other_model``
             action_new = triggers.TriggerActionUpdate(
@@ -168,9 +169,9 @@ class CacheKeyDependOnRelated(DependOnRelated):
             else:
                 if "forward" in self.type:
                     column_name = self.field.object_id_field_name
-                    reverse_column_name = self.field.rel.to._meta.pk.column
+                    reverse_column_name = self.field.remote_field.model._meta.pk.column
                 if "backward" in self.type:
-                    column_name = self.field.rel.to._meta.pk.column
+                    column_name = self.field.remote_field.model._meta.pk.column
                     reverse_column_name = self.field.object_id_field_name
 
             # The first part of a M2M dependency is exactly like a backward
@@ -265,6 +266,7 @@ class CallbackDependOnRelated(DependOnRelated):
         super(CallbackDependOnRelated, self).__init__(othermodel, foreign_key, type, skip)
 
     def get_triggers(self, using):
+        from denorm.db import triggers
         qn = self.get_quote_name(using)
 
         if not self.type:
@@ -347,9 +349,9 @@ class CallbackDependOnRelated(DependOnRelated):
             else:
                 if "forward" in self.type:
                     column_name = qn(self.field.object_id_field_name)
-                    reverse_column_name = self.field.rel.to._meta.pk.column
+                    reverse_column_name = remote_field_model(self.field)._meta.pk.column
                 if "backward" in self.type:
-                    column_name = qn(self.field.rel.to._meta.pk.column)
+                    column_name = qn(remote_field_model(self.field)._meta.pk.column)
                     reverse_column_name = self.field.object_id_field_name
 
             # The first part of a M2M dependency is exactly like a backward

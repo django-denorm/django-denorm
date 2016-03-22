@@ -2,10 +2,10 @@ from .settings import *
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
         'NAME': 'denorm_test',
         'HOST': 'localhost',
-        'USER': 'root',
+        'USER': 'postgres',
         'PASSWORD': '',
     }
 }

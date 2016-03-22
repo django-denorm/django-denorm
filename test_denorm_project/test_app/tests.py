@@ -1,6 +1,7 @@
 from django.db import connection
 from django.test import TestCase, TransactionTestCase
 from django.contrib.contenttypes.models import ContentType
+from django.core.management import call_command
 
 from django.contrib.auth import get_user_model
 User = get_user_model()
@@ -8,6 +9,8 @@ User = get_user_model()
 import denorm
 from denorm import denorms
 from test_app import models
+import django
+from decimal import Decimal
 
 # Use all but denorms in FailingTriggers models by default
 failingdenorms = denorms.get_alldenorms()
@@ -424,6 +427,22 @@ class TestDenormalisation(TransactionTestCase):
         self.assertEqual(f1.post_count, 1)
         self.assertEqual(f1.authors.all()[0], m1)
 
+    def test_denorm_rebuild_called_once(self):
+        """
+        Test whether the denorm function is not called only once during rebuild.
+        The proxy model CallCounterProxy should not add extra callings to denorm function.
+        """
+        models.CallCounter.objects.create()
+        denorm.denorms.flush()
+        c = models.CallCounter.objects.get()
+        self.assertEqual(c.called_count, 2)  # TODO: we should be able to create object with hitting the denorm function just once
+        denorm.denorms.rebuildall(verbose=True)
+        c = models.CallCounter.objects.get()
+        self.assertEqual(c.called_count, 3)
+        denorm.denorms.rebuildall(verbose=True)
+        c = models.CallCounter.objects.get()
+        self.assertEqual(c.called_count, 4)
+
     def test_denorm_update(self):
         f1 = models.Forum.objects.create(title="forumone")
         m1 = models.Member.objects.create(name="memberone")
@@ -693,3 +712,42 @@ if connection.vendor != "sqlite":
             item.save()
             master = models.FilterSumModel.objects.get(pk=master.pk)
             self.assertEqual(master.active_item_sum, 8)
+
+
+class CommandsTestCase(TransactionTestCase):
+    def test_denorm_daemon(self):
+        " Test denorm_daemon command."
+
+        call_command('denorm_daemon', run_once=True, foreground=True)
+
+    if Decimal('.'.join([str(i) for i in django.VERSION[:2]])) >= Decimal('1.7'):
+        def test_makemigrations(self):
+            " Test makemigrations command."
+
+            args = []
+            opts = {}
+            call_command('makemigrations', *args, **opts)
+
+    def test_denorm_init(self):
+        " Test denorm_init command."
+        call_command('denorm_init')
+
+    def test_denorm_drop(self):
+        " Test denorm_init command."
+        call_command('denorm_drop')
+
+    def test_denorm_flush(self):
+        " Test denorm_init command."
+        call_command('denorm_flush')
+
+    def test_denorm_rebuild(self):
+        " Test denorm_init command."
+        call_command('denorm_rebuild')
+
+    def test_denorm_sql(self):
+        " Test denorm_init command."
+        call_command('denorm_sql')
+
+    def test_denormalize(self):
+        " Test denorm_init command."
+        self.assertRaises(django.core.management.base.CommandError, call_command, 'denormalize')
