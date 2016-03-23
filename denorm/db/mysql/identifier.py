@@ -17,3 +17,10 @@ def get():
     identifier = cursor.fetchone()[0]
     cursor.close()
     return identifier
+
+
+def get_nonidentifier():
+    """
+    Return the identifier that does not identify
+    """
+    return None
