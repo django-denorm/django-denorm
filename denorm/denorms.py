@@ -607,13 +607,20 @@ def build_triggerset(using=None):
     return triggerset
 
 
-def flush(verbose=False):
+_identifier_undefined = object()
+
+
+def flush(verbose=False, identifier=_identifier_undefined):
     """
     Updates all model instances marked as dirty by the DirtyInstance
     model.
     After this method finishes the DirtyInstance table is empty and
     all denormalized fields have consistent data.
     """
+    if identifier is _identifier_undefined:
+        q = Q()
+    else:
+        q = Q(identifier=identifier)
 
     # Loop until break.
     # We may need multiple passes, because an update on one instance
@@ -621,42 +628,7 @@ def flush(verbose=False):
     while True:
         # Get all dirty markers
         from .models import DirtyInstance
-        qs = DirtyInstance.objects.all()
-
-        # DirtyInstance table is empty -> all data is consistent -> we're done
-        if not qs:
-            break
-
-        # Call save() on all dirty instances, causing the self_save_handler()
-        # getting called by the pre_save signal.
-        if verbose:
-            size = qs.count()
-            i = 0
-        for dirty_instance in qs.iterator():
-            if verbose:
-                i += 1
-                print("flushing %s of %s all dirty instances" % (i, size))
-            if dirty_instance.content_object:
-                dirty_instance.content_object.save()
-
-            DirtyInstance.objects.filter(
-                content_type_id=dirty_instance.content_type_id,
-                object_id=dirty_instance.object_id
-            ).delete()
-
-
-def flush_by_identifier(verbose=False):
-    """
-    Like flush(), but scopes on identifier
-    """
-
-    # Loop until break.
-    # We may need multiple passes, because an update on one instance
-    # may cause an other instance to be marked dirty (dependency chains)
-    while True:
-        # Get all dirty markers
-        from denorm.models import DirtyInstance
-        qs = DirtyInstance.objects.filter(identifier=identifier.get())
+        qs = DirtyInstance.objects.filter(q)
 
         # DirtyInstance table is empty -> all data is consistent -> we're done
         if not qs:
@@ -677,41 +649,4 @@ def flush_by_identifier(verbose=False):
             DirtyInstance.objects.filter(
                 content_type_id=dirty_instance.content_type_id,
                 object_id=dirty_instance.object_id,
-                identifier=identifier.get()
-            ).delete()
-
-
-def flush_by_nonidentified(verbose=False):
-    """
-    Like flush(), but scopes on identifier == NULL
-    """
-
-    # Loop until break.
-    # We may need multiple passes, because an update on one instance
-    # may cause an other instance to be marked dirty (dependency chains)
-    while True:
-        # Get all dirty markers
-        from denorm.models import DirtyInstance
-        qs = DirtyInstance.objects.filter(identifier=None)
-
-        # DirtyInstance table is empty -> all data is consistent -> we're done
-        if not qs:
-            break
-
-        # Call save() on all dirty instances, causing the self_save_handler()
-        # getting called by the pre_save signal.
-        if verbose:
-            size = qs.count()
-            i = 0
-        for dirty_instance in qs.iterator():
-            if verbose:
-                i += 1
-                print("flushing %s of %s all dirty instances" % (i, size))
-            if dirty_instance.content_object:
-                dirty_instance.content_object.save()
-
-            DirtyInstance.objects.filter(
-                content_type_id=dirty_instance.content_type_id,
-                object_id=dirty_instance.object_id,
-                identifier=None
-            ).delete()
+            ).filter(q).delete()
