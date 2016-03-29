@@ -21,6 +21,7 @@ class DirtyInstance(models.Model):
     object_id = models.TextField(blank=True, null=True)
     content_object = GenericForeignKey()
     identifier = models.CharField(null=True, max_length=200)
+    created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return u'DirtyInstance: %s,%s' % (self.content_type, self.object_id)

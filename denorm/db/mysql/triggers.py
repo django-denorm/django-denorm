@@ -10,29 +10,30 @@ class RandomBigInt(base.RandomBigInt):
 
 
 class TriggerNestedSelect(base.TriggerNestedSelect):
-    def get_columns_with_identifier(self):
+    def _get_columns(self):
         columns = self.columns.split(",")
         columns.append("(SELECT {})".format(identifier.get_name()))
+        columns.append("CURRENT_TIMESTAMP")
         columns = ", ".join(columns)
         return columns
 
     def sql(self):
-        columns = self.get_columns_with_identifier()
+        columns = self._get_columns()
         table = self.table
         where = ", ".join(["%s = %s" % (k, v) for k, v in self.kwargs.items()])
         return 'SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s' % locals(), tuple()
 
 
 class TriggerActionInsert(base.TriggerActionInsert):
-    def get_columns_with_identifier(self):
-        return self.columns + ("identifier",)
+    def _get_columns(self):
+        return self.columns + ("identifier", "created")
 
-    def get_values_with_identifier(self):
-        return self.values + ("(SELECT {})".format(identifier.get_name()),)
+    def _get_values(self):
+        return self.values + ("(SELECT {})".format(identifier.get_name()), "CURRENT_TIMESTAMP")
 
     def sql(self):
         table = self.model._meta.db_table
-        columns = self.get_columns_with_identifier()
+        columns = self._get_columns()
         columns = "(" + ", ".join(columns) + ")"
         params = []
         if isinstance(self.values, TriggerNestedSelect):
@@ -40,7 +41,7 @@ class TriggerActionInsert(base.TriggerActionInsert):
             values = "(" + sql + ")"
             params.extend(nested_params)
         else:
-            values = self.get_values_with_identifier()
+            values = self._get_values()
             values = "VALUES (" + ", ".join(values) + ")"
 
         return 'INSERT IGNORE INTO %(table)s %(columns)s %(values)s' % locals(), tuple()

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import abc
+import datetime
 
 from django.contrib import contenttypes
 from django.db import connections, connection
@@ -18,10 +19,11 @@ except ImportError:
     from django.db.models.sql.constants import JoinInfo
 from django.db.models.sql.query import Query
 from django.db.models.sql.where import WhereNode
+from django.utils import timezone
 import django
 from decimal import Decimal
 
-from denorm.db import identifier
+from denorm.db import identifier as _identifier
 
 
 def many_to_many_pre_save(sender, instance, **kwargs):
@@ -617,8 +619,9 @@ def flush(verbose=False, identifier=_identifier_undefined):
     After this method finishes the DirtyInstance table is empty and
     all denormalized fields have consistent data.
     """
-    if identifier is _identifier_undefined:
-        q = Q()
+    if identifier is _identifier_undefined or identifier == _identifier.get_nonidentifier():
+        # Grab any old dirty instances left lying around
+        q = Q(created__lt=timezone.now()-datetime.timedelta(minutes=10))
     else:
         q = Q(identifier=identifier)
 
