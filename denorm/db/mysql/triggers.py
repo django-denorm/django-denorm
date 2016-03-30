@@ -13,7 +13,7 @@ class TriggerNestedSelect(base.TriggerNestedSelect):
     def _get_columns(self):
         columns = self.columns.split(",")
         columns.append("(SELECT {})".format(identifier.get_name()))
-        columns.append("CURRENT_TIMESTAMP")
+        columns.append("UTC_TIMESTAMP")
         columns = ", ".join(columns)
         return columns
 
@@ -29,7 +29,7 @@ class TriggerActionInsert(base.TriggerActionInsert):
         return self.columns + ("identifier", "created")
 
     def _get_values(self):
-        return self.values + ("(SELECT {})".format(identifier.get_name()), "CURRENT_TIMESTAMP")
+        return self.values + ("(SELECT {})".format(identifier.get_name()), "UTC_TIMESTAMP")
 
     def sql(self):
         table = self.model._meta.db_table
