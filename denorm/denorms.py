@@ -620,8 +620,8 @@ def flush(verbose=False, identifier=_identifier_undefined):
     all denormalized fields have consistent data.
     """
     if identifier is _identifier_undefined or identifier == _identifier.get_nonidentifier():
-        # Grab any old dirty instances left lying around
-        q = Q(created__lt=timezone.now()-datetime.timedelta(minutes=10))
+        # Also grab any old dirty instances left lying around
+        q = Q(Q(identifier=_identifier.get_nonidentifier()) | Q(created__lt=timezone.now()-datetime.timedelta(minutes=10)))
     else:
         q = Q(identifier=identifier)
 
