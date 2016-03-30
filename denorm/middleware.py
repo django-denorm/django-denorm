@@ -21,3 +21,9 @@ class DenormMiddleware(object):
         except DatabaseError as e:
             logger.error(e)
         return response
+
+
+class DenormSetIdentifierMiddleware(object):
+    def process_request(self, request):
+        from denorm.db import identifier
+        identifier.set()

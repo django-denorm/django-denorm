@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from django.db import models
-from denorm import denorms
+from django.db import models, connection
+from . import denorms
 from django.conf import settings
 import django.db.models
 
@@ -31,7 +31,7 @@ def denormalized(DBField, *args, **kwargs):
         Special subclass of the given DBField type, with a few extra additions.
         """
 
-        def __init__(self, func, *args, **kwargs):
+        def __init__(self, func=None, *args, **kwargs):
             self.func = func
             self.skip = kwargs.pop('skip', None)
             kwargs['editable'] = False
@@ -58,7 +58,20 @@ def denormalized(DBField, *args, **kwargs):
             Updates the value of the denormalized field before it gets saved.
             """
             value = self.denorm.func(model_instance)
-            if hasattr(self, 'related_field') and isinstance(value, self.related_field.model):
+
+            if hasattr(self, "remote_field") and self.remote_field:  # Django>=1.10
+                related_field_model = self.remote_field.model
+            elif hasattr(self, 'related_field'):  # Django>1.5
+                related_field_model = self.related_field.model
+            elif hasattr(self, "related"):
+                try:
+                    related_field_model = self.related.parent_model
+                except AttributeError:
+                    related_field_model = self.related.model
+            else:
+                related_field_model = None
+
+            if related_field_model and isinstance(value, related_field_model):
                 setattr(model_instance, self.attname, None)
                 setattr(model_instance, self.name, value)
                 return getattr(model_instance, self.attname)
@@ -76,6 +89,11 @@ def denormalized(DBField, *args, **kwargs):
             args, kwargs = introspector(self)
             return (field_class, args, kwargs)
 
+        def deconstruct(self):
+            name, path, args, kwargs = super(DenormDBField, self).deconstruct()
+            super_name, super_path, super_args, super_kwargs = DBField(*args, **kwargs).deconstruct()
+            return name, super_path, args, kwargs
+
     def deco(func):
         dbfield = DenormDBField(func, *args, **kwargs)
         return dbfield
@@ -90,7 +108,7 @@ class AggregateField(models.PositiveIntegerField):
         """
         raise NotImplemented('You need to override this method')
 
-    def __init__(self, manager_name, **kwargs):
+    def __init__(self, manager_name=None, **kwargs):
         """
         **Arguments:**
 
@@ -111,7 +129,7 @@ class AggregateField(models.PositiveIntegerField):
         """
         skip = kwargs.pop('skip', None)
         qs_filter = kwargs.pop('filter', {})
-        if qs_filter and hasattr(django.db.backend, 'sqlite3'):
+        if qs_filter and connection.vendor == "sqlite":
             raise NotImplementedError('filters for aggregate fields are currently not supported for sqlite')
         qs_exclude = kwargs.pop('exclude', {})
         self.denorm = self.get_denorm(skip)
@@ -159,6 +177,12 @@ class AggregateField(models.PositiveIntegerField):
         setattr(model_instance, self.attname, value)
         return value
 
+    def deconstruct(self):
+        name, path, args, kwargs = super(AggregateField, self).deconstruct()
+        del kwargs['editable']
+        args = [self.denorm.manager_name] + args
+        return name, path, args, kwargs
+
 
 class CountField(AggregateField):
     """
@@ -169,7 +193,7 @@ class CountField(AggregateField):
 
     """
 
-    def __init__(self, manager_name, **kwargs):
+    def __init__(self, manager_name=None, **kwargs):
         """
         **Arguments:**
 
@@ -202,7 +226,7 @@ class SumField(AggregateField):
 
     """
 
-    def __init__(self, manager_name, field, **kwargs):
+    def __init__(self, manager_name=None, field=None, **kwargs):
         self.field = field
         kwargs['editable'] = False
         super(SumField, self).__init__(manager_name, **kwargs)
@@ -243,7 +267,7 @@ class CacheKeyField(models.BigIntegerField):
         Add dependency information to the CacheKeyField.
         Accepts the same arguments like the *denorm.depend_on_related* decorator
         """
-        from dependencies import CacheKeyDependOnRelated
+        from .dependencies import CacheKeyDependOnRelated
         self.dependencies.append(CacheKeyDependOnRelated(*args, **kwargs))
 
     def contribute_to_class(self, cls, name, *args, **kwargs):
@@ -291,12 +315,13 @@ class CacheWrapper(object):
 
 
 class CachedField(CacheKeyField):
-    def __init__(self, func, cache, *args, **kwargs):
+    def __init__(self, func=None, cache=None, *args, **kwargs):
         self.func = func
         self.cache = cache
         super(CachedField, self).__init__(*args, **kwargs)
-        for c, a, kw in self.func.depend:
-            self.depend_on_related(*a, **kw)
+        if func and cache:
+            for c, a, kw in self.func.depend:
+                self.depend_on_related(*a, **kw)
 
     def contribute_to_class(self, cls, name, *args, **kwargs):
         super(CachedField, self).contribute_to_class(cls, name, *args, **kwargs)

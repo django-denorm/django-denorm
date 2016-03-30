@@ -1,15 +1,18 @@
-import django
+from django.db import connection
 from django.conf import settings
 from django.db import models
-from django.contrib.contenttypes.generic import GenericForeignKey, GenericRelation
-from django.contrib.contenttypes.models import ContentType
+try:
+    from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+except ImportError:
+    from django.contrib.contenttypes.generic import GenericForeignKey, GenericRelation
+from django.contrib import contenttypes
 from django.core.cache import cache
 
 from denorm.fields import SumField
 from denorm import denormalized, depend_on_related, CountField, CacheKeyField, cached
 
 
-settings.DENORM_MODEL = 'denorm.RealDenormModel'
+settings.DENORM_MODEL = 'test_app.RealDenormModel'
 
 
 class FailingTriggersModelA(models.Model):
@@ -52,7 +55,7 @@ class AbstractDenormModel(models.Model):
 
     class Meta:
         abstract = True
-        app_label = 'denorm'
+        app_label = 'test_app'
 
 
 class DenormModel(AbstractDenormModel):
@@ -76,7 +79,7 @@ class RealDenormModel(AbstractDenormModel):
 class Tag(models.Model):
     name = models.CharField(max_length=255)
 
-    content_type = models.ForeignKey(ContentType)
+    content_type = models.ForeignKey(contenttypes.models.ContentType)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
 
@@ -107,7 +110,7 @@ class Forum(TaggedModel):
     def author_names(self):
         return ', '.join((m.author_name for m in self.post_set.all()))
 
-    @denormalized(models.ManyToManyField, 'Member', null=True, blank=True)
+    @denormalized(models.ManyToManyField, 'Member', blank=True)
     @depend_on_related('Post')
     def authors(self):
         return [m.author for m in self.post_set.all() if m.author]
@@ -156,6 +159,16 @@ class Post(TaggedModel):
         return rcount
 
 
+class PostExtend(models.Model):
+    # Test also OneToOneField
+    post = models.OneToOneField('Post')
+
+    @denormalized(models.CharField, max_length=255)
+    @depend_on_related('Post')
+    def author_name(self):
+        return post.author.name
+
+
 class Attachment(models.Model):
     forum_as_object = False
 
@@ -201,6 +214,19 @@ class SkipPost(models.Model):
     text = models.TextField()
 
 
+class CallCounter(models.Model):
+    @denormalized(models.IntegerField)
+    def called_count(self):
+        if not self.called_count:
+            return 1
+        return self.called_count + 1
+
+
+class CallCounterProxy(CallCounter):
+    class Meta:
+        proxy = True
+
+
 class SkipComment(models.Model):
     post = models.ForeignKey(SkipPost)
     text = models.TextField()
@@ -237,7 +263,20 @@ class SkipCommentWithAttributeSkip(SkipComment):
     denorm_always_skip = ('updated_on',)
 
 
-if not hasattr(django.db.backend, 'sqlite3'):
+class Team(models.Model):
+    @denormalized(models.TextField)
+    @depend_on_related('Competitor')
+    def user_string(self):
+        return ', '.join(sorted([u.name for u in self.competitor_set.all()]))
+
+
+class Competitor(models.Model):
+    name = models.TextField()
+    team = models.ForeignKey(Team)
+
+
+
+if connection.vendor != "sqlite":
     class FilterSumModel(models.Model):
         # Simple count() aggregate
         active_item_sum = SumField('counts', field='active_item_count', filter={'age__gte': 18})

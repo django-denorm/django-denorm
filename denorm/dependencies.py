@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-from denorm.helpers import find_fks, find_m2ms
+from denorm.helpers import find_fks, find_m2ms, remote_field_model
 from django.db import models
 from django.db.models.fields import related
 from django.db import connections, connection
-from denorm.models import DirtyInstance
-from django.contrib.contenttypes.models import ContentType
-from denorm.db import triggers
+import denorm
+from django.contrib import contenttypes
+import six
 
 
 class DenormDependency(object):
@@ -48,7 +48,7 @@ class DependOnRelated(DenormDependency):
         if self.other_model == related.RECURSIVE_RELATIONSHIP_CONSTANT:
             self.other_model = self.this_model
 
-        if isinstance(self.other_model, (str, unicode)):
+        if isinstance(self.other_model, six.string_types):
             # if ``other_model`` is a string, it certainly is a lazy relation.
             related.add_lazy_relation(self.this_model, None, self.other_model, self.resolved_model)
         else:
@@ -75,8 +75,9 @@ class DependOnRelated(DenormDependency):
         candidates = [x for x in candidates if not self.type or self.type == x[0]]
 
         if len(candidates) > 1:
-            raise ValueError("%s has more than one ForeignKey or ManyToManyField to %s (or reverse); cannot auto-resolve."
-                             % (self.this_model, self.other_model))
+            raise ValueError("%s has more than one ForeignKey or ManyToManyField to %s (or reverse); cannot auto-resolve. Candidates are: %s\n"\
+                             "HINT: try to specify foreign_key on depend_on_related decorators."
+                             % (self.this_model, self.other_model, candidates))
         if not candidates:
             raise ValueError("%s has no ForeignKeys or ManyToManyFields to %s (or reverse); cannot auto-resolve."
                              % (self.this_model, self.other_model))
@@ -88,15 +89,17 @@ class DependOnRelated(DenormDependency):
 class CacheKeyDependOnRelated(DependOnRelated):
 
     def get_triggers(self, using):
+        from denorm.db import triggers
         qn = self.get_quote_name(using)
 
         if not self.type:
             # 'resolved_model' model never got called...
             raise ValueError("The model '%s' could not be resolved, it probably does not exist" % self.other_model)
 
-        content_type = str(ContentType.objects.get_for_model(self.this_model).pk)
+        content_type = str(contenttypes.models.ContentType.objects.get_for_model(self.this_model).pk)
 
         if self.type == "forward":
+            from denorm.db import triggers
             # With forward relations many instances of ``this_model``
             # may be related to one instance of ``other_model``
             action_new = triggers.TriggerActionUpdate(
@@ -166,9 +169,9 @@ class CacheKeyDependOnRelated(DependOnRelated):
             else:
                 if "forward" in self.type:
                     column_name = self.field.object_id_field_name
-                    reverse_column_name = self.field.rel.to._meta.pk.column
+                    reverse_column_name = self.field.remote_field.model._meta.pk.column
                 if "backward" in self.type:
-                    column_name = self.field.rel.to._meta.pk.column
+                    column_name = self.field.remote_field.model._meta.pk.column
                     reverse_column_name = self.field.object_id_field_name
 
             # The first part of a M2M dependency is exactly like a backward
@@ -263,13 +266,14 @@ class CallbackDependOnRelated(DependOnRelated):
         super(CallbackDependOnRelated, self).__init__(othermodel, foreign_key, type, skip)
 
     def get_triggers(self, using):
+        from denorm.db import triggers
         qn = self.get_quote_name(using)
 
         if not self.type:
             # 'resolved_model' model never got called...
             raise ValueError("The model '%s' could not be resolved, it probably does not exist" % self.other_model)
 
-        content_type = str(ContentType.objects.get_for_model(self.this_model).pk)
+        content_type = str(contenttypes.models.ContentType.objects.get_for_model(self.this_model).pk)
 
         if self.type == "forward":
             # With forward relations many instances of ``this_model``
@@ -277,7 +281,7 @@ class CallbackDependOnRelated(DependOnRelated):
             # so we need to do a nested select query in the trigger
             # to find them all.
             action_new = triggers.TriggerActionInsert(
-                model=DirtyInstance,
+                model=denorm.models.DirtyInstance,
                 columns=("content_type_id", "object_id"),
                 values=triggers.TriggerNestedSelect(
                     self.this_model._meta.pk.model._meta.db_table,
@@ -287,7 +291,7 @@ class CallbackDependOnRelated(DependOnRelated):
                 )
             )
             action_old = triggers.TriggerActionInsert(
-                model=DirtyInstance,
+                model=denorm.models.DirtyInstance,
                 columns=("content_type_id", "object_id"),
                 values=triggers.TriggerNestedSelect(
                     self.this_model._meta.pk.model._meta.db_table,
@@ -309,7 +313,7 @@ class CallbackDependOnRelated(DependOnRelated):
             # pointing to ``this_model`` both the old and the new related instance
             # are affected, otherwise only the one it is pointing to is affected.
             action_new = triggers.TriggerActionInsert(
-                model=DirtyInstance,
+                model=denorm.models.DirtyInstance,
                 columns=("content_type_id", "object_id"),
                 values=triggers.TriggerNestedSelect(
                     self.field.model._meta.db_table,
@@ -319,14 +323,12 @@ class CallbackDependOnRelated(DependOnRelated):
                 )
             )
             action_old = triggers.TriggerActionInsert(
-                model=DirtyInstance,
+                model=denorm.models.DirtyInstance,
                 columns=("content_type_id", "object_id"),
-                values=triggers.TriggerNestedSelect(
-                    self.field.model._meta.db_table,
-                    (content_type,
-                        self.field.get_attname_column()[1]),
-                    **{self.field.model._meta.pk.get_attname_column()[1]: "OLD.%s" % qn(self.other_model._meta.pk.get_attname_column()[1])}
-                )
+                values=(
+                    content_type,
+                    "OLD.%s" % self.field.get_attname_column()[1],
+                ),
             )
             return [
                 triggers.Trigger(self.other_model, "after", "update", [action_new, action_old], content_type, using, self.skip),
@@ -347,16 +349,16 @@ class CallbackDependOnRelated(DependOnRelated):
             else:
                 if "forward" in self.type:
                     column_name = qn(self.field.object_id_field_name)
-                    reverse_column_name = self.field.rel.to._meta.pk.column
+                    reverse_column_name = remote_field_model(self.field)._meta.pk.column
                 if "backward" in self.type:
-                    column_name = qn(self.field.rel.to._meta.pk.column)
+                    column_name = qn(remote_field_model(self.field)._meta.pk.column)
                     reverse_column_name = self.field.object_id_field_name
 
             # The first part of a M2M dependency is exactly like a backward
             # ForeignKey dependency. ``this_model`` is backward FK related
             # to the intermediate table.
             action_m2m_new = triggers.TriggerActionInsert(
-                model=DirtyInstance,
+                model=denorm.models.DirtyInstance,
                 columns=("content_type_id", "object_id"),
                 values=(
                     content_type,
@@ -364,7 +366,7 @@ class CallbackDependOnRelated(DependOnRelated):
                 )
             )
             action_m2m_old = triggers.TriggerActionInsert(
-                model=DirtyInstance,
+                model=denorm.models.DirtyInstance,
                 columns=("content_type_id", "object_id"),
                 values=(
                     content_type,
@@ -388,7 +390,7 @@ class CallbackDependOnRelated(DependOnRelated):
                 # Generic relations are excluded because they have the
                 # same m2m_table and model table.
                 action_new = triggers.TriggerActionInsert(
-                    model=DirtyInstance,
+                    model=denorm.models.DirtyInstance,
                     columns=("content_type_id", "object_id"),
                     values=triggers.TriggerNestedSelect(
                         self.field.m2m_db_table(),

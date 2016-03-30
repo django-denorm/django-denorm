@@ -1,8 +1,12 @@
 # Django settings for test_project project.
+from decimal import Decimal
+import django
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 # TEST_RUNNER = "djangosanetesting.testrunner.DstNoseTestSuiteRunner"
+if Decimal('.'.join([str(i) for i in django.VERSION[:2]])) >= Decimal('1.6'):
+    TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),
@@ -88,6 +92,7 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
 )
 
 ROOT_URLCONF = 'test_denorm_project.urls'

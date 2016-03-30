@@ -1,6 +1,7 @@
 import random
 import string
 from denorm.db import base
+from . import identifier
 
 
 class RandomBigInt(base.RandomBigInt):
@@ -9,26 +10,39 @@ class RandomBigInt(base.RandomBigInt):
 
 
 class TriggerNestedSelect(base.TriggerNestedSelect):
+    def _get_columns(self):
+        columns = self.columns.split(",")
+        columns.append("(SELECT {})".format(identifier.get_name()))
+        columns.append("UTC_TIMESTAMP")
+        columns = ", ".join(columns)
+        return columns
 
     def sql(self):
-        columns = self.columns
+        columns = self._get_columns()
         table = self.table
-        where = ", ".join(["%s = %s" % (k, v) for k, v in self.kwargs.iteritems()])
+        where = ", ".join(["%s = %s" % (k, v) for k, v in self.kwargs.items()])
         return 'SELECT DISTINCT %(columns)s FROM %(table)s WHERE %(where)s' % locals(), tuple()
 
 
 class TriggerActionInsert(base.TriggerActionInsert):
+    def _get_columns(self):
+        return self.columns + ("identifier", "created")
+
+    def _get_values(self):
+        return self.values + ("(SELECT {})".format(identifier.get_name()), "UTC_TIMESTAMP")
 
     def sql(self):
         table = self.model._meta.db_table
-        columns = "(" + ", ".join(self.columns) + ")"
+        columns = self._get_columns()
+        columns = "(" + ", ".join(columns) + ")"
         params = []
         if isinstance(self.values, TriggerNestedSelect):
             sql, nested_params = self.values.sql()
             values = "(" + sql + ")"
             params.extend(nested_params)
         else:
-            values = "VALUES (" + ", ".join(self.values) + ")"
+            values = self._get_values()
+            values = "VALUES (" + ", ".join(values) + ")"
 
         return 'INSERT IGNORE INTO %(table)s %(columns)s %(values)s' % locals(), tuple()
 
@@ -121,6 +135,6 @@ class TriggerSet(base.TriggerSet):
 
     def install(self):
         cursor = self.cursor()
-        for name, trigger in self.triggers.iteritems():
+        for name, trigger in self.triggers.items():
             sql, args = trigger.sql()
             cursor.execute(sql, args)
