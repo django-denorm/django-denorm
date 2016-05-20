@@ -625,15 +625,15 @@ def flush():
     while True:
         # Get all dirty markers
         from .models import DirtyInstance
-        count = DirtyInstance.objects.count()
+        qs = DirtyInstance.objects.all()
 
         # DirtyInstance table is empty -> all data is consistent -> we're done
-        if not count:
+        if not qs.exists():
             break
 
         # Call save() on all dirty instances, causing the self_save_handler()
         # getting called by the pre_save signal.
-        for dirty_instance in DirtyInstance.objects.iterator():
+        for dirty_instance in qs.iterator():
             try: 
                 if dirty_instance.content_object:
                     with transaction.atomic():
