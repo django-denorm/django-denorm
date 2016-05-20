@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import abc
+from logging import getLogger
 
 from django.contrib import contenttypes
-from django.db import connections, connection
+from django.db import connections, connection, transaction
 try:
     from django.apps import apps as gmodels
 except ImportError:
@@ -20,6 +21,10 @@ from django.db.models.sql.query import Query
 from django.db.models.sql.where import WhereNode
 import django
 from decimal import Decimal
+
+
+logger = getLogger(__name__)
+
 
 def many_to_many_pre_save(sender, instance, **kwargs):
     """
@@ -620,20 +625,26 @@ def flush():
     while True:
         # Get all dirty markers
         from .models import DirtyInstance
-        qs = DirtyInstance.objects.all()
+        count = DirtyInstance.objects.count()
 
         # DirtyInstance table is empty -> all data is consistent -> we're done
-        if not qs:
+        if not count:
             break
 
         # Call save() on all dirty instances, causing the self_save_handler()
         # getting called by the pre_save signal.
-        for dirty_instance in qs.iterator():
-            if dirty_instance.content_object:
-                dirty_instance.content_object.save()
+        for dirty_instance in DirtyInstance.objects.iterator():
+            try: 
+                if dirty_instance.content_object:
+                    with transaction.atomic():
+                        klass = dirty_instance.content_object.__class__
+                        instance = klass.objects.select_for_update().get(pk=dirty_instance.object_id)
+                        instance.save()
 
-            from .models import DirtyInstance
-            DirtyInstance.objects.filter(
-                content_type_id=dirty_instance.content_type_id,
-                object_id=dirty_instance.object_id
-            ).delete()
+                from .models import DirtyInstance
+                DirtyInstance.objects.filter(
+                    content_type_id=dirty_instance.content_type_id,
+                    object_id=dirty_instance.object_id
+                ).delete()
+            except Exception as e:
+                logger.exception(e)
