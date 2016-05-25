@@ -631,8 +631,7 @@ def flush():
         if not qs.exists():
             break
 
-        # Call save() on all dirty instances, causing the self_save_handler()
-        # getting called by the pre_save signal.
+        # Call save() on all dirty instances, causing pre_save and post_save signal.
         for dirty_instance in qs.iterator():
             try: 
                 if dirty_instance.content_object:
