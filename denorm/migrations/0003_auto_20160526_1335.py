@@ -26,4 +26,9 @@ class Migration(migrations.Migration):
             name='dirtyinstance',
             unique_together=set([('content_type', 'object_id')]),
         ),
+        migrations.AlterField(
+            model_name='dirtyinstance',
+            name='object_id',
+            field=models.CharField(db_index=True, max_length=32, null=True, blank=True),
+        ),
     ]

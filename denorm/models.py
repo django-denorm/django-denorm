@@ -19,7 +19,7 @@ class DirtyInstance(models.Model):
         unique_together = (('content_type', 'object_id', ), )
 
     content_type = models.ForeignKey(ContentType)
-    object_id = models.TextField(blank=True, null=True, db_index=True)
+    object_id = models.CharField(blank=True, null=True, db_index=True, max_length=32)
     content_object = GenericForeignKey()
 
     def __str__(self):
