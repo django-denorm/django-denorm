@@ -16,6 +16,7 @@ class DirtyInstance(models.Model):
     """
     class Meta:
         app_label="denorm"
+        unique_together = (('content_type', 'object_id', ), )
 
     content_type = models.ForeignKey(ContentType)
     object_id = models.CharField(blank=True, null=True, db_index=True, max_length=32)
