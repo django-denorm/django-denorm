@@ -5,8 +5,10 @@ try:
     from django.contrib.contenttypes.fields import GenericForeignKey
 except ImportError:
     from django.contrib.contenttypes.generic import GenericForeignKey
+from django.utils.encoding import python_2_unicode_compatible
 
 
+@python_2_unicode_compatible
 class DirtyInstance(models.Model):
     """
     Holds a reference to a model instance that may contain inconsistent data
@@ -22,7 +24,4 @@ class DirtyInstance(models.Model):
     content_object = GenericForeignKey()
 
     def __str__(self):
-        return u'DirtyInstance: %s,%s' % (self.content_type, self.object_id)
-
-    def __unicode__(self):
-        return u'DirtyInstance: %s, %s' % (self.content_type, self.object_id)
+        return 'DirtyInstance: %s,%s' % (self.content_type, self.object_id)
