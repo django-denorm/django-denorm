@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.db import migrations, models, transaction
+from django.db import migrations, models, transaction, connection
 
 
 @transaction.atomic
@@ -10,8 +10,18 @@ def drop_duplicates(apps, schema_editor):
     DirtyInstance = apps.get_model('denorm', 'DirtyInstance')
     if DirtyInstance.objects.count() > 100000:
         raise ValueError("You should clear DirtyInstances table first")
-    distinct = DirtyInstance.objects.distinct('object_id', 'content_type')
-    DirtyInstance.objects.exclude(id__in=distinct).delete()
+    if connection.vendor == 'postgresql':
+        distinct = DirtyInstance.objects.distinct('object_id', 'content_type')
+        DirtyInstance.objects.exclude(id__in=distinct).delete()
+    else:
+        pks_to_delete = []
+        distinct_tuples = []
+        for di in DirtyInstance.objects.all().iterator():
+            if (di.object_id, di.content_type) in distinct_tuples:
+                pks_to_delete.append(di.pk)
+            else:
+                distinct_tuples.append((di.object_id, di.content_type))
+        DirtyInstance.objects.filter(id__in=pks_to_delete).delete()
 
 
 class Migration(migrations.Migration):

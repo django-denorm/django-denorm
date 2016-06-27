@@ -15,31 +15,17 @@ python:
   - "2.6"
   - "2.7"
   - "3.4"
+  - "3.5"
 
 env:
-  - DJANGO=django15 DB=sqlite
-  - DJANGO=django16 DB=sqlite
-  - DJANGO=django15 DB=sqlite
-  - DJANGO=django16 DB=sqlite
-  - DJANGO=django17 DB=sqlite
   - DJANGO=django18 DB=sqlite
   - DJANGO=django19 DB=sqlite
   - DJANGO=djangomaster DB=sqlite
 
-  - DJANGO=django15 DB=mysql
-  - DJANGO=django16 DB=mysql
-  - DJANGO=django15 DB=mysql
-  - DJANGO=django16 DB=mysql
-  - DJANGO=django17 DB=mysql
   - DJANGO=django18 DB=mysql
   - DJANGO=django19 DB=mysql
   - DJANGO=djangomaster DB=mysql
 
-  - DJANGO=django15 DB=postgres
-  - DJANGO=django16 DB=postgres
-  - DJANGO=django15 DB=postgres
-  - DJANGO=django16 DB=postgres
-  - DJANGO=django17 DB=postgres
   - DJANGO=django18 DB=postgres
   - DJANGO=django19 DB=postgres
   - DJANGO=djangomaster DB=postgres
@@ -52,23 +38,17 @@ matrix:
   fast_finish: true
   exclude:
     - python: "2.6"
-      env: DJANGO=django17 DB=sqlite
-    - python: "2.6"
       env: DJANGO=django18 DB=sqlite
     - python: "2.6"
       env: DJANGO=django19 DB=sqlite
     - python: "2.6"
       env: DJANGO=djangomaster DB=sqlite
     - python: "2.6"
-      env: DJANGO=django17 DB=mysql
-    - python: "2.6"
       env: DJANGO=django18 DB=mysql
     - python: "2.6"
       env: DJANGO=django19 DB=mysql
     - python: "2.6"
       env: DJANGO=djangomaster DB=mysql
-    - python: "2.6"
-      env: DJANGO=django17 DB=postgres
     - python: "2.6"
       env: DJANGO=django18 DB=postgres
     - python: "2.6"
