@@ -14,11 +14,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='dirtyinstance',
             name='object_id',
-            field=models.TextField(db_index=True, null=True, blank=True),
-        ),
-        migrations.AlterField(
-            model_name='dirtyinstance',
-            name='object_id',
             field=models.CharField(db_index=True, max_length=32, null=True, blank=True),
         ),
     ]
