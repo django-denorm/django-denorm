@@ -127,6 +127,3 @@ class Command(BaseCommand):
                 sys.exit()
             if run_once:
                 break
-
-    def handle_noargs(self, **options):  # Django<=1.8
-        return self.handle(options)
