@@ -369,6 +369,11 @@ class TestDenormalisation(TransactionTestCase):
         self.assertEqual(models.Forum.objects.get(id=f1.id).post_count, 2)
         self.assertEqual(models.Forum.objects.get(id=f1.id).title, "new")
 
+    def test_countfield_saves_on_inherited_model(self):
+        e1 = models.ExtendedConcreteModel()
+        e1.save()
+        self.assertIsNotNone(e1)
+
     def test_foreignkey(self):
         f1 = models.Forum.objects.create(title="forumone")
         f2 = models.Forum.objects.create(title="forumtwo")

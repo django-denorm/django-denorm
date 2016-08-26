@@ -275,6 +275,17 @@ class Competitor(models.Model):
     team = models.ForeignKey(Team)
 
 
+class BaseConcreteModel(models.Model):
+    pass
+
+
+class ExtendedConcreteModel(BaseConcreteModel):
+    item_count = CountField('relatedmodel_set')
+
+
+class RelatedModel(models.Model):
+    thing = models.ForeignKey(ExtendedConcreteModel)
+
 
 if connection.vendor != "sqlite":
     class FilterSumModel(models.Model):
