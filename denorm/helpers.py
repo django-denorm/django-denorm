@@ -50,3 +50,12 @@ def find_m2ms(from_model, to_model, m2m_name=None):
         m2ms = [x for x in m2ms if x.attname == m2m_name]
 
     return m2ms
+
+def batch_query(query_set, batch_size=1000):
+    """
+    Generator function to iterate through a queryset
+    """
+    total = query_set.count()
+    for start in range(0, total, batch_size):
+        end = min(start + batch_size, total)
+        yield query_set[start:end]

@@ -3,6 +3,9 @@ import abc
 
 from django.contrib import contenttypes
 from django.db import connections, connection
+
+from denorm.helpers import batch_query
+
 try:
     from django.apps import apps as gmodels
 except ImportError:
@@ -572,11 +575,12 @@ def rebuildall(verbose=False, model_name=None, field_name=None):
                 i += 1
         # create DirtyInstance for all objects, so the rebuild is done during flush
         content_type = contenttypes.models.ContentType.objects.get_for_model(model)
-        for instance in model.objects.all():
-                DirtyInstance.objects.create(
-                    content_type=content_type,
-                    object_id=instance.pk,
-                )
+        for query_set in batch_query(query_set=model.objects.all()):
+            for instance in query_set:
+                    DirtyInstance.objects.create(
+                        content_type=content_type,
+                        object_id=instance.pk,
+                    )
     flush(verbose)
 
 
