@@ -51,7 +51,10 @@ def many_to_many_pre_save(sender, instance, **kwargs):
 
                 else:
                     values = m2m.denorm.func(instance)
-                    setattr(instance, m2m.attname, values)
+                    try:
+                        getattr(instance, m2m.attname).set(values)
+                    except AttributeError:  # Django<1.10
+                        setattr(instance, m2m.attname, values)
 
 
 def many_to_many_post_save(sender, instance, created, **kwargs):

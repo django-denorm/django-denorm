@@ -17,7 +17,7 @@ class DirtyInstance(models.Model):
     class Meta:
         app_label="denorm"
 
-    content_type = models.ForeignKey(ContentType)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.TextField(blank=True, null=True)
     content_object = GenericForeignKey()
 

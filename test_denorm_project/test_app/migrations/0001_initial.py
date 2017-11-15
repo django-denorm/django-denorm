@@ -83,7 +83,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('SomeWeirdName', models.TextField(editable=False)),
-                ('a', models.ForeignKey(to='test_app.FailingTriggersModelA')),
+                ('a', models.ForeignKey(to='test_app.FailingTriggersModelA', on_delete=models.CASCADE)),
             ],
             options={
             },
@@ -128,9 +128,9 @@ class Migration(migrations.Migration):
                 ('forum_title', models.CharField(max_length=255, editable=False)),
                 ('author_name', models.CharField(max_length=255, editable=False)),
                 ('response_count', models.PositiveIntegerField(editable=False)),
-                ('author', models.ForeignKey(blank=True, to='test_app.Member', null=True)),
-                ('forum', models.ForeignKey(blank=True, to='test_app.Forum', null=True)),
-                ('response_to', models.ForeignKey(related_name='responses', blank=True, to='test_app.Post', null=True)),
+                ('author', models.ForeignKey(blank=True, to='test_app.Member', null=True, on_delete=models.CASCADE)),
+                ('forum', models.ForeignKey(blank=True, to='test_app.Forum', null=True, on_delete=models.CASCADE)),
+                ('response_to', models.ForeignKey(related_name='responses', blank=True, to='test_app.Post', null=True, on_delete=models.CASCADE)),
             ],
             options={
                 'abstract': False,
@@ -195,7 +195,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('name', models.CharField(max_length=255)),
                 ('object_id', models.PositiveIntegerField()),
-                ('content_type', models.ForeignKey(to='contenttypes.ContentType')),
+                ('content_type', models.ForeignKey(to='contenttypes.ContentType', on_delete=models.CASCADE)),
             ],
             options={
             },
@@ -204,19 +204,19 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='skipcommentwithskip',
             name='post',
-            field=models.ForeignKey(to='test_app.SkipPost'),
+            field=models.ForeignKey(to='test_app.SkipPost', on_delete=models.CASCADE),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='skipcommentwithoutskip',
             name='post',
-            field=models.ForeignKey(to='test_app.SkipPost'),
+            field=models.ForeignKey(to='test_app.SkipPost', on_delete=models.CASCADE),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='skipcommentwithattributeskip',
             name='post',
-            field=models.ForeignKey(to='test_app.SkipPost'),
+            field=models.ForeignKey(to='test_app.SkipPost', on_delete=models.CASCADE),
             preserve_default=True,
         ),
         migrations.AddField(
@@ -234,25 +234,25 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='forum',
             name='parent_forum',
-            field=models.ForeignKey(blank=True, to='test_app.Forum', null=True),
+            field=models.ForeignKey(blank=True, to='test_app.Forum', null=True, on_delete=models.CASCADE),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='cachedmodela',
             name='b',
-            field=models.ForeignKey(to='test_app.CachedModelB'),
+            field=models.ForeignKey(to='test_app.CachedModelB', on_delete=models.CASCADE),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='attachment',
             name='forum',
-            field=models.ForeignKey(blank=True, editable=False, to='test_app.Forum', null=True),
+            field=models.ForeignKey(blank=True, editable=False, to='test_app.Forum', null=True, on_delete=models.CASCADE),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='attachment',
             name='post',
-            field=models.ForeignKey(blank=True, to='test_app.Post', null=True),
+            field=models.ForeignKey(blank=True, to='test_app.Post', null=True, on_delete=models.CASCADE),
             preserve_default=True,
         ),
     ]
