@@ -82,6 +82,7 @@ class TestSkip(TransactionTestCase):
 
     def setUp(self):
         denorms.drop_triggers()
+        denorm.models.DirtyInstance.objects.all().delete()
         denorms.install_triggers()
 
         post = models.SkipPost(text='Here be ponies.')
@@ -123,6 +124,7 @@ class TestDenormalisation(TransactionTestCase):
 
     def setUp(self):
         denorms.drop_triggers()
+        denorm.models.DirtyInstance.objects.all().delete()
         denorms.install_triggers()
 
         self.testuser = User.objects.create_user("testuser", "testuser", "testuser")
