@@ -16,12 +16,6 @@ class Command(BaseCommand):
                 'SQL into. Defaults to the "default" database.',
         )
 
-    if django.VERSION < (1, 8):
-        option_list = BaseCommand.option_list + (
-            make_option('--database', action='store', dest='database',
-                default=DEFAULT_DB_ALIAS, help='Nominates a database to execute '
-                    'SQL into. Defaults to the "default" database.'),
-        )
     help = "Creates all triggers needed by django-denorm."
 
     def handle(self, **options):
