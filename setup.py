@@ -4,16 +4,17 @@ from setuptools import setup
 
 setup(
     name='django-denorm',
-    version='0.2.0',
+    version='1.0.0dev',
     description='Denormalization magic for Django',
     long_description='django-denorm is a Django application to provide automatic management of denormalized database fields.',
     author=', '.join((
         'Christian Schilling <initcrash@gmail.com>',
         'James Turnbull <james@incuna.com>',
+        'Petr Dlouhy <petr.dlouhy@email.cz>',
     )),
     author_email='django-denorm@googlegroups.com',
-    url='http://initcrash.github.com/django-denorm/',
-    download_url='http://github.com/initcrash/django-denorm/downloads',
+    url='http://github.com/django-denorm/django-denorm/',
+    download_url='http://github.com/django-denorm/django-denorm/downloads',
     install_requires=[
         'six',
     ],
@@ -21,7 +22,6 @@ setup(
         "Development Status :: 2 - Pre-Alpha",
         "Framework :: Django",
         "Intended Audience :: Developers",
-        "Intended Audience :: System Administrators",
         "Intended Audience :: System Administrators",
         "Operating System :: OS Independent",
         "Topic :: Software Development"
