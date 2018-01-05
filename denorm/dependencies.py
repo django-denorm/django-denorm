@@ -50,7 +50,13 @@ class DependOnRelated(DenormDependency):
 
         if isinstance(self.other_model, six.string_types):
             # if ``other_model`` is a string, it certainly is a lazy relation.
-            related.add_lazy_relation(self.this_model, None, self.other_model, self.resolved_model)
+            try:
+                def function(local, related, field):
+                    return self.resolved_model(field, related, local)
+
+                related.lazy_related_operation(function, self.this_model, self.other_model, field=None)
+            except AttributeError:  # Django<2.0
+                related.add_lazy_relation(self.this_model, None, self.other_model, self.resolved_model)
         else:
             # otherwise it can be resolved directly
             self.resolved_model(None, self.other_model, None)

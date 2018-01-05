@@ -45,11 +45,11 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='filtersumitem',
             name='parent',
-            field=models.ForeignKey(related_name='counts', to='test_app.FilterSumModel'),
+            field=models.ForeignKey(related_name='counts', to='test_app.FilterSumModel', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='filtercountitem',
             name='parent',
-            field=models.ForeignKey(related_name='items', to='test_app.FilterCountModel'),
+            field=models.ForeignKey(related_name='items', to='test_app.FilterCountModel', on_delete=models.CASCADE),
         ),
     ]

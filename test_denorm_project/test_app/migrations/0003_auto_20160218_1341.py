@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(serialize=False, verbose_name='ID', auto_created=True, primary_key=True)),
                 ('author_name', models.CharField(editable=False, max_length=255)),
-                ('post', models.OneToOneField(to='test_app.Post')),
+                ('post', models.OneToOneField(to='test_app.Post', on_delete=models.CASCADE)),
             ],
         ),
         migrations.AlterField(

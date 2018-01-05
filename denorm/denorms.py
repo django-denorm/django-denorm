@@ -3,19 +3,13 @@ import abc
 
 from django.contrib import contenttypes
 from django.db import connections, connection
-try:
-    from django.apps import apps as gmodels
-except ImportError:
-    from django.db import models as gmodels
+from django.apps import apps as gmodels
 from django.db.models import sql, ManyToManyField
 from django.db.models.aggregates import Sum
 from django.db.models.manager import Manager
 from django.db.models.query_utils import Q
 from django.db.models.sql.compiler import SQLCompiler
-try:
-    from django.db.models.sql.datastructures import Join
-except ImportError:
-    from django.db.models.sql.constants import JoinInfo
+from django.db.models.sql.datastructures import Join
 from django.db.models.sql.query import Query
 from django.db.models.sql.where import WhereNode
 import django
@@ -51,7 +45,10 @@ def many_to_many_pre_save(sender, instance, **kwargs):
 
                 else:
                     values = m2m.denorm.func(instance)
-                    setattr(instance, m2m.attname, values)
+                    try:
+                        getattr(instance, m2m.attname).set(values)
+                    except AttributeError:  # Django<1.10
+                        setattr(instance, m2m.attname, values)
 
 
 def many_to_many_post_save(sender, instance, created, **kwargs):
@@ -403,26 +400,18 @@ class AggregateDenorm(Denorm):
 
         if hasattr(self.manager, "field"):  # Django>=1.9
              related_model = self.manager.field.model
-        elif hasattr(self.manager.related, "related_model"):  # Django>=1.8
+        else:  # Django>=1.8
             related_model = self.manager.related.related_model
-        else:
-            related_model = self.manager.related.model
         inc_query = TriggerFilterQuery(related_model, trigger_alias='NEW')
         inc_query.add_q(Q(**self.filter))
         inc_query.add_q(~Q(**self.exclude))
-        if django.VERSION >= (1, 7):
-            qn = SQLCompiler(inc_query, cconnection, using)
-        else:
-            qn = SQLCompiler(inc_query, cconnection, using).quote_name_unless_alias
+        qn = SQLCompiler(inc_query, cconnection, using)
         inc_filter_where, _ = inc_query.where.as_sql(qn, cconnection)
 
         dec_query = TriggerFilterQuery(related_model, trigger_alias='OLD')
         dec_query.add_q(Q(**self.filter))
         dec_query.add_q(~Q(**self.exclude))
-        if django.VERSION >= (1, 7):
-            qn = SQLCompiler(dec_query, cconnection, using)
-        else:
-            qn = SQLCompiler(dec_query, cconnection, using).quote_name_unless_alias
+        qn = SQLCompiler(dec_query, cconnection, using)
         dec_filter_where, where_params = dec_query.where.as_sql(qn, cconnection)
 
         if inc_filter_where:
@@ -554,10 +543,7 @@ def rebuildall(verbose=False, model_name=None, field_name=None):
     models = {}
     for denorm in alldenorms:
         current_app_label = denorm.model._meta.app_label
-        try:
-            current_model_name = denorm.model._meta.model.__name__
-        except AttributeError: # In Django 1.5
-            current_model_name = denorm.model.__name__
+        current_model_name = denorm.model._meta.model.__name__
         current_app_model = '%s.%s' % (current_app_label, current_model_name)
         if model_name is None or model_name in (current_app_label, current_model_name, current_app_model):
             if field_name is None or field_name == denorm.fieldname:

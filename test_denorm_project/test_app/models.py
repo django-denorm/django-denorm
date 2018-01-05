@@ -21,7 +21,7 @@ class FailingTriggersModelA(models.Model):
 
 
 class FailingTriggersModelB(models.Model):
-    a = models.ForeignKey(FailingTriggersModelA)
+    a = models.ForeignKey(FailingTriggersModelA, on_delete=models.CASCADE)
 
     @denormalized(models.TextField)
     @depend_on_related(FailingTriggersModelA)
@@ -30,7 +30,7 @@ class FailingTriggersModelB(models.Model):
 
 
 class CachedModelA(models.Model):
-    b = models.ForeignKey('CachedModelB')
+    b = models.ForeignKey('CachedModelB', on_delete=models.CASCADE)
 
     @cached(cache)
     @depend_on_related('CachedModelB')
@@ -79,7 +79,7 @@ class RealDenormModel(AbstractDenormModel):
 class Tag(models.Model):
     name = models.CharField(max_length=255)
 
-    content_type = models.ForeignKey(contenttypes.models.ContentType)
+    content_type = models.ForeignKey(contenttypes.models.ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
 
@@ -117,7 +117,7 @@ class Forum(TaggedModel):
 
     # let's say this forums supports subforums, sub-subforums and so forth
     # so we can test depend_on_related('self') (for tree structures).
-    parent_forum = models.ForeignKey('self', blank=True, null=True)
+    parent_forum = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE)
 
     @denormalized(models.TextField)
     @depend_on_related('self', type='forward')
@@ -129,9 +129,9 @@ class Forum(TaggedModel):
 
 
 class Post(TaggedModel):
-    forum = models.ForeignKey(Forum, blank=True, null=True)
-    author = models.ForeignKey('Member', blank=True, null=True)
-    response_to = models.ForeignKey('self', blank=True, null=True, related_name='responses')
+    forum = models.ForeignKey(Forum, blank=True, null=True, on_delete=models.CASCADE)
+    author = models.ForeignKey('Member', blank=True, null=True, on_delete=models.CASCADE)
+    response_to = models.ForeignKey('self', blank=True, null=True, related_name='responses', on_delete=models.CASCADE)
     title = models.CharField(max_length=255, blank=True)
 
     # Brings down the forum title
@@ -161,7 +161,7 @@ class Post(TaggedModel):
 
 class PostExtend(models.Model):
     # Test also OneToOneField
-    post = models.OneToOneField('Post')
+    post = models.OneToOneField('Post', on_delete=models.CASCADE)
 
     @denormalized(models.CharField, max_length=255)
     @depend_on_related('Post')
@@ -172,12 +172,12 @@ class PostExtend(models.Model):
 class Attachment(models.Model):
     forum_as_object = False
 
-    post = models.ForeignKey(Post, blank=True, null=True)
+    post = models.ForeignKey(Post, blank=True, null=True, on_delete=models.CASCADE)
 
     cachekey = CacheKeyField()
     cachekey.depend_on_related('Post')
 
-    @denormalized(models.ForeignKey, Forum, blank=True, null=True)
+    @denormalized(models.ForeignKey, Forum, blank=True, null=True, on_delete=models.CASCADE)
     @depend_on_related(Post)
     def forum(self):
         if self.post and self.post.forum:
@@ -228,7 +228,7 @@ class CallCounterProxy(CallCounter):
 
 
 class SkipComment(models.Model):
-    post = models.ForeignKey(SkipPost)
+    post = models.ForeignKey(SkipPost, on_delete=models.CASCADE)
     text = models.TextField()
     created_on = models.DateTimeField(auto_now_add=True)
     updated_on = models.DateTimeField(auto_now=True, null=True, blank=True)
@@ -272,7 +272,7 @@ class Team(models.Model):
 
 class Competitor(models.Model):
     name = models.TextField()
-    team = models.ForeignKey(Team)
+    team = models.ForeignKey(Team, on_delete=models.CASCADE)
 
 
 
@@ -282,7 +282,7 @@ if connection.vendor != "sqlite":
         active_item_sum = SumField('counts', field='active_item_count', filter={'age__gte': 18})
 
     class FilterSumItem(models.Model):
-        parent = models.ForeignKey(FilterSumModel, related_name='counts')
+        parent = models.ForeignKey(FilterSumModel, related_name='counts', on_delete=models.CASCADE)
         age = models.IntegerField(default=18)
         active_item_count = models.PositiveIntegerField(default=False)
 
@@ -291,6 +291,6 @@ if connection.vendor != "sqlite":
         active_item_count = CountField('items', filter={'active__exact': True}, exclude={'text': ''})
 
     class FilterCountItem(models.Model):
-        parent = models.ForeignKey(FilterCountModel, related_name='items')
+        parent = models.ForeignKey(FilterCountModel, related_name='items', on_delete=models.CASCADE)
         active = models.BooleanField(default=False)
         text = models.CharField(max_length=10, default='')
