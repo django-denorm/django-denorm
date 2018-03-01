@@ -606,6 +606,13 @@ def flush(verbose=False):
         from .models import DirtyInstance
         qs = DirtyInstance.objects.all()
 
+        try:  # If possible, dont flush the same object twice
+            qs_unified = qs.distinct('content_type', 'object_id')
+            '%s' % qs_unified   # Triggers SQL evaluation: NotImplementedError if not supported
+            qs = qs_unified
+        except NotImplementedError:  # SQLite does not suport DISTINCT ON
+            pass
+
         # DirtyInstance table is empty -> all data is consistent -> we're done
         if not qs:
             break
