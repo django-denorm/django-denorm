@@ -280,14 +280,7 @@ class CacheKeyField(models.BigIntegerField):
         super(CacheKeyField, self).contribute_to_class(cls, name, *args, **kwargs)
 
     def pre_save(self, model_instance, add):
-        if add:
-            value = self.denorm.func(model_instance)
-        else:
-            value = self.denorm.model.objects.filter(
-                pk=model_instance.pk,
-            ).values_list(
-                self.attname, flat=True,
-            )[0]
+        value = self.denorm.func(model_instance)
         setattr(model_instance, self.attname, value)
         return value
 
