@@ -1,5 +1,6 @@
 from django.db import transaction
 from denorm.db import base
+from django.db.backends.utils import truncate_name
 
 
 class RandomBigInt(base.RandomBigInt):
@@ -63,7 +64,7 @@ class Trigger(base.Trigger):
     def sql(self):
         qn = self.connection.ops.quote_name
 
-        name = self.name()
+        name = truncate_name(self.name(), self.connection.ops.max_name_length() - 5)
         params = []
         action_list = []
         actions_added = set()
