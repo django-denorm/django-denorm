@@ -168,11 +168,16 @@ class AggregateField(models.PositiveIntegerField):
             value = 0
         else:
             # if we're updating, get the most recent value from the DB
-            value = self.denorm.model.objects.filter(
-                pk=model_instance.pk,
-            ).values_list(
-                self.attname, flat=True,
-            )[0]
+            try:
+                value = self.denorm.model.objects.filter(
+                    pk=model_instance.pk,
+                ).values_list(
+                    self.attname, flat=True,
+                )[0]
+            except IndexError:
+                # Aggregate fields on models that inherit from another concrete model
+                # call pre_save with add=False even when first saved in Django 1.6+
+                value = 0
 
         setattr(model_instance, self.attname, value)
         return value
