@@ -1,8 +1,5 @@
-from optparse import make_option
-
 from django.core.management.base import BaseCommand
 from django.db import DEFAULT_DB_ALIAS
-import django
 
 from denorm import denorms
 

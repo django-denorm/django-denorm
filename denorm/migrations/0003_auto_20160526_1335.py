@@ -32,8 +32,9 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(drop_duplicates, reverse_code=migrations.RunPython.noop),
-        migrations.AlterUniqueTogether(
-            name='dirtyinstance',
-            unique_together=set([('content_type', 'object_id')]),
-        ),
+        # TODO: Вернуть
+        # migrations.AlterUniqueTogether(
+        #     name='dirtyinstance',
+        #     unique_together=set([('content_type', 'object_id')]),
+        # ),
     ]
