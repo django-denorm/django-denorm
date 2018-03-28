@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import abc
+from logging import getLogger
 
 from django.contrib import contenttypes
-from django.db import connections, connection
+from django.db import connections, connection, transaction
 from django.apps import apps as gmodels
 from django.db.models import sql, ManyToManyField
 from django.db.models.aggregates import Sum
@@ -12,8 +13,10 @@ from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.datastructures import Join
 from django.db.models.sql.query import Query
 from django.db.models.sql.where import WhereNode
-import django
-from decimal import Decimal
+
+
+logger = getLogger(__name__)
+
 
 def many_to_many_pre_save(sender, instance, **kwargs):
     """
@@ -607,22 +610,22 @@ def flush(verbose=False):
         qs = DirtyInstance.objects.all()
 
         # DirtyInstance table is empty -> all data is consistent -> we're done
-        if not qs:
+        if not qs.exists():
             break
 
-        # Call save() on all dirty instances, causing the self_save_handler()
-        # getting called by the pre_save signal.
-        if verbose:
-            size = qs.count()
-            i = 0
+        # Call save() on all dirty instances, causing pre_save and post_save signal.
         for dirty_instance in qs.iterator():
-            if verbose:
-                i += 1
-                print("flushing %s of %s all dirty instances" % (i, size))
-            if dirty_instance.content_object:
-                dirty_instance.content_object.save()
+            try: 
+                if dirty_instance.content_object:
+                    with transaction.atomic():
+                        klass = dirty_instance.content_object.__class__
+                        instance = klass.objects.select_for_update().get(pk=dirty_instance.object_id)
+                        instance.save()
 
-            DirtyInstance.objects.filter(
-                content_type_id=dirty_instance.content_type_id,
-                object_id=dirty_instance.object_id
-            ).delete()
+                from .models import DirtyInstance
+                DirtyInstance.objects.filter(
+                    content_type_id=dirty_instance.content_type_id,
+                    object_id=dirty_instance.object_id
+                ).delete()
+            except Exception as e:
+                logger.exception(e)

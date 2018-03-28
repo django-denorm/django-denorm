@@ -6,4 +6,4 @@ Documentation is available from http://django-denorm.github.io/django-denorm/
 
 Issues can be reported at http://github.com/django-denorm/django-denorm/issues
 
-[![Build Status](https://travis-ci.org/django-denorm/django-denorm.svg?branch=develop)](https://travis-ci.org/django-denorm/django-denorm)
+[![Build Status](https://travis-ci.org/whyflyru/django-denorm.svg?branch=master)](https://travis-ci.org/whyflyru/django-denorm)
