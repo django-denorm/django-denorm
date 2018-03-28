@@ -9,6 +9,8 @@ User = get_user_model()
 import denorm
 from denorm import denorms
 from test_app import models
+import django
+from decimal import Decimal
 
 # Use all but denorms in FailingTriggers models by default
 failingdenorms = denorms.get_alldenorms()
@@ -80,6 +82,7 @@ class TestSkip(TransactionTestCase):
 
     def setUp(self):
         denorms.drop_triggers()
+        denorm.models.DirtyInstance.objects.all().delete()
         denorms.install_triggers()
 
         post = models.SkipPost(text='Here be ponies.')
@@ -121,6 +124,7 @@ class TestDenormalisation(TransactionTestCase):
 
     def setUp(self):
         denorms.drop_triggers()
+        denorm.models.DirtyInstance.objects.all().delete()
         denorms.install_triggers()
 
         self.testuser = User.objects.create_user("testuser", "testuser", "testuser")
@@ -425,6 +429,22 @@ class TestDenormalisation(TransactionTestCase):
         self.assertEqual(f1.post_count, 1)
         self.assertEqual(f1.authors.all()[0], m1)
 
+    def test_denorm_rebuild_called_once(self):
+        """
+        Test whether the denorm function is not called only once during rebuild.
+        The proxy model CallCounterProxy should not add extra callings to denorm function.
+        """
+        models.CallCounter.objects.create()
+        denorm.denorms.flush()
+        c = models.CallCounter.objects.get()
+        self.assertEqual(c.called_count, 2)  # TODO: we should be able to create object with hitting the denorm function just once
+        denorm.denorms.rebuildall(verbose=True)
+        c = models.CallCounter.objects.get()
+        self.assertEqual(c.called_count, 3)
+        denorm.denorms.rebuildall(verbose=True)
+        c = models.CallCounter.objects.get()
+        self.assertEqual(c.called_count, 4)
+
     def test_denorm_update(self):
         f1 = models.Forum.objects.create(title="forumone")
         m1 = models.Member.objects.create(name="memberone")
@@ -483,6 +503,25 @@ class TestDenormalisation(TransactionTestCase):
 
         self.assertEqual(f1.tags_string, 'tagfour, tagone, tagtwo')
         self.assertEqual(p1.tags_string, 'tagthree')
+
+    def test_denorm_delete(self):
+        """ This tests bug #69 """
+        team = models.Team.objects.create()
+
+        self.assertEqual(team.user_string, '')
+
+        models.Competitor.objects.create(name='tagone', team=team)
+        models.Competitor.objects.create(name='tagtwo', team=team)
+
+        denorm.denorms.flush()
+        team = models.Team.objects.get(id=team.id)
+        self.assertEqual(team.user_string, 'tagone, tagtwo')
+
+        models.Competitor.objects.get(name='tagtwo').delete()
+
+        denorm.denorms.flush()
+        team = models.Team.objects.get(id=team.id)
+        self.assertEqual(team.user_string, 'tagone')
 
     def test_cache_key_field_backward(self):
         f1 = models.Forum.objects.create(title="forumone")
@@ -681,13 +720,36 @@ class CommandsTestCase(TransactionTestCase):
     def test_denorm_daemon(self):
         " Test denorm_daemon command."
 
-        args = []
-        opts = {}
-        call_command('denorm_daemon', *args, **opts)
+        call_command('denorm_daemon', run_once=True, foreground=True)
 
-    def test_makemigrations(self):
-        " Test makemigrations command."
+    if Decimal('.'.join([str(i) for i in django.VERSION[:2]])) >= Decimal('1.7'):
+        def test_makemigrations(self):
+            " Test makemigrations command."
 
-        args = []
-        opts = {}
-        call_command('makemigrations', *args, **opts)
+            args = []
+            opts = {}
+            call_command('makemigrations', *args, **opts)
+
+    def test_denorm_init(self):
+        " Test denorm_init command."
+        call_command('denorm_init')
+
+    def test_denorm_drop(self):
+        " Test denorm_init command."
+        call_command('denorm_drop')
+
+    def test_denorm_flush(self):
+        " Test denorm_init command."
+        call_command('denorm_flush')
+
+    def test_denorm_rebuild(self):
+        " Test denorm_init command."
+        call_command('denorm_rebuild')
+
+    def test_denorm_sql(self):
+        " Test denorm_init command."
+        call_command('denorm_sql')
+
+    def test_denormalize(self):
+        " Test denorm_init command."
+        self.assertRaises(django.core.management.base.CommandError, call_command, 'denormalize')

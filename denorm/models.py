@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 from django.db import models
 from django.contrib.contenttypes.models import ContentType
-try:
-    from django.contrib.contenttypes.fields import GenericForeignKey
-except ImportError:
-    from django.contrib.contenttypes.generic import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey
 
 
 class DirtyInstance(models.Model):
@@ -18,7 +15,7 @@ class DirtyInstance(models.Model):
         app_label="denorm"
         unique_together = (('content_type', 'object_id', ), )
 
-    content_type = models.ForeignKey(ContentType)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.CharField(blank=True, null=True, db_index=True, max_length=32)
     content_object = GenericForeignKey()
 

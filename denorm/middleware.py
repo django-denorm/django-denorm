@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
-from denorm import flush
-from django.db import DatabaseError
 import logging
+
+from denorm import flush
+
+import django
+from django.db import DatabaseError
 
 logger = logging.getLogger(__name__)
 
@@ -21,3 +24,13 @@ class DenormMiddleware(object):
         except DatabaseError as e:
             logger.error(e)
         return response
+
+
+if django.VERSION >= (1, 10):
+    from django.utils import deprecation
+
+    class DenormMiddleware(
+            deprecation.MiddlewareMixin,
+            DenormMiddleware,
+    ):
+        pass
