@@ -13,8 +13,7 @@ class DirtyInstance(models.Model):
     """
     class Meta:
         app_label="denorm"
-        # TODO: Вернуть
-        # unique_together = (('content_type', 'object_id', ), )
+        unique_together = (('content_type', 'object_id', ), )
 
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.CharField(blank=True, null=True, db_index=True, max_length=32)
