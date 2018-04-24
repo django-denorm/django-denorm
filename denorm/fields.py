@@ -52,6 +52,8 @@ def denormalized(DBField, *args, **kwargs):
             models.signals.pre_save.connect(denorms.many_to_many_pre_save, sender=cls)
             models.signals.post_save.connect(denorms.many_to_many_post_save, sender=cls)
             DBField.contribute_to_class(self, cls, name, *args, **kwargs)
+            # The 'func' is acessible at the model Class, but swapped over on instances
+            setattr(cls, name, self.func)
 
         def pre_save(self, model_instance, add):
             """
