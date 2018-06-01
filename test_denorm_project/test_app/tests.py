@@ -279,7 +279,7 @@ class TestDenormalisation(TransactionTestCase):
         p4 = models.Post.objects.create(forum=f1, response_to=p2)
         denorm.flush()
 
-        self.assertEqual(models.Post.objects.get(id=p1.id).response_count, 3)
+        self.assertEqual(models.Post.objects.get(id=p1.id).response_count, 2)
         self.assertEqual(models.Post.objects.get(id=p2.id).response_count, 1)
         self.assertEqual(models.Post.objects.get(id=p3.id).response_count, 0)
         self.assertEqual(models.Post.objects.get(id=p4.id).response_count, 0)
