@@ -5,6 +5,7 @@ from denorm import flush
 
 import django
 from django.db import DatabaseError
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ class DenormMiddleware(object):
     """
     def process_response(self, request, response):
         try:
-            flush()
+            flush(max_process_count=getattr(settings, 'DENORM_MAX_PROCESS_COUNT', None))
         except DatabaseError as e:
             logger.error(e)
         return response

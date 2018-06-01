@@ -590,7 +590,7 @@ def build_triggerset(using=None):
     return triggerset
 
 
-def flush(verbose=False):
+def flush(verbose=False, max_process_count=None):
     """
     Updates all model instances marked as dirty by the DirtyInstance
     model.
@@ -601,7 +601,8 @@ def flush(verbose=False):
     # Loop until break.
     # We may need multiple passes, because an update on one instance
     # may cause an other instance to be marked dirty (dependency chains)
-    while True:
+    processed_count = 0
+    while max_process_count is None or processed_count < max_process_count:
         # Get all dirty markers
         from .models import DirtyInstance
         qs = DirtyInstance.objects.all()
@@ -612,6 +613,7 @@ def flush(verbose=False):
             qs = qs_unified
         except NotImplementedError:  # SQLite does not suport DISTINCT ON
             pass
+        qs = qs[:max_process_count]
 
         # DirtyInstance table is empty -> all data is consistent -> we're done
         if not qs:
@@ -619,8 +621,9 @@ def flush(verbose=False):
 
         # Call save() on all dirty instances, causing the self_save_handler()
         # getting called by the pre_save signal.
+        size = qs.count()
+        processed_count += size
         if verbose:
-            size = qs.count()
             i = 0
         for dirty_instance in qs.iterator():
             if verbose:

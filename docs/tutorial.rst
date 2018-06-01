@@ -187,6 +187,8 @@ This can be accomplished by adding ``DenormMiddleware`` to ``MIDDLEWARE_CLASSES`
 
 As shown in the example, I recommend to place ``DenormMiddleware`` right after ``TransactionMiddleware``.
 
+To prevent stalls of system, you can limit the maximal number of processed items during request-response by setting ``DENORM_MAX_PROCESS_COUNT`` variable.
+
 Using the daemon
 ^^^^^^^^^^^^^^^^
 
