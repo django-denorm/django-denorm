@@ -70,7 +70,7 @@ def get_alldenorms():
     alldenorms = []
     for model in gmodels.get_models(include_auto_created=True):
         if not model._meta.proxy:
-            for field in model._meta.fields:
+            for field in model._meta.fields + model._meta.local_many_to_many:
                 if hasattr(field, 'denorm'):
                     if not field.denorm.model._meta.swapped:
                         alldenorms.append(field.denorm)
